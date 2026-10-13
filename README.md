@@ -3,14 +3,17 @@
 Application web installable (PWA) pour suivre à deux l'épargne mensuelle, les objectifs, les dépenses fixes, les dépenses diverses et la projection de vos placements. 100 % statique (HTML/CSS/JS), thème sombre, pensée mobile.
 
 ## Fonctionnalités
-- **Épargne** : montant mis de côté par chacun, chaque mois ; total du mois, cumul par personne et global.
-- **Objectifs** : individuels ou communs (Japon, apport appart, voiture…) avec cible, économisé, reste, barre de progression et montant à mettre de côté par mois jusqu'à la date cible.
-- **Dépenses fixes** : libellé, montant, jour de prélèvement, payeur (couleur par personne / commun), total, part de chacun (répartition du commun réglable) et virement mensuel de l'un vers l'autre (ex. loyer).
-- **Diverses** : budget disponible par mois vs dépenses réalisées.
-- **Placements** : capital, versement mensuel permanent et taux annuel ; projection sur **4 ans (48 mois)** à intérêts composés mensuels, affichée par fin d'année 1 à 4 avec graphique.
-- **Réglages** : prénoms, répartition, synchro Supabase, export/import JSON.
+- **Revenus** : revenus par personne (salaire, prime, autre ; récurrents ou ponctuels pour un mois), avec revenus, charges, épargne, **reste à vivre** et **taux d'épargne** par personne et pour le couple.
+- **Budget** : *Charges fixes* (libellé, montant, jour de prélèvement, part payée par chacun via un curseur, ex. 70/30, avec la répartition des Réglages par défaut), totaux par personne et virement de l'un vers l'autre ; *Dépenses diverses* comparées au budget du mois.
+- **Épargne** : saisie mensuelle répartie automatiquement entre les objectifs (au prorata du besoin mensuel, plafonnée, excédent en « Non affecté ») ou à la main, avec aperçu et historique.
+- **Objectifs** : perso et communs, avec progression, reste, effort mensuel et contribution de chacun.
+- **Placements** : projection sur 4 ans à intérêts composés, avec graphique.
+- **Réglages** (icône en haut à droite) : prénoms, répartition, synchro Supabase, lien d'invitation + QR code, export/import.
 
-Les données sont stockées dans le navigateur (localStorage). La synchro Supabase est optionnelle.
+Supabase est la source de vérité ; le navigateur garde une copie (cache/sauvegarde). L'appli demande une connexion internet ; le service worker sert seulement à rendre l'appli installable et charge toujours la dernière version.
+
+### Format des données
+Les données sont versionnées (`version` dans le JSON, actuellement **3**). À l'ouverture, les anciennes données (localStorage, Supabase ou fichier importé) sont migrées automatiquement : par exemple, les charges v2 « payée par Emilien / Julie / commun » deviennent 100/0, 0/100 ou la répartition des Réglages. Le schéma Supabase ne change pas (tout est dans `data jsonb`).
 
 ## Tester en local
 ```bash
