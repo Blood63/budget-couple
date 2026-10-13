@@ -59,7 +59,7 @@ python3 -m http.server 8000
 
 ## Structure
 ```
-index.html  style.css  app.js  manifest.json  sw.js  icons/  supabase/schema.sql  screenshots/
+index.html  style.css  app.js  manifest-v2.webmanifest  sw.js  icons/  supabase/schema.sql  screenshots/
 ```
 
 ## v4 — Enveloppes à valorisation globale (format de données v6)

@@ -1,9 +1,9 @@
 {
- "id": "/budget-couple/",
+ "id": "/budget-couple/?app=v2",
  "name": "Budget Couple",
  "short_name": "Budget",
  "description": "Budget, épargne, objectifs et placements du couple, synchronisés entre deux téléphones.",
- "start_url": "./",
+ "start_url": "./?source=pwa",
  "scope": "./",
  "display": "standalone",
  "background_color": "#18145d",
