@@ -343,6 +343,7 @@ function vReglages(){
    <p class="mut">Âges : ${['p1','p2'].map(k=>`${esc(N(k))} ${ageOf(k)??'—'} ans`).join(' · ')}. Servent uniquement aux conseils liés à l’âge (Livret Jeune, horizon…).</p>
    <label>Jour du rappel mensuel de valorisation (assurance vie, PEA…)<input name="reminderDay" type="number" min="1" max="28" value="${D.reminderDay||1}"></label>
    <button class="btn">Enregistrer</button></form></div>
+  ${installCard()}
   <div class="card"><h2>${ic('edit',18)} Cet appareil</h2><p class="mut">Utilisé par <b style="color:${COL[me]||'var(--txt)'}">${me?esc(N(me)):'personne (non défini)'}</b> : vos modifications sont signées dans l’historique.</p>
    <div class="f2"><button class="btn ghost" id="chooseMe">Changer</button><button class="btn ghost" id="openHist">${ic('repeat',16)} Historique</button></div></div>
   <div class="card"><h2>${ic('cloud',18)} Synchronisation Supabase</h2><form id="fSync">
@@ -750,5 +751,13 @@ if(/^#invite=/.test(location.hash))handleInvite();else pullRemote();
 if(!me&&!/^#invite=/.test(location.hash))setTimeout(whoSheet,400);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullRemote()});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+/* Installation : bouton dédié quand Chrome propose l'installation */
+let installEvt=null;const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;if(tab==='reglages')render()});
+addEventListener('appinstalled',()=>{installEvt=null;toast('Application installée');if(tab==='reglages')render()});
+function installCard(){if(standalone())return'';
+  return `<div class="card"><h2>${ic('plus',18)} Installer l’application</h2>${installEvt?`<button class="btn wide" id="installBtn">Installer sur cet appareil</button>`:
+  `<p class="mut">Android / Chrome : menu ⋮ › « Installer l’application » (ou « Ajouter à l’écran d’accueil »). Si l’option n’apparaît pas, l’appli est peut-être déjà installée : cherchez « Budget » dans vos applications. iPhone / Safari : bouton Partager › « Sur l’écran d’accueil ».</p>`}</div>`}
+document.addEventListener('click',async e=>{if(!e.target.closest('#installBtn')||!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch{}installEvt=null;render()});
 // rafraîchissement régulier tant que l'appli est visible (récupère les modifications de l'autre téléphone)
 setInterval(()=>{if(document.visibilityState==='visible'&&!document.querySelector('#sheet.open'))pullRemote()},15000);
