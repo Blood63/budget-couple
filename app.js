@@ -195,10 +195,12 @@ function vReglages(){
    <button class="btn">Enregistrer</button></form></div>
   <div class="card"><h2>Synchronisation Supabase (optionnel)</h2><form id="fSync">
    <label>URL du projet<input name="url" placeholder="https://xxxx.supabase.co" value="${esc(cfg.url||'')}"></label>
-   <label>Clé anon (publique)<input name="key" value="${esc(cfg.key||'')}"></label>
+   <label>Clé publishable ou anon (publique)<input name="key" value="${esc(cfg.key||'')}"></label>
    <label>Code d’espace partagé (même code sur vos deux téléphones)<input name="space" value="${esc(cfg.space||'')}" placeholder="un code long et secret"></label>
    <button class="btn">Enregistrer & synchroniser</button>
    <button type="button" class="btn ghost" id="disconnect">Désactiver la synchro</button></form>
+   <button type="button" class="btn ghost" id="inviteBtn">🔗 Lien d’invitation</button>
+   <div id="invitePanel"></div>
    <p class="mut" id="syncMsg">${esc(lastErr)}</p></div>
   <div class="card"><h2>Sauvegarde</h2><div class="f2"><button class="btn ghost" id="exp">Exporter (JSON)</button>
    <label class="btn ghost" style="text-align:center;color:var(--txt);font-size:15px">Importer<input type="file" id="imp" accept=".json" hidden></label></div>
@@ -231,6 +233,30 @@ async function pullRemote(){
 let pt;function pushRemote(){if(!sbOn())return;clearTimeout(pt);return new Promise(res=>pt=setTimeout(async()=>{
   try{const r=await fetch(`${cfg.url}/rest/v1/budget_spaces?on_conflict=code`,{method:'POST',headers:{...sbH(),Prefer:'resolution=merge-duplicates'},body:JSON.stringify({code:cfg.space,data:D,updated_at:new Date().toISOString()})});
    if(!r.ok)throw{sb:await sbErr(r)};setSync('Synchro ✓',true);showErr('Synchronisé ✓')}catch(e){setSync('Erreur synchro');showErr(netErr(e));console.warn('push',e)}res()},600))}
+/* ---------- Invitation ---------- */
+const APP_URL='https://blood63.github.io/budget-couple/';
+const b64u=s=>btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64u=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)));
+function inviteLink(){return APP_URL+'#invite='+b64u(JSON.stringify({v:1,url:cfg.url,key:cfg.key,space:cfg.space}))}
+function showInvite(){const P=$('#invitePanel');if(!sbOn()){P.innerHTML='<p class="neg">Configurez et enregistrez d’abord la synchro.</p>';return}
+  const L=inviteLink(),qr=qrcode(0,'M');qr.addData(L);qr.make();
+  P.innerHTML=`<div class="stat" style="display:grid;gap:8px;margin-top:6px"><b>Inviter dans l’espace « ${esc(cfg.space)} »</b>
+   <p class="neg" style="margin:0">⚠️ Ce lien donne accès à toutes vos données (lecture et modification). Ne l’envoyez qu’à votre partenaire, par un canal privé.</p>
+   <div style="background:#fff;padding:10px;border-radius:10px;justify-self:center">${qr.createSvgTag({cellSize:4,margin:0,scalable:true}).replace('<svg ','<svg style="width:220px;height:220px;display:block" ')}</div>
+   <input id="inviteLink" readonly value="${esc(L)}">
+   <div class="f2"><button type="button" class="btn" id="copyInv">Copier</button>${navigator.share?'<button type="button" class="btn ghost" id="shareInv">Partager</button>':''}</div></div>`;
+  on('#copyInv','click',async()=>{try{await navigator.clipboard.writeText(L)}catch{$('#inviteLink').select();document.execCommand('copy')}$('#copyInv').textContent='Copié ✓'});
+  on('#shareInv','click',()=>navigator.share({title:'Budget Couple',text:'Rejoins notre espace Budget Couple :',url:L}).catch(()=>{}));
+}
+async function handleInvite(){const m=location.hash.match(/^#invite=([A-Za-z0-9_-]+)/);if(!m)return;
+  const clear=()=>history.replaceState(null,'',location.pathname+location.search);
+  let c;try{c=normCfg(JSON.parse(unb64u(m[1])))}catch{clear();alert('Lien d’invitation invalide.');return}
+  if(!c.url||!c.key||!c.space){clear();alert('Lien d’invitation incomplet.');return}
+  if(confirm(`Rejoindre l’espace « ${c.space} » ?\n\nLes données de cet espace seront synchronisées sur cet appareil.`)){
+    cfg=c;localStorage.setItem(CFG,JSON.stringify(cfg));clear();tab='reglages';
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x.dataset.tab==='reglages'));render();await pullRemote();
+  }else clear();
+}
 /* ---------- Rendu & événements ---------- */
 const views={epargne:vEpargne,objectifs:vObjectifs,fixes:vFixes,diverses:vDiverses,placements:vPlacements,reglages:vReglages};
 function render(){$('#view').innerHTML=views[tab]();bind()}
@@ -254,6 +280,7 @@ function bind(){
   on('#fNames','submit',e=>{e.preventDefault();const f=fd(e.target);D.names={p1:f.p1||'Personne 1',p2:f.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(f.ratio)));save()});
   on('#fSync','submit',async e=>{e.preventDefault();const f=fd(e.target);cfg=normCfg(f);if(cfg.space&&cfg.space.length<8){$('#syncMsg').textContent='Code d’espace trop court (8 caractères minimum).';return}
     localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote();await pushRemote()});
+  on('#inviteBtn','click',showInvite);
   on('#disconnect','click',()=>{cfg={};localStorage.removeItem(CFG);render();setSync('Local')});
   on('#exp','click',()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,2)],{type:'application/json'}));a.download='budget-couple.json';a.click()});
   on('#imp','change',async e=>{try{D=Object.assign(blank(),JSON.parse(await e.target.files[0].text()));save()}catch{alert('Fichier invalide')}});
@@ -261,6 +288,6 @@ function bind(){
 }
 document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));tab=b.dataset.tab;render();scrollTo(0,0)}));
-render();pullRemote();
+render();if(/^#invite=/.test(location.hash))handleInvite();else pullRemote();
 window.addEventListener('focus',pullRemote);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
