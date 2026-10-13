@@ -1,0 +1,69 @@
+'use strict';
+/* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
+const DATA_VERSION=4;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements'];
+const SCAL=['names','ratio','transfer'];
+const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
+const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
+const blankData=()=>({version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},
+  budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
+/* Migrations : chaque étape prend les données de la version précédente.
+   v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
+   v3 → v4 : horodatage par élément (u, c), suppressions (tombstones), catégories, payeur réel/bénéficiaire, historique. */
+const MIGRATIONS={
+  3(d){d.fixed=(d.fixed||[]).map(f=>{if(typeof f.split!=='number')f.split=f.payer==='p1'?100:f.payer==='p2'?0:(typeof d.ratio==='number'?d.ratio:50);return f});d.incomes=d.incomes||[];return d},
+  4(d){const t=d.updated||0;
+    LISTS.forEach(l=>{d[l]=(d[l]||[]).map((x,i)=>Object.assign({u:t,c:i},x))});
+    d.fixed.forEach(f=>{f.category=f.category||'autre';if(!f.paidBy)f.paidBy=f.split>=100?'p1':f.split<=0?'p2':'joint'});
+    d.misc.forEach(m=>{m.category=m.category||'autre';if(!m.paidBy){m.paidBy=m.payer==='p1'?'p1':m.payer==='p2'?'p2':'joint';m.for=m.payer==='p1'?'p1':m.payer==='p2'?'p2':'common'}});
+    d.deleted=d.deleted||{};d.su=d.su||{};d.budgetU=d.budgetU||{};d.history=d.history||[];d.settlements=d.settlements||[];return d}
+};
+function migrateData(raw){
+  let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;
+  for(let t=v+1;t<=DATA_VERSION;t++)if(MIGRATIONS[t])d=MIGRATIONS[t](d);
+  const b=blankData();d=Object.assign(b,d);d.names=Object.assign(blankData().names,d.names);d.version=Math.max(DATA_VERSION,v);
+  LISTS.forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});['deleted','su','budgetU','budget'].forEach(k=>{if(!d[k]||typeof d[k]!=='object')d[k]={}});if(!Array.isArray(d.history))d.history=[];
+  d.fixed.forEach(f=>f.payer=f.split>=100?'p1':f.split<=0?'p2':'common'); // compatibilité anciennes versions
+  d.misc.forEach(m=>{if(!m.payer)m.payer=m.for==='p1'?'p1':m.for==='p2'?'p2':'common'});
+  return d;
+}
+/* Signature d'un élément (sans métadonnées) pour détecter les modifications */
+const META=new Set(['u','by','fu','c']);
+const sig=x=>{const {u,by,fu,...r}=x;return JSON.stringify(r)};
+const itemLabel=(l,x)=>x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
+function snapshot(d){const s={};LISTS.forEach(l=>d[l].forEach(x=>s[l+'\u0001'+x.id]={sig:sig(x),label:itemLabel(l,x),obj:JSON.parse(JSON.stringify(x))}));SCAL.forEach(k=>s['$'+k]={sig:JSON.stringify(d[k])});
+  Object.keys(d.budget).forEach(m=>s['b\u0001'+m]={sig:String(d.budget[m])});return s}
+/* Compare l'état courant à l'instantané : horodate les éléments modifiés, crée les tombstones et l'historique */
+function stamp(d,snap,now,me){
+  const seen=new Set(),hist=[];const H=(op,kind,label)=>hist.push({id:Math.random().toString(36).slice(2,10)+now.toString(36),t:now,by:me||null,op,kind,label});
+  LISTS.forEach(l=>d[l].forEach((x,i)=>{const k=l+'\u0001'+x.id;seen.add(k);const p=snap[k];
+    if(!p){x.u=now;x.by=me||null;if(x.c===undefined)x.c=now+i/1000;H('add',l,itemLabel(l,x))}
+    else if(p.sig!==sig(x)){x.u=now;x.by=me||null;x.fu=Object.assign({},x.fu);new Set([...Object.keys(x),...Object.keys(p.obj)]).forEach(f=>{if(!META.has(f)&&JSON.stringify(x[f])!==JSON.stringify(p.obj[f]))x.fu[f]=now});H('edit',l,itemLabel(l,x))}}));
+  Object.keys(snap).forEach(k=>{const [l,id]=k.split('\u0001');if(LISTS.includes(l)&&!seen.has(k)){d.deleted[id]=now;H('del',l,snap[k].label)}});
+  SCAL.forEach(k=>{if(!snap['$'+k]||snap['$'+k].sig!==JSON.stringify(d[k])){if(snap['$'+k]){d.su[k]=now;H('edit',k,k)}}});
+  Object.keys(d.budget).forEach(m=>{const p=snap['b\u0001'+m];if(!p||p.sig!==String(d.budget[m])){d.budgetU[m]=now;H('edit','budget',m)}});
+  if(hist.length){d.history=hist.concat(d.history).slice(0,500);d.updated=now}
+  return hist.length;
+}
+/* Fusion par élément : le plus récent gagne par id ; une suppression plus récente que l'élément le retire. Commutative. */
+function mergeData(a,b){
+  const r=JSON.parse(JSON.stringify(a));r.deleted={...a.deleted};
+  Object.entries(b.deleted||{}).forEach(([id,t])=>{if(!(r.deleted[id]>=t))r.deleted[id]=t});
+  // fusion champ par champ : pour chaque champ, la valeur modifiée le plus récemment gagne
+  const ft=(x,f)=>(x.fu&&x.fu[f])||x.c===undefined&&0||0;
+  const pick=(x,y)=>{if(!x)return y;if(!y)return x;const base=(y.u>x.u||(y.u===x.u&&sig(y)>sig(x)))?y:x,o=base===x?y:x,r=JSON.parse(JSON.stringify(base));
+    r.fu=Object.assign({},o.fu,base.fu);
+    new Set([...Object.keys(x),...Object.keys(y)]).forEach(f=>{if(META.has(f))return;const to=ft(o,f),tb=ft(base,f);
+      if(to>tb){if(f in o)r[f]=JSON.parse(JSON.stringify(o[f]));else delete r[f];r.fu[f]=to}});
+    r.u=Math.max(x.u||0,y.u||0);if(!Object.keys(r.fu).length)delete r.fu;return r};
+  LISTS.forEach(l=>{const m=new Map();(a[l]||[]).concat(b[l]||[]).forEach(x=>m.set(x.id,pick(m.get(x.id),x)));
+    r[l]=[...m.values()].filter(x=>!(r.deleted[x.id]>=x.u)).sort((x,y)=>(x.c??0)-(y.c??0)||(x.id<y.id?-1:1))});
+  r.su={...a.su};SCAL.forEach(k=>{const ta=a.su?.[k]||0,tb=b.su?.[k]||0;if(tb>ta||(tb===ta&&JSON.stringify(b[k])>JSON.stringify(a[k]))){r[k]=JSON.parse(JSON.stringify(b[k]));r.su[k]=tb}});
+  r.budget={...a.budget};r.budgetU={...a.budgetU};Object.keys(b.budget||{}).forEach(mo=>{const ta=a.budgetU?.[mo]||0,tb=b.budgetU?.[mo]||0;if(!(mo in a.budget)||tb>ta||(tb===ta&&b.budget[mo]>a.budget[mo])){r.budget[mo]=b.budget[mo];r.budgetU[mo]=tb}});
+  const hm=new Map();(a.history||[]).concat(b.history||[]).forEach(h=>hm.set(h.id,h));r.history=[...hm.values()].sort((x,y)=>y.t-x.t||(x.id<y.id?-1:1)).slice(0,500);
+  r.updated=Math.max(a.updated||0,b.updated||0);r.version=Math.max(a.version||0,b.version||0);
+  return r;
+}
+/* Forme canonique (sans état d'interface) pour comparer deux états */
+const canon=d=>{const {miscMonth,...r}=d;return JSON.stringify(r)};
+if(typeof module!=='undefined')module.exports={DATA_VERSION,LISTS,migrateData,mergeData,stamp,snapshot,canon,blankData};

@@ -1,23 +1,10 @@
 'use strict';
-/* Budget Couple — v3 des données. Supabase = source de vérité ; localStorage = cache/sauvegarde. */
-const KEY='budget-couple-data',CFG='budget-couple-cfg',DATA_VERSION=3;
-const blank=()=>({version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},budget:{},misc:[],placements:[],incomes:[],updated:0});
-/* ---------- Migration versionnée (rétrocompatible) ----------
-   v1 (sans champ version) / v2 : charges fixes avec payer p1|p2|common
-   v3 : charges avec split (% payé par la personne 1), revenus (incomes)   */
-const MIGRATIONS={
-  3(d){d.fixed=(d.fixed||[]).map(f=>{if(typeof f.split!=='number'){f.split=f.payer==='p1'?100:f.payer==='p2'?0:(typeof d.ratio==='number'?d.ratio:50)}return f});
-       d.incomes=d.incomes||[];return d}
-};
-function migrate(raw){
-  let d=JSON.parse(JSON.stringify(raw||{}));let v=d.version||1;
-  for(let t=v+1;t<=DATA_VERSION;t++)if(MIGRATIONS[t])d=MIGRATIONS[t](d);
-  d=Object.assign(blank(),d);d.names=Object.assign(blank().names,d.names);d.version=DATA_VERSION;
-  ['months','goals','fixed','misc','placements','incomes'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});
-  d.fixed.forEach(f=>f.payer=f.split>=100?'p1':f.split<=0?'p2':'common'); // champ conservé pour les anciennes versions
-  return d;
-}
+/* Budget Couple. Supabase = source de vérité ; localStorage = cache. Modèle, migrations et fusion : store.js */
+const KEY='budget-couple-data',CFG='budget-couple-cfg',ME='budget-couple-me';
+const blank=blankData,migrate=migrateData;
 let D=migrate(JSON.parse(localStorage.getItem(KEY)||'{}'));
+let SNAP=snapshot(D);
+let me=localStorage.getItem(ME)||'';
 let cfg=JSON.parse(localStorage.getItem(CFG)||'{}');
 let tab='revenus',budgetSeg='fixes',animate=true;
 const $=s=>document.querySelector(s),uid=()=>Math.random().toString(36).slice(2,10);
@@ -30,7 +17,9 @@ const monthLabel=m=>new Date(m+'-01T12:00').toLocaleDateString('fr-FR',{month:'l
 const num=v=>parseFloat(String(v??'').replace(/\s/g,'').replace(',','.'))||0;
 const fd=f=>Object.fromEntries(new FormData(f));
 const r2=x=>Math.round(x*100)/100;
-function save(push=true){D.updated=Date.now();localStorage.setItem(KEY,JSON.stringify(D));animate=false;render();if(push)pushRemote()}
+function persist(){localStorage.setItem(KEY,JSON.stringify(D))}
+function save(push=true){stamp(D,SNAP,Date.now(),me);SNAP=snapshot(D);persist();animate=false;render();if(push)pushRemote()}
+function adopt(d){const ui=D.miscMonth;D=d;if(ui)D.miscMonth=ui;SNAP=snapshot(D);persist()}
 function del(list,id){D[list]=D[list].filter(x=>x.id!==id);closeSheet();save()}
 const ownerOpts=(sel,withCommon=true)=>['p1','p2',...(withCommon?['common']:[])].map(k=>`<option value="${k}" ${k===sel?'selected':''}>${esc(N(k))}</option>`).join('');
 function on(sel,ev,fn){const e=$(sel);if(e)e.addEventListener(ev,fn)}
@@ -302,17 +291,31 @@ async function sbErr(r){let j={};try{j=await r.json()}catch{}const m=j.message||
 function netErr(e){return e&&e.sb?e.sb:'Impossible de joindre '+(cfg.url||'Supabase')+' : vérifiez l’URL (projet .supabase.co complet) et la connexion.'}
 function showErr(t){lastErr=t;const m=$('#syncMsg');if(m)m.textContent=t}
 function setSync(t,on){const b=$('#syncState');b.querySelector('span').textContent=t;b.className='badge'+(on?' on':on===false?' err':'')}
+/* Synchro sans perte : lecture → fusion par élément → écriture conditionnelle (updated_at inchangé), sinon on recommence */
+let syncing=null,again=false;
+const restUrl=q=>`${cfg.url}/rest/v1/budget_spaces?code=eq.${encodeURIComponent(cfg.space)}${q||''}`;
+async function syncOnce(){
+  for(let attempt=0;attempt<6;attempt++){
+    const r=await fetch(restUrl('&select=data,updated_at'),{headers:sbH(),cache:'no-store'});if(!r.ok)throw{sb:await sbErr(r)};
+    const [row]=await r.json(),stampNow=new Date().toISOString();
+    if(!row){const w=await fetch(`${cfg.url}/rest/v1/budget_spaces`,{method:'POST',headers:{...sbH(),Prefer:'return=minimal'},body:JSON.stringify({code:cfg.space,data:D,updated_at:stampNow})});
+      if(w.status===409)continue;if(!w.ok)throw{sb:await sbErr(w)};return}
+    const remote=migrate(row.data),merged=mergeData(D,remote),changedLocal=canon(merged)!==canon(D);
+    if(changedLocal){adopt(merged);animate=false;if(!document.querySelector('#sheet.open'))render()}
+    if(canon(merged)===canon(mergeData(remote,remote)))return;
+    const w=await fetch(restUrl('&updated_at=eq.'+encodeURIComponent(row.updated_at)),{method:'PATCH',headers:{...sbH(),Prefer:'return=representation'},body:JSON.stringify({data:D,updated_at:stampNow})});
+    if(!w.ok)throw{sb:await sbErr(w)};const rows=await w.json();if(rows.length)return; // sinon quelqu'un a écrit entre-temps → on refusionne
+  }
+  throw{sb:'Conflit de synchronisation persistant, réessayez.'};
+}
 async function pullRemote(){
   if(!sbOn())return setSync('Local');if(!navigator.onLine){setSync('Hors ligne',false);return showErr('Pas de connexion internet.')}
-  try{const r=await fetch(`${cfg.url}/rest/v1/budget_spaces?code=eq.${encodeURIComponent(cfg.space)}&select=data,updated_at`,{headers:sbH()});
-    if(!r.ok)throw{sb:await sbErr(r)};const [row]=await r.json();
-    if(row&&row.data&&(row.data.updated||0)>(D.updated||0)){D=migrate(row.data);localStorage.setItem(KEY,JSON.stringify(D));animate=false;render()}
-    else if(!row||(D.updated||0)>(row.data?.updated||0)){await pushRemote();return}
-    setSync('Synchro ✓',true);showErr('Synchronisé ✓')}catch(e){setSync('Erreur synchro',false);showErr(netErr(e));console.warn('sync',e)}
+  if(syncing){again=true;return syncing}
+  syncing=(async()=>{try{do{again=false;setSync('Synchro…',null);await syncOnce()}while(again);setSync('Synchro ✓',true);showErr('Synchronisé ✓')}
+    catch(e){setSync('Erreur synchro',false);showErr(netErr(e));console.warn('sync',e)}finally{syncing=null}})();
+  return syncing;
 }
-let pt;function pushRemote(){if(!sbOn())return;clearTimeout(pt);return new Promise(res=>pt=setTimeout(async()=>{
-  try{const r=await fetch(`${cfg.url}/rest/v1/budget_spaces?on_conflict=code`,{method:'POST',headers:{...sbH(),Prefer:'resolution=merge-duplicates'},body:JSON.stringify({code:cfg.space,data:D,updated_at:new Date().toISOString()})});
-   if(!r.ok)throw{sb:await sbErr(r)};setSync('Synchro ✓',true);showErr('Synchronisé ✓')}catch(e){setSync('Erreur synchro',false);showErr(netErr(e));console.warn('push',e)}res()},300))}
+let pt;function pushRemote(){if(!sbOn())return;clearTimeout(pt);return new Promise(res=>pt=setTimeout(()=>pullRemote().then(res),250))}
 /* ---------- Invitation ---------- */
 const APP_URL='https://blood63.github.io/budget-couple/';
 const b64u=s=>btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -375,16 +378,16 @@ document.addEventListener('click',e=>{
   ({addIncome:()=>incomeSheet(),addFixed:()=>fixedSheet(),editTransfer:transferSheet,addMisc:miscSheet,addMonth:()=>monthSheet(),addGoal:()=>goalSheet(),addPlac:()=>placSheet(),
     inviteBtn:showInvite,disconnect:()=>{cfg={};localStorage.removeItem(CFG);lastErr='';render();setSync('Local')},
     exp:()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,2)],{type:'application/json'}));a.download='budget-couple.json';a.click()},
-    reset:()=>{if(confirm('Effacer toutes les données de cet appareil ? (les données Supabase ne sont pas supprimées)')){D=blank();localStorage.setItem(KEY,JSON.stringify(D));render()}}
+    reset:()=>{if(confirm(sbOn()?'Vider le cache de cet appareil et recharger depuis Supabase ?':'Effacer toutes les données de cet appareil ?')){adopt(blank());render();pullRemote()}}
   }[t.id]||(()=>{}))();
 });
 $('#sheetBackdrop').addEventListener('click',closeSheet);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 document.addEventListener('change',async e=>{const t=e.target;
   if(t.id==='revMonth'){revMonth=t.value||curMonth();render()}
-  if(t.id==='miscMonth'){D.miscMonth=t.value||curMonth();localStorage.setItem(KEY,JSON.stringify(D));render()}
+  if(t.id==='miscMonth'){D.miscMonth=t.value||curMonth();persist();render()}
   if(t.id==='budgetIn'){D.budget[D.miscMonth||curMonth()]=num(t.value);save()}
-  if(t.id==='imp'){try{D=migrate(JSON.parse(await t.files[0].text()));save()}catch{alert('Fichier invalide')}}
+  if(t.id==='imp'){try{adopt(mergeData(D,migrate(JSON.parse(await t.files[0].text()))));render();pushRemote();alert('Sauvegarde fusionnée avec les données actuelles.')}catch{alert('Fichier invalide')}}
 });
 document.addEventListener('submit',async e=>{const f=e.target;
   if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));save()}
@@ -395,8 +398,10 @@ document.addEventListener('submit',async e=>{const f=e.target;
 function netBanner(){$('#offline').hidden=navigator.onLine}
 addEventListener('online',()=>{netBanner();pullRemote()});addEventListener('offline',()=>{netBanner();setSync('Hors ligne',false)});
 /* ---------- Démarrage ---------- */
-localStorage.setItem(KEY,JSON.stringify(D)); // enregistre la migration locale (sans modifier "updated")
+persist(); // enregistre la migration locale (sans horodater)
 buildNav();render();netBanner();
 if(/^#invite=/.test(location.hash))handleInvite();else pullRemote();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullRemote()});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+// rafraîchissement régulier tant que l'appli est visible (récupère les modifications de l'autre téléphone)
+setInterval(()=>{if(document.visibilityState==='visible'&&!document.querySelector('#sheet.open'))pullRemote()},15000);
