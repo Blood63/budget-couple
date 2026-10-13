@@ -180,3 +180,5 @@ button:focus:not(:focus-visible){outline:none}
 .tax-card details{margin-top:8px}.tax-card summary{cursor:pointer;color:var(--acc)}
 .tax-card .bal-l li{display:flex;flex-direction:row;justify-content:space-between;align-items:flex-start;gap:12px}.tax-card .bal-l li>span{order:1;flex:1}.tax-card .bal-l li>b{order:2;text-align:right;white-space:nowrap}
 .f2>label{min-width:0}input[type=date],input[type=month]{min-width:0;width:100%;max-width:100%}html,body{overflow-x:hidden}
+.top .logo{width:32px;height:32px;border-radius:9px;flex:none;margin-right:10px;box-shadow:0 2px 10px rgba(120,80,255,.35)}.top{align-items:center}
+.top #title{flex:1;min-width:0}
