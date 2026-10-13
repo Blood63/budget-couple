@@ -33,6 +33,7 @@ const P={
  target:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
  trend:'M22 7 13.5 15.5 8.5 10.5 2 17 M16 7h6v6',
  settings:'M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M1 14h6 M9 8h6 M17 16h6',
+ calc:'M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M8 6h8 M8 11h.01 M12 11h.01 M16 11h.01 M8 15h.01 M12 15h.01 M16 15h.01 M8 19h8', info:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01', check:'M20 6 9 17l-5-5', bulb:'M9 18h6 M10 22h4 M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z',
  plus:'M12 5v14 M5 12h14', x:'M18 6 6 18 M6 6l12 12', edit:'M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
  trash:'M3 6h18 M8 6V4h8v2 M19 6l-1 14H6L5 6', share:'M4 12v8h16v-8 M16 6l-4-4-4 4 M12 2v13', copy:'M8 8h12v12H8z M4 16V4h12',
  link:'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
@@ -71,7 +72,8 @@ function vRevenus(){
    <div class="hero-grid"><div><small>Revenus</small>${money(c.rev)}</div><div><small>Charges</small>${money(c.ch)}</div><div><small>Épargne</small>${money(c.ep)}</div><div><small>Taux d’épargne</small><span class="num">${c.pct.toFixed(0)} %</span></div></div>
    ${c.mi?`<p class="mut">Dont déjà dépensé en dépenses diverses : ${eur(c.mi)} · reste ${eur(c.rest-c.mi)}</p>`:''}</div>
   <div class="two">${person('p1',a)}${person('p2',b)}</div>
-  ${sec('Revenus du mois',addBtn('addIncome'))}<div class="list">${lines('p1')+lines('p2')||empty('wallet','Ajoute vos salaires, primes et autres revenus.')}</div>`;
+  ${sec('Revenus du mois',addBtn('addIncome'))}<div class="list">${lines('p1')+lines('p2')||empty('wallet','Ajoute vos salaires, primes et autres revenus.')}</div>
+  ${taxCard()}`;
 }
 function incomeSheet(id){const i=D.incomes.find(x=>x.id===id)||{person:'p1',type:'salaire',recurring:true,month:revMonth};
   openSheet(id?'Modifier le revenu':'Nouveau revenu',`<form id="fIncome">
@@ -280,6 +282,7 @@ function vPlacements(){
      ${env?`<small>${lv?`Valorisé le ${new Date(lv.date+'T12:00').toLocaleDateString('fr-FR')}`:'Aucune valorisation'}${g.inv?` · <span class="${g.d>=0?'pos':'neg'}">${g.d>=0?'+':''}${eur(g.d)} (${g.pc.toFixed(1)} %)</span>`:''}</small>`:''}
      ${isDue?`<small class="warn-c">${ic('alert',12)} Valorisation à mettre à jour</small>`:''}${ri.warn?`<small class="neg">${ic('alert',12)} ${esc(ri.warn)}</small>`:''}</span>
      <span class="r">${money(placValue(p))}<small class="mut">4 ans : ${eur(futureOf(p.id))}</small></span></button>`}).join('')}</div>`}).join('')||empty('trend','Ajoute un livret, un PEL, une assurance vie… pour voir la projection sur 4 ans.')}
+  ${tipsSection()}
   <div class="card"><h2>${ic('calendar',18)} Taux réglementés en vigueur</h2>${reg.length?`<ul class="bal-l">${reg.map(([k,r])=>`<li><span>${RATES.products[k].name}</span><small>depuis le ${frDate(r.from)} · <a href="${RATES.products[k].source}" target="_blank" rel="noopener">${RATES.products[k].sourceName}</a></small><b>${pct(r.rate)}</b></li>`).join('')}</ul>
    <p class="mut">Mis à jour automatiquement (rates.json, vérifié le ${frDate(RATES.checked)}). PEL : taux figé à l’ouverture. Livret Jeune : taux libre de la banque, au moins égal au Livret A.</p>`:'<p class="mut">Chargement des taux…</p>'}</div>
   <p class="mut note">Projection : intérêts composés mensuellement (taux annuel ÷ 12), versements permanents en fin de mois, au taux en vigueur aujourd’hui. Rendements des assurances vie, PEA, comptes-titres et PER : estimations saisies, non garanties.</p>`;
@@ -336,6 +339,8 @@ function vReglages(){
    <div class="f2"><label>Personne 1<input name="p1" value="${esc(D.names.p1)}"></label><label>Personne 2<input name="p2" value="${esc(D.names.p2)}"></label></div>
    <label>Part de ${esc(D.names.p1)} dans les dépenses communes (%)<input name="ratio" type="number" min="0" max="100" value="${D.ratio}"></label>
    <p class="mut">Sert de valeur par défaut pour les nouvelles charges, les dépenses diverses communes et les objectifs communs.</p>
+   <div class="f2"><label>Naissance · ${esc(D.names.p1)}<input name="b1" type="date" value="${esc(D.births?.p1||'')}"></label><label>Naissance · ${esc(D.names.p2)}<input name="b2" type="date" value="${esc(D.births?.p2||'')}"></label></div>
+   <p class="mut">Âges : ${['p1','p2'].map(k=>`${esc(N(k))} ${ageOf(k)??'—'} ans`).join(' · ')}. Servent uniquement aux conseils liés à l’âge (Livret Jeune, horizon…).</p>
    <label>Jour du rappel mensuel de valorisation (assurance vie, PEA…)<input name="reminderDay" type="number" min="1" max="28" value="${D.reminderDay||1}"></label>
    <button class="btn">Enregistrer</button></form></div>
   <div class="card"><h2>${ic('edit',18)} Cet appareil</h2><p class="mut">Utilisé par <b style="color:${COL[me]||'var(--txt)'}">${me?esc(N(me)):'personne (non défini)'}</b> : vos modifications sont signées dans l’historique.</p>
@@ -508,7 +513,7 @@ function vAccueil(){
    <div><small>Dépenses diverses</small>${money(spent)}${bud?`<small> / ${eur(bud)}</small>`:''}</div><div><small>Taux d’épargne</small><span class="num">${rev?(ep/rev*100).toFixed(0):0} %</span></div></div>
    ${bud?bar(spent/bud*100,spent>bud?'over':''):''}</div>
   <button class="btn wide" id="quickAdd">${ic('plus',18)} Ajouter une dépense</button>
-  ${remindCard()}${onboarding()}
+  ${remindCard()}${onboarding()}${tipsCard()}
   ${D.fixed.length||D.misc.length||D.settlements.length||D.transfer.amount?balanceCard(m):''}
   ${sec('Prochains prélèvements',`<button class="link" data-goto="budget" data-seg-to="fixes">Tout voir</button>`)}
   <div class="list">${nc.map(f=>`<div class="item"><span class="day" aria-hidden="true">${f.day}</span><span class="grow"><b>${esc(f.label)}</b><small>${f.inDays===0?'Aujourd’hui':f.inDays===1?'Demain':`Dans ${f.inDays} jours`} · ${esc(paidName(f.paidBy))}</small></span>${money(f.amount)}</div>`).join('')||empty('calendar','Ajoute des charges avec un jour de prélèvement.')}</div>
@@ -518,7 +523,7 @@ function vAccueil(){
   <div class="list">${D.history.slice(0,4).map(histItem).join('')||empty('repeat','Les modifications apparaîtront ici.')}</div>`;
 }
 /* ---------- Historique ---------- */
-const KIND={months:'Épargne',goals:'Objectif',fixed:'Charge',misc:'Dépense',placements:'Placement',incomes:'Revenu',settlements:'Règlement',names:'Prénoms',ratio:'Répartition',transfer:'Virement',budget:'Budget'};
+const KIND={months:'Épargne',goals:'Objectif',fixed:'Charge',misc:'Dépense',placements:'Placement',dismissed:'Conseil masqué',valuations:'Valorisation',incomes:'Revenu',settlements:'Règlement',names:'Prénoms',births:'Dates de naissance',tax:'Situation fiscale',ratio:'Répartition',transfer:'Virement',budget:'Budget'};
 const OP={add:'a ajouté',edit:'a modifié',del:'a supprimé'};
 function ago(t){const s=(Date.now()-t)/1000;if(s<60)return'à l’instant';if(s<3600)return`il y a ${Math.floor(s/60)} min`;if(s<86400)return`il y a ${Math.floor(s/3600)} h`;return new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 function histItem(h){const lab=h.kind==='budget'?monthLabel(h.label):['names','ratio','transfer'].includes(h.kind)?'':h.kind==='months'?monthLabel(h.label):h.label;
@@ -541,6 +546,124 @@ function whoSheet(){openSheet('Qui utilise cet appareil ?',`<p class="mut">Sert 
   <div class="two">${['p1','p2'].map(k=>`<button class="card who" data-me="${k}" style="--pc:${COL[k]}"><span class="avatar big">${esc(N(k)[0]||'?')}</span><b>${esc(N(k))}</b></button>`).join('')}</div>`)}
 
 /* ---------- Navigation, feuilles modales, animations ---------- */
+/* ---------- Âge & impôt (estimations) ---------- */
+function ageOf(k,at=new Date()){const b=D.births?.[k];if(!b)return null;const d=new Date(b+'T12:00');let a=at.getFullYear()-d.getFullYear();if(at.getMonth()<d.getMonth()||(at.getMonth()===d.getMonth()&&at.getDate()<d.getDate()))a--;return a}
+function annualIncome(k){const y=String(new Date().getFullYear());let sal=0,other=0;D.incomes.filter(i=>i.person===k).forEach(i=>{const v=i.recurring?i.amount*12:(i.month||'').startsWith(y)?i.amount:0;if(i.type==='autre')other+=v;else sal+=v});return{sal,other}}
+function taxNow(){const P=RATES?.incomeTax;if(!P)return null;const inc={p1:annualIncome('p1'),p2:annualIncome('p2')};if(!(inc.p1.sal+inc.p1.other+inc.p2.sal+inc.p2.other))return null;
+  const t=taxEstimate(inc,D.tax||{},P);t.inc=inc;t.mode=D.tax?.mode||'separe';t.tmi={p1:t.mode==='commune'?t.com.tmi:t.sep.p1.tmi,p2:t.mode==='commune'?t.com.tmi:t.sep.p2.tmi};return t}
+const TAX_DISC='Estimation approximative à partir des revenus saisis ici (montants supposés nets imposables). Ne tient pas compte des prélèvements sociaux, des réductions et crédits d’impôt, des revenus du patrimoine ni des cas particuliers. Pour un calcul exact, utilisez le simulateur officiel ou votre avis d’impôt.';
+function taxCard(){const P=RATES?.incomeTax;if(!P)return'';const t=taxNow(),x=D.tax||{};
+  const form=`<form id="fTax" class="f2"><label>Situation<select name="mode"><option value="separe" ${x.mode!=='commune'?'selected':''}>Célibataires</option><option value="commune" ${x.mode==='commune'?'selected':''}>Pacsés / mariés</option></select></label>
+   <label>Enfants à charge<input name="children" type="number" min="0" max="10" inputmode="numeric" value="${+x.children||0}"></label>
+   ${x.mode!=='commune'&&+x.children?`<label>Enfants rattachés à<select name="childOf">${ownerOpts(x.childOf||'p1',false)}</select></label>`:''}</form>`;
+  if(!t)return `<div class="card tax-card"><h2>${ic('calc',18)} Impôt sur le revenu (estimation)</h2>${form}<p class="mut">Ajoutez des revenus pour voir l’estimation.</p></div>`;
+  const row=(lab,r)=>`<li><span>${lab}<small>${eur(r.R)} imposables · ${String(r.parts).replace('.',',')} part${r.parts>1?'s':''} · TMI ${r.tmi} %${r.decote?` · décote ${eur(r.decote)}`:''}</small></span><b>${eur(r.net)}<small>${r.avg.toFixed(1).replace('.',',')} % moyen</small></b></li>`;
+  const best=Math.abs(t.diff)<1?'Les deux situations donnent le même impôt estimé.':t.diff>0?`L’imposition commune serait plus légère d’environ ${eur(t.diff)} par an.`:`Deux déclarations séparées seraient plus légères d’environ ${eur(-t.diff)} par an.`;
+  return `<div class="card tax-card"><h2>${ic('calc',18)} Impôt sur le revenu ${P.year} (estimation)</h2>${form}
+   <div class="hero-grid"><div><small>Impôt estimé (${t.mode==='commune'?'commune':'séparée'})</small><span class="num">${eur(t.mode==='commune'?t.com.net:t.sep.total)}</span></div><div><small>Soit par mois</small><span class="num">${eur((t.mode==='commune'?t.com.net:t.sep.total)/12)}</span></div></div>
+   <h3>Imposition séparée vs commune</h3><ul class="bal-l">${row(esc(N('p1'))+' seul(e)',t.sep.p1)}${row(esc(N('p2'))+' seul(e)',t.sep.p2)}<li><span><b>Total séparé</b></span><b>${eur(t.sep.total)}</b></li>${row('Imposition commune',t.com)}</ul>
+   <p>${best} <small class="mut">Le choix du PACS ou du mariage ne se résume pas à l’impôt.</small></p>
+   <details><summary>Détail du calcul</summary><p class="mut">Revenus annuels = revenus mensuels récurrents × 12 + revenus ponctuels de l’année. Abattement de ${P.proDeduction.rate} % pour frais professionnels sur salaires et primes (min ${eur(P.proDeduction.min)}, max ${eur(P.proDeduction.max)} par personne), barème progressif ${P.year} sur les revenus ${P.incomeYear} (${P.brackets.map(b=>b.rate+' %').join(', ')}), quotient familial plafonné (${eur(P.qfCapPerHalfPart)} par demi-part), décote. TMI = taux marginal d’imposition. Source : <a href="${P.source}" target="_blank" rel="noopener">${P.sourceName}</a>.</p></details>
+   <p class="disclaimer" role="note">${ic('info',14)} ${TAX_DISC} <a href="https://simulateur-ir-ifi.impots.gouv.fr/" target="_blank" rel="noopener">Simulateur impots.gouv.fr</a></p></div>`}
+document.addEventListener('change',e=>{const f=e.target.closest('#fTax');if(!f)return;const v=fd(f);D.tax={mode:v.mode==='commune'?'commune':'separe',children:Math.max(0,Math.min(10,parseInt(v.children)||0)),childOf:v.childOf||D.tax?.childOf||'p1'};save();toast('Situation fiscale enregistrée')});
+function ageTips(add){const AR=RATES?.ageRules,y=new Date().getFullYear();if(!AR)return;const t=taxNow();
+  ['p1','p2'].forEach(k=>{const age=ageOf(k);if(age==null)return;const nm=N(k),by=+D.births[k].slice(0,4),own=type=>D.placements.some(p=>p.type===type&&p.owner===k),lj=AR.livretJeune,endY=by+lj.closeYearOfAge;
+    // Livret Jeune 12-25 ans
+    const LJ=D.placements.find(p=>p.type==='livretJeune'&&p.owner===k);
+    if(LJ){if(y>endY)add('lj-over-'+k,'warn',`Livret Jeune de ${nm} : plus éligible`,'Le Livret Jeune est réservé aux 12-25 ans ; il doit être clôturé au plus tard le 31 décembre de l’année des 25 ans. Contactez votre banque pour savoir où l’argent sera versé.',`${nm} a ${age} ans (25 ans en ${by+25}).`,lj.source);
+      else if(y>=endY-1)add('lj-end-'+k,y===endY?'warn':'info',`Livret Jeune de ${nm} : fin le 31/12/${endY}`,'Le Livret Jeune est clôturé au plus tard le 31 décembre de l’année des 25 ans. Anticipez la destination de cette épargne (un autre livret disponible, par exemple).',`${nm} a ${age} ans, ${eur(placValue(LJ))} sur le livret ; clôture au plus tard le 31 décembre ${endY}.`,lj.source)}
+    else if(age>=lj.minAge&&y<=endY)add('lj-elig-'+k,'info',`${nm} peut encore ouvrir un Livret Jeune`,`Réservé aux 12-25 ans, il est plafonné à ${eur(RATES.ceilings?.livretJeune?.amount||1600)}, son taux est au moins celui du Livret A et ses intérêts sont exonérés d’impôt.`,`${nm} a ${age} ans : éligible jusqu’au 31 décembre ${endY}.`,lj.source);
+    // Prendre date : PEA (5 ans) et assurance vie (8 ans)
+    if(age>=18&&!own('pea'))add('pea-date-'+k,'info','Prendre date avec un PEA',`Les gains d’un PEA sont exonérés d’impôt sur le revenu (hors prélèvements sociaux) après ${AR.pea.years} ans de détention, délai qui court dès l’ouverture. Certains l’ouvrent donc tôt avec un petit versement, sans obligation d’investir davantage. Un PEA est investi en actions : risque de perte en capital. Le choix des supports se fait avec votre banque.`,`${nm} a ${age} ans et n’a pas de PEA enregistré : ouvert aujourd’hui, le délai de ${AR.pea.years} ans serait atteint en ${y+AR.pea.years}.`,AR.pea.source);
+    if(age>=18&&!D.placements.some(p=>p.type==='av'&&(p.owner===k||p.owner==='common')))add('av-date-'+k,'info','Prendre date avec une assurance vie',`Après ${AR.av.years} ans, les gains retirés d’une assurance vie bénéficient d’un abattement annuel d’impôt sur le revenu. L’antériorité compte à partir du premier versement. Selon les supports choisis (fonds euros ou unités de compte), le capital peut être garanti ou non : à voir avec votre banque ou assureur.`,`${nm} a ${age} ans et n’a pas d’assurance vie enregistrée : ouverte aujourd’hui, elle aurait ${AR.av.years} ans en ${y+AR.av.years}.`,AR.av.source);
+    // PER : économie d'impôt estimée selon la TMI
+    const PR=RATES.per;if(t&&PR){const tmi=t.tmi[k],inc=t.inc[k],netPro=Math.max(0,inc.sal-proDeduct(inc.sal,RATES.incomeTax)),plaf=Math.round(Math.min(PR.max,Math.max(PR.min,netPro*PR.rate/100))),per=D.placements.find(p=>p.type==='per'&&p.owner===k),
+      v=per&&per.monthly?Math.min(plaf,per.monthly*12):Math.min(plaf,1200),eco=Math.round(v*tmi/100),yrs=Math.max(0,AR.retirementAge-age);
+      if(tmi>=30)add('per-'+k,'info',`PER : avantage fiscal pour ${nm} (TMI ${tmi} %)`,`Les versements sur un PER sont déductibles du revenu imposable dans la limite d’un plafond ; l’économie d’impôt est d’environ versement × TMI. En contrepartie, l’argent est bloqué jusqu’à la retraite (sauf cas de déblocage anticipé, comme l’achat de la résidence principale) et il est imposé à la sortie. C’est surtout intéressant à partir d’une TMI de 30 %. Le choix du contrat et des supports se fait avec votre banque ou un conseiller.`,
+        `TMI estimée ${tmi} %. Pour ${eur(v)} versés sur l’année, économie d’impôt estimée ≈ ${eur(eco)}. Plafond de déduction approximatif : ${eur(plaf)} (10 % des revenus d’activité nets, entre ${eur(PR.min)} et ${eur(PR.max)}). À ${age} ans, l’épargne serait bloquée environ ${yrs} ans.`,PR.source);
+      else if(per&&per.monthly)add('per-low-'+k,'info',`PER de ${nm} : avantage fiscal limité à TMI ${tmi} %`,`À une TMI de ${tmi} %, la déduction des versements fait économiser peu d’impôt, alors que l’argent reste bloqué jusqu’à la retraite et qu’il est imposé à la sortie. Faites le point avec votre banque ou un conseiller.`,
+        `${eur(per.monthly*12)} versés par an : économie estimée ≈ ${eur(Math.round(Math.min(plaf,per.monthly*12)*tmi/100))}. À ${age} ans, blocage environ ${yrs} ans.`,PR.source);
+      // Horizon long terme
+      if(yrs>=25&&age>=18&&!['av','pea','per','cto'].some(own))add('horizon-'+k,'info',`Horizon long terme pour ${nm}`,'Plus l’horizon est long, plus une épargne de long terme a le temps de traverser les variations des marchés. Les livrets restent adaptés à l’épargne de précaution et aux projets proches. Pour définir une répartition adaptée à votre situation et à votre tolérance au risque, parlez-en à votre banque ou à un conseiller.',`${nm} a ${age} ans, soit environ ${yrs} ans avant l’âge légal de départ en retraite (${AR.retirementAge} ans) ; toute son épargne enregistrée est sur des livrets.`)}})}
+/* ---------- Conseils pédagogiques (génériques, jamais de conseil en investissement personnalisé) ---------- */
+const SP='https://www.service-public.gouv.fr/particuliers/vosdroits/';
+const LIVRETS=['livretA','ldds','lep','livretJeune','cel'];
+const TIP_DISCLAIMER='Informations pédagogiques générales calculées à partir de vos saisies. Ce ne sont pas des conseils en investissement : pour choisir un placement (fonds, actions, ETF, répartition…), adressez-vous à votre banque ou à un conseiller financier.';
+const yearsSince=d=>{const a=new Date(d+'T12:00'),n=new Date();return (n-a)/(365.25*864e5)};
+function avgMisc(n=3){const m=curMonth(),[y,mo]=m.split('-').map(Number),L=[];for(let i=1;i<=n;i++){const d=new Date(y,mo-1-i,15),k=d.toISOString().slice(0,7);L.push(D.misc.filter(x=>x.date.startsWith(k)).reduce((s,x)=>s+x.amount,0))}
+  const used=L.filter(v=>v>0);return{avg:used.length?used.reduce((a,b)=>a+b,0)/used.length:0,months:used.length}}
+function tips(){const T=[],m=curMonth(),a=summary('p1',m),b=summary('p2',m),rev=a.rev+b.rev,ep=a.ep+b.ep,rest=a.rest+b.rest,
+  fixed=D.fixed.reduce((s,f)=>s+f.amount,0),spent=D.misc.filter(x=>x.date.startsWith(m)).reduce((s,x)=>s+x.amount,0),am=avgMisc(),monthly=fixed+am.avg,CE=RATES?.ceilings||{};
+  const add=(key,level,title,text,why,link)=>T.push({key,level,title,text,why,link});
+  // 1. Épargne de précaution
+  const precau=D.placements.filter(p=>LIVRETS.includes(p.type)).reduce((s,p)=>s+placValue(p),0);
+  if(monthly>0){const mo=precau/monthly;
+    if(mo<3)add('precaution-low','warn','Épargne de précaution à constituer','On recommande généralement de garder l’équivalent de 3 à 6 mois de dépenses sur des livrets disponibles à tout moment, pour faire face aux imprévus.',
+      `Vos livrets totalisent ${eur(precau)}, soit ${mo.toFixed(1).replace('.',',')} mois de dépenses (${eur(monthly)}/mois de charges fixes${am.months?' et dépenses diverses moyennes':''}). Objectif indicatif : ${eur(monthly*3)} à ${eur(monthly*6)}.`);
+    else if(mo<=6)add('precaution-ok','ok','Épargne de précaution en place','Votre réserve disponible se situe dans la fourchette habituelle de 3 à 6 mois de dépenses.',`${eur(precau)} sur vos livrets, soit ${mo.toFixed(1).replace('.',',')} mois de dépenses (${eur(monthly)}/mois).`);
+    else add('precaution-high','info','Réserve de précaution au-delà de 6 mois','Au-delà de 6 mois de dépenses, une partie de cette épargne pourrait servir vos projets à plus long terme. Pour savoir comment, parlez-en à votre banque ou à un conseiller.',
+      `${eur(precau)} sur vos livrets, soit ${mo.toFixed(1).replace('.',',')} mois de dépenses (${eur(monthly)}/mois) ; 6 mois représentent ${eur(monthly*6)}.`)}
+  // 2-3. Plafonds réglementaires
+  D.placements.forEach(p=>{const c=CE[p.type];if(!c)return;const v=placValue(p),nm=p.name||ptype(p.type)[1],who=N(p.owner);
+    if(v>=c.amount)add('ceil-full-'+p.id,'warn',`${nm} : plafond atteint`,`Le plafond réglementaire de versement est de ${eur(c.amount)}. Les intérêts continuent de s’ajouter, mais aucun nouveau versement n’est possible${p.monthly?' : votre versement mensuel ne pourra pas être effectué':''}. L’argent en trop resterait alors sur le compte courant, sans rémunération.`,
+      `${eur(v)} sur ce livret (${esc(who)})${p.monthly?`, versement prévu ${eur(p.monthly)}/mois`:''}.`,c.source);
+    else if(v>=c.amount*0.9||(p.monthly>0&&(c.amount-v)/p.monthly<=6))add('ceil-near-'+p.id,'info',`${nm} : plafond bientôt atteint`,`Le plafond de versement est de ${eur(c.amount)}. Pensez à prévoir où iront vos versements ensuite.`,
+      `${eur(v)} aujourd’hui, reste ${eur(c.amount-v)}${p.monthly>0?` : environ ${Math.max(1,Math.ceil((c.amount-v)/p.monthly))} mois au rythme de ${eur(p.monthly)}/mois`:''}.`,c.source)});
+  // Compte courant : argent non affecté chaque mois
+  if(rev>0){const left=rest-spent;if(left>rev*0.25&&left>300)add('idle-'+m,'info','De l’argent reste sur le compte courant','Un compte courant ne rapporte rien. Si ce surplus se répète chaque mois, vous pouvez l’affecter à un objectif ou à un livret disponible.',
+    `Ce mois-ci : ${eur(rev)} de revenus, ${eur(fixed)} de charges, ${eur(ep)} épargnés et ${eur(spent)} de dépenses diverses : il reste ${eur(left)} non affectés (${Math.round(left/rev*100)} % des revenus).`)}
+  // 4. LEP sous conditions de revenus
+  const LI=RATES?.lepIncome;['p1','p2'].forEach(k=>{if(D.placements.some(p=>p.type==='lep'&&p.owner===k))return;const inc=incomeOf(k,m);if(!inc)return;
+    add('lep-'+k,'info',`LEP : ${N(k)} y a peut-être droit`,`Le Livret d’épargne populaire est réservé aux revenus modestes. Son taux (${currentRate('lep')?pct(currentRate('lep').rate):'—'}) est fixé par l’État et il est plafonné à ${eur(CE.lep?.amount||10000)}. L’éligibilité dépend du revenu fiscal de référence du foyer, indiqué sur l’avis d’imposition : c’est la banque qui la vérifie.`,
+      `${N(k)} n’a pas de LEP enregistré. Plafond ${LI?.year||''} en métropole : ${LI?eur(LI.rfr1part):'—'} de revenu fiscal de référence pour 1 part, ${LI?eur(LI.rfr2parts):'—'} pour 2 parts.`,LI?.source||SP+'F2367')});
+  // 5. Ordre de remplissage des livrets par taux
+  ['p1','p2'].forEach(k=>{const mine=D.placements.filter(p=>p.owner===k&&LIVRETS.includes(p.type)).map(p=>({p,r:rateInfo(p).rate||0,room:CE[p.type]?CE[p.type].amount-placValue(p):Infinity}));
+    mine.filter(x=>x.p.monthly>0).forEach(lo=>{const hi=mine.filter(x=>x.r>lo.r+0.001&&x.room>0).sort((a,b)=>b.r-a.r)[0];if(!hi)return;
+      add(`order-${lo.p.id}-${hi.p.id}`,'info','Ordre de remplissage des livrets',`À disponibilité équivalente, les livrets réglementés se remplissent souvent du taux le plus élevé au plus faible, dans la limite de chaque plafond.`,
+        `${N(k)} verse ${eur(lo.p.monthly)}/mois sur ${esc(lo.p.name||ptype(lo.p.type)[1])} (${pct(lo.r)}) alors que ${esc(hi.p.name||ptype(hi.p.type)[1])} rapporte ${pct(hi.r)} et n’est pas plein (${hi.room===Infinity?'pas de plafond':`encore ${eur(hi.room)}`}).`)})});
+  // 6. PEL de plus de 10 / 15 ans
+  const PR=RATES?.pelRules||{noDepositAfterYears:10,endAfterYears:15,endFrom:'2011-03-01'};
+  D.placements.filter(p=>p.type==='pel'&&p.openDate).forEach(p=>{const y=yearsSince(p.openDate),nm=p.name||'PEL';
+    if(y>=PR.endAfterYears&&p.openDate>=PR.endFrom)add('pel15-'+p.id,'warn',`${nm} : plus de 15 ans`,'Au bout de 15 ans, un PEL ouvert depuis mars 2011 devient un livret d’épargne ordinaire, rémunéré au taux libre de la banque et non plus au taux du contrat. Renseignez-vous auprès de votre banque sur le nouveau taux.',
+      `Ouvert le ${frDate(p.openDate)} (${Math.floor(y)} ans), taux du contrat ${pct(p.rate||0)}.`,PR.source);
+    else if(y>=PR.noDepositAfterYears)add('pel10-'+p.id,'info',`${nm} : plus de 10 ans`,`Après 10 ans, il n’est plus possible de verser sur un PEL ; il continue de produire des intérêts au taux du contrat${p.openDate>=PR.endFrom?` jusqu’à ses 15 ans (${frDate(String(+p.openDate.slice(0,4)+15)+p.openDate.slice(4))})`:''}.`,
+      `Ouvert le ${frDate(p.openDate)} (${Math.floor(y)} ans)${p.monthly?`, versement prévu ${eur(p.monthly)}/mois qui ne pourra plus être fait`:''}.`,PR.source)});
+  // 7. Taux d'épargne faible
+  if(rev>0&&ep/rev<0.1)add('rate-'+m,'info','Taux d’épargne faible ce mois-ci','Mettre de côté une part fixe des revenus dès leur arrivée (épargne « automatique ») aide à épargner régulièrement, même un petit montant.',
+    `${eur(ep)} épargnés sur ${eur(rev)} de revenus en ${monthLabel(m)}, soit ${(ep/rev*100).toFixed(1).replace('.',',')} %. Repère courant : 10 % ou plus.`);
+  // 8. Objectif en retard
+  const C=compute(),[cy,cm]=m.split('-').map(Number);
+  D.goals.filter(g=>g.date&&g.target).forEach(g=>{const left=g.target-(C.saved[g.id]||0);if(left<=0)return;const [gy,gm]=g.date.split('-').map(Number),n=(gy-cy)*12+gm-cm;
+    const last=[...D.months].sort((x,y)=>y.month.localeCompare(x.month)).slice(0,3),pace=last.length?last.reduce((s,mo)=>s+['p1','p2'].reduce((t,k)=>t+(C.res[mo.id]?.[k]?.alloc?.[g.id]||0),0),0)/last.length:0;
+    if(n<=0)add('goal-late-'+g.id,'warn',`« ${g.name} » : échéance dépassée`,'L’échéance est passée sans que l’objectif soit atteint. Vous pouvez la repousser ou ajuster le montant visé.',`Il manque ${eur(left)} sur ${eur(g.target)} (échéance ${monthLabel(g.date)}).`);
+    else{const need=left/n;if(pace<need*0.9)add('goal-slow-'+g.id,'info',`« ${g.name} » : rythme insuffisant`,'Au rythme actuel, l’objectif ne sera pas atteint à la date prévue. Augmenter l’épargne mensuelle, repousser la date ou revoir le montant permet de le rendre atteignable.',
+      `Il manque ${eur(left)} en ${n} mois, soit ${eur(need)}/mois ; ces derniers mois : ${eur(pace)}/mois en moyenne.`)}});
+  // 9. Reste à vivre négatif
+  if(rev>0&&rest<0)add('rest-'+m,'warn','Reste à vivre négatif','Vos charges fixes et votre épargne prévue dépassent vos revenus du mois. Revoir les charges ou réduire temporairement l’épargne évite le découvert.',
+    `Revenus ${eur(rev)} − charges ${eur(fixed)} − épargne ${eur(ep)} = ${eur(rest)}.`);
+  // 10. Charges en hausse
+  if(am.months>=2&&am.avg>0&&spent>am.avg*1.2&&spent-am.avg>50)add('misc-up-'+m,'info','Dépenses diverses en hausse','Vos dépenses diverses de ce mois dépassent nettement votre moyenne récente. Un coup d’œil aux catégories permet de repérer ce qui a changé.',
+    `${eur(spent)} en ${monthLabel(m)} contre ${eur(am.avg)} en moyenne sur les ${am.months} mois précédents (+${Math.round((spent/am.avg-1)*100)} %).`);
+  const recent=D.fixed.filter(f=>f.c>Date.now()-31*864e5&&f.c>1e12);if(recent.length&&D.fixed.length>recent.length){const s=recent.reduce((t,f)=>t+f.amount,0);
+    add('fixed-up-'+recent.map(f=>f.id).join('-'),'info','Charges fixes en hausse','De nouvelles charges récurrentes pèsent sur chaque mois à venir. Vérifiez qu’elles sont toutes nécessaires (abonnements, assurances…).',
+      `${recent.length} charge${recent.length>1?'s':''} ajoutée${recent.length>1?'s':''} ce mois-ci : +${eur(s)}/mois, soit ${Math.round(s/Math.max(1,fixed-s)*100)} % de plus.`)}
+  ageTips(add);
+  const order={warn:0,info:1,ok:2};return T.sort((x,y)=>order[x.level]-order[y.level])}
+const hiddenTips=()=>new Set(D.dismissed.map(x=>x.id));
+const visibleTips=()=>{const h=hiddenTips();return tips().filter(t=>!h.has(t.key))};
+const tipIc={warn:'alert',info:'info',ok:'check'};
+function tipHtml(t){return `<li class="tip tip-${t.level}"><div class="row-b"><b>${ic(tipIc[t.level]||'info',16)} ${esc(t.title)}</b><button class="icon-btn small" data-hide-tip="${esc(t.key)}" aria-label="Masquer le conseil « ${esc(t.title)} »">${ic('x',16)}</button></div>
+  <p>${t.text}</p><p class="why"><span>Pourquoi :</span> ${t.why}</p>${t.link?`<a href="${t.link}" target="_blank" rel="noopener">En savoir plus sur service-public.gouv.fr</a>`:''}</li>`}
+const disclaimer=()=>`<p class="disclaimer" role="note">${ic('info',14)} ${TIP_DISCLAIMER}</p>`;
+function tipsCard(){if(!RATES)return'';const V=visibleTips();if(!V.length)return'';
+  return `<div class="card tips-card"><div class="sec"><h2>${ic('bulb',18)} Conseils</h2><button class="link" data-goto="placements" data-scroll="tips">Tout voir (${V.length})</button></div><ul class="tips">${V.slice(0,2).map(tipHtml).join('')}</ul>${disclaimer()}</div>`}
+function tipsSection(){if(!RATES)return'';const V=visibleTips(),h=tips().length-V.length;
+  return `<section id="tips" aria-labelledby="tipsH">${sec(`<span id="tipsH">${ic('bulb',18)} Conseils</span>`)}${disclaimer()}
+  ${V.length?`<ul class="tips">${V.map(tipHtml).join('')}</ul>`:'<p class="mut">Aucun conseil pour le moment.</p>'}
+  ${h?`<button class="link" id="showTips">Réafficher ${h} conseil${h>1?'s':''} masqué${h>1?'s':''}</button>`:''}</section>`}
+document.addEventListener('click',e=>{const h=e.target.closest('[data-hide-tip]');if(h){const k=h.dataset.hideTip,t=tips().find(x=>x.key===k);D.dismissed.push({id:k,title:t?t.title:'Conseil',date:new Date().toISOString().slice(0,10)});save();toast('Conseil masqué');return}
+  if(e.target.closest('#showTips')){D.dismissed=[];save();toast('Conseils réaffichés');return}
+  const s=e.target.closest('[data-scroll]');if(s)setTimeout(()=>{const el=document.getElementById(s.dataset.scroll);if(el)el.scrollIntoView({block:'start'})},50)});
 const TABS=[['accueil','Accueil','grid',vAccueil],['budget','Budget','wallet',vBudget],['epargne','Épargne','piggy',vEpargne],['objectifs','Objectifs','target',vObjectifs],['placements','Placements','trend',vPlacements]];
 const views=Object.fromEntries(TABS.map(t=>[t[0],t[3]]));views.reglages=vReglages;views.activite=vActivite;
 const titles={...Object.fromEntries(TABS.map(t=>[t[0],t[1]])),reglages:'Réglages',activite:'Historique'};
@@ -612,7 +735,7 @@ document.addEventListener('submit',e=>{const bad=[...e.target.querySelectorAll('
 document.addEventListener('submit',async e=>{const f=e.target;
   if(f.classList.contains('qval')){e.preventDefault();const v=num(f.value.value);if(!f.value.value.trim()||v<0)return f.value.focus();
     D.valuations.push({id:uid(),pid:f.dataset.pid,date:new Date().toISOString().slice(0,10),value:v});save();toast('Valorisation enregistrée');return}
-  if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));D.reminderDay=Math.min(28,Math.max(1,parseInt(v.reminderDay)||1));save();toast('Réglages enregistrés')}
+  if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));D.reminderDay=Math.min(28,Math.max(1,parseInt(v.reminderDay)||1));const okd=x=>/^\d{4}-\d{2}-\d{2}$/.test(x||'')&&x<=new Date().toISOString().slice(0,10);D.births={p1:okd(v.b1)?v.b1:'',p2:okd(v.b2)?v.b2:''};save();toast('Réglages enregistrés')}
   if(f.id==='fSync'){e.preventDefault();const v=fd(f);cfg=normCfg(v);if(cfg.space&&cfg.space.length<8){$('#syncMsg').textContent='Code d’espace trop court (8 caractères minimum).';return}
     localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote()}
 });

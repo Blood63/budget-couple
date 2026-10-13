@@ -1,7 +1,7 @@
 import subprocess,time,json,sys
 sys.path.insert(0,__import__('os').path.dirname(__file__));from fake_supabase import Fake
 from playwright.sync_api import sync_playwright
-srv=subprocess.Popen(['python3','-m','http.server','8765'],cwd=__import__('os').path.join(__import__('os').path.dirname(__file__),'..','..'),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
+srv=subprocess.Popen(['python3','-m','http.server','18765'],cwd=__import__('os').path.join(__import__('os').path.dirname(__file__),'..','..'),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
 errs=[];F=Fake()
 CFG={"url":"https://exemple-fictif.supabase.co","key":"sb_publishable_FICTIF","space":"Exemple-espace-0000"}
 V3={"version":3,"ratio":50,"fixed":[{"id":"f1","label":"Loyer (exemple)","amount":900,"day":5,"split":50}],"goals":[{"id":"g1","name":"Voyage (exemple)","owner":"common","target":5000,"saved":0}],
@@ -13,7 +13,7 @@ with sync_playwright() as p:
     c=b.new_context(viewport={'width':390,'height':844})
     c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-cfg',{json.dumps(json.dumps(CFG))});localStorage.setItem('budget-couple-me','{who}');sessionStorage.s=1}}")
     c.route('**/*supabase.co/**',lambda r:F.handle(r,name));pg=c.new_page();pg.on('pageerror',lambda e:errs.append(name+': '+str(e)));pg.on("dialog",lambda d:d.accept());pg.on("console",lambda m:print(name,"CONSOLE",m.text[:150]))
-    pg.goto('http://localhost:8765/');pg.wait_for_function("document.querySelector('#syncState').textContent.includes('✓')");return pg
+    pg.goto('http://localhost:18765/');pg.wait_for_function("document.querySelector('#syncState').textContent.includes('✓')");return pg
   A=dev('A','p1');B=dev('B','p2')
   st=lambda pg:pg.evaluate('JSON.parse(localStorage.getItem("budget-couple-data"))')
   print('migration distante v3→v4 :',st(A)['version'],st(A)['fixed'][0]['paidBy'],st(A)['misc'][0]['for'])

@@ -2,7 +2,7 @@
 import subprocess,time,json,os
 from playwright.sync_api import sync_playwright
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..');OUT=os.environ.get('SHOTS','/tmp')
-srv=subprocess.Popen(['python3','-m','http.server','8765'],cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
+srv=subprocess.Popen(['python3','-m','http.server','18765'],cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
 errs=[]
 V5={"version":5,"updated":50,"ratio":50,
  "placements":[{"id":"av","type":"av","name":"Assurance vie (exemple)","bank":"Assureur Exemple","owner":"common","capital":0,"monthly":20,"rate":0,"rateMode":"manual","u":1,"c":0},
@@ -16,9 +16,9 @@ with sync_playwright() as p:
   b=p.chromium.launch();c=b.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True,locale='fr-FR')
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V5))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
   pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
-  pg.goto('http://localhost:8765/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(300)
+  pg.goto('http://localhost:18765/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(300)
   d=pg.evaluate('D');av=[x for x in d['placements'] if x['id']=='av'][0]
-  assert d['version']==6 and d['positions']==[] and len(d['archive']['positions'])==3 and av['capital']==14820 and av['invested']==13800 and av['monthly']==270 and len(av['archivedLines'])==3
+  assert d['version']==7 and d['positions']==[] and len(d['archive']['positions'])==3 and av['capital']==14820 and av['invested']==13800 and av['monthly']==270 and len(av['archivedLines'])==3
   assert pg.evaluate("placValue(D.placements.find(p=>p.id==='av'))")==14820;print('MIGRATION v5→v6 OK : 14 820 € conservés, détail archivé')
   # rappel : AV (valorisée le 20/09) et PEA (jamais) sont dus au 1er octobre
   due=pg.evaluate("dueValuations().map(p=>p.id)");assert sorted(due)==['av','pea'],due
@@ -66,6 +66,6 @@ with sync_playwright() as p:
     pg.click(f'[data-tab={t}]');pg.wait_for_timeout(1000);print('AXE',t,pg.evaluate("axe.run(document,{runOnly:['wcag2a','wcag2aa']}).then(r=>r.violations.map(v=>v.id+':'+v.nodes.length))"))
   # accueil vide : guide de démarrage
   c2=b.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,locale='fr-FR');c2.add_init_script("localStorage.setItem('budget-couple-me','p2')")
-  q=c2.new_page();q.on('pageerror',lambda e:errs.append(str(e)));q.goto('http://localhost:8765/');q.wait_for_timeout(1000);assert 'Pour bien démarrer' in q.inner_text('#view');q.screenshot(path=f'{OUT}/v4-6-accueil-vide.png');print('ONBOARDING OK')
+  q=c2.new_page();q.on('pageerror',lambda e:errs.append(str(e)));q.goto('http://localhost:18765/');q.wait_for_timeout(1000);assert 'Pour bien démarrer' in q.inner_text('#view');q.screenshot(path=f'{OUT}/v4-6-accueil-vide.png');print('ONBOARDING OK')
   b.close()
 srv.terminate();print('ERREURS:',errs);assert not errs

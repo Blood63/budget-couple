@@ -7,14 +7,39 @@
       "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2365",
       "sourceName": "service-public.gouv.fr",
       "history": [
-        {"from": "2026-08-01", "rate": 1.7, "ref": "Arrêté du 28 juillet 2026"},
-        {"from": "2026-02-01", "rate": 1.5},
-        {"from": "2025-08-01", "rate": 1.7},
-        {"from": "2025-02-01", "rate": 2.4},
-        {"from": "2023-02-01", "rate": 3.0},
-        {"from": "2022-08-01", "rate": 2.0},
-        {"from": "2022-02-01", "rate": 1.0},
-        {"from": "2020-02-01", "rate": 0.5}
+        {
+          "from": "2026-08-01",
+          "rate": 1.7,
+          "ref": "Arrêté du 28 juillet 2026"
+        },
+        {
+          "from": "2026-02-01",
+          "rate": 1.5
+        },
+        {
+          "from": "2025-08-01",
+          "rate": 1.7
+        },
+        {
+          "from": "2025-02-01",
+          "rate": 2.4
+        },
+        {
+          "from": "2023-02-01",
+          "rate": 3.0
+        },
+        {
+          "from": "2022-08-01",
+          "rate": 2.0
+        },
+        {
+          "from": "2022-02-01",
+          "rate": 1.0
+        },
+        {
+          "from": "2020-02-01",
+          "rate": 0.5
+        }
       ]
     },
     "ldds": {
@@ -22,14 +47,39 @@
       "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2368",
       "sourceName": "service-public.gouv.fr",
       "history": [
-        {"from": "2026-08-01", "rate": 1.7, "ref": "Arrêté du 28 juillet 2026"},
-        {"from": "2026-02-01", "rate": 1.5},
-        {"from": "2025-08-01", "rate": 1.7},
-        {"from": "2025-02-01", "rate": 2.4},
-        {"from": "2023-02-01", "rate": 3.0},
-        {"from": "2022-08-01", "rate": 2.0},
-        {"from": "2022-02-01", "rate": 1.0},
-        {"from": "2020-02-01", "rate": 0.5}
+        {
+          "from": "2026-08-01",
+          "rate": 1.7,
+          "ref": "Arrêté du 28 juillet 2026"
+        },
+        {
+          "from": "2026-02-01",
+          "rate": 1.5
+        },
+        {
+          "from": "2025-08-01",
+          "rate": 1.7
+        },
+        {
+          "from": "2025-02-01",
+          "rate": 2.4
+        },
+        {
+          "from": "2023-02-01",
+          "rate": 3.0
+        },
+        {
+          "from": "2022-08-01",
+          "rate": 2.0
+        },
+        {
+          "from": "2022-02-01",
+          "rate": 1.0
+        },
+        {
+          "from": "2020-02-01",
+          "rate": 0.5
+        }
       ]
     },
     "lep": {
@@ -37,17 +87,51 @@
       "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2367",
       "sourceName": "service-public.gouv.fr",
       "history": [
-        {"from": "2026-08-01", "rate": 2.5, "ref": "Arrêté du 29 juillet 2026"},
-        {"from": "2026-02-01", "rate": 2.5},
-        {"from": "2025-08-01", "rate": 2.7},
-        {"from": "2025-02-01", "rate": 3.5},
-        {"from": "2024-08-01", "rate": 4.0},
-        {"from": "2024-02-01", "rate": 5.0},
-        {"from": "2023-08-01", "rate": 6.0},
-        {"from": "2023-02-01", "rate": 6.1},
-        {"from": "2022-08-01", "rate": 4.6},
-        {"from": "2022-02-01", "rate": 2.2},
-        {"from": "2020-02-01", "rate": 1.0}
+        {
+          "from": "2026-08-01",
+          "rate": 2.5,
+          "ref": "Arrêté du 29 juillet 2026"
+        },
+        {
+          "from": "2026-02-01",
+          "rate": 2.5
+        },
+        {
+          "from": "2025-08-01",
+          "rate": 2.7
+        },
+        {
+          "from": "2025-02-01",
+          "rate": 3.5
+        },
+        {
+          "from": "2024-08-01",
+          "rate": 4.0
+        },
+        {
+          "from": "2024-02-01",
+          "rate": 5.0
+        },
+        {
+          "from": "2023-08-01",
+          "rate": 6.0
+        },
+        {
+          "from": "2023-02-01",
+          "rate": 6.1
+        },
+        {
+          "from": "2022-08-01",
+          "rate": 4.6
+        },
+        {
+          "from": "2022-02-01",
+          "rate": 2.2
+        },
+        {
+          "from": "2020-02-01",
+          "rate": 1.0
+        }
       ]
     },
     "cel": {
@@ -55,14 +139,39 @@
       "source": "https://www.banque-france.fr/fr/a-votre-service/particuliers/connaitre-pratiques-bancaires-assurance/epargne/epargne-logement",
       "sourceName": "banque-france.fr",
       "history": [
-        {"from": "2026-08-01", "rate": 1.25, "ref": "Arrêté du 28 juillet 2026"},
-        {"from": "2026-02-01", "rate": 1.0},
-        {"from": "2025-08-01", "rate": 1.25},
-        {"from": "2025-02-01", "rate": 1.5},
-        {"from": "2023-02-01", "rate": 2.0},
-        {"from": "2022-08-01", "rate": 1.25},
-        {"from": "2022-02-01", "rate": 0.75},
-        {"from": "2020-02-01", "rate": 0.25}
+        {
+          "from": "2026-08-01",
+          "rate": 1.25,
+          "ref": "Arrêté du 28 juillet 2026"
+        },
+        {
+          "from": "2026-02-01",
+          "rate": 1.0
+        },
+        {
+          "from": "2025-08-01",
+          "rate": 1.25
+        },
+        {
+          "from": "2025-02-01",
+          "rate": 1.5
+        },
+        {
+          "from": "2023-02-01",
+          "rate": 2.0
+        },
+        {
+          "from": "2022-08-01",
+          "rate": 1.25
+        },
+        {
+          "from": "2022-02-01",
+          "rate": 0.75
+        },
+        {
+          "from": "2020-02-01",
+          "rate": 0.25
+        }
       ]
     }
   },
@@ -72,20 +181,161 @@
     "sourceName": "banque-france.fr",
     "note": "Taux fixé à l'ouverture et garanti pendant toute la durée du plan (hors prime d'État).",
     "byOpening": [
-      {"from": "2026-01-01", "rate": 2.0},
-      {"from": "2025-01-01", "rate": 1.75},
-      {"from": "2024-01-01", "rate": 2.25},
-      {"from": "2023-01-01", "rate": 2.0},
-      {"from": "2016-08-01", "rate": 1.0},
-      {"from": "2016-02-01", "rate": 1.5},
-      {"from": "2015-02-01", "rate": 2.0},
-      {"from": "2003-08-01", "rate": 2.5}
+      {
+        "from": "2026-01-01",
+        "rate": 2.0
+      },
+      {
+        "from": "2025-01-01",
+        "rate": 1.75
+      },
+      {
+        "from": "2024-01-01",
+        "rate": 2.25
+      },
+      {
+        "from": "2023-01-01",
+        "rate": 2.0
+      },
+      {
+        "from": "2016-08-01",
+        "rate": 1.0
+      },
+      {
+        "from": "2016-02-01",
+        "rate": 1.5
+      },
+      {
+        "from": "2015-02-01",
+        "rate": 2.0
+      },
+      {
+        "from": "2003-08-01",
+        "rate": 2.5
+      }
     ]
   },
   "livretJeune": {
     "name": "Livret Jeune",
     "note": "Taux libre fixé par la banque, au moins égal à celui du Livret A.",
-    "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2369",
+    "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2904",
     "sourceName": "service-public.gouv.fr"
+  },
+  "ceilings": {
+    "checked": "2026-10-13",
+    "note": "Plafonds de versement réglementaires pour une personne physique (les intérêts capitalisés peuvent les dépasser).",
+    "livretA": {
+      "amount": 22950,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2365"
+    },
+    "ldds": {
+      "amount": 12000,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2368"
+    },
+    "lep": {
+      "amount": 10000,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2367"
+    },
+    "cel": {
+      "amount": 15300,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F16136"
+    },
+    "pel": {
+      "amount": 61200,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F16140"
+    },
+    "livretJeune": {
+      "amount": 1600,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2904"
+    }
+  },
+  "lepIncome": {
+    "year": 2026,
+    "rfr1part": 23028,
+    "rfr2parts": 35326,
+    "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2367",
+    "note": "Revenu fiscal de référence (N-2 ou N-1) à ne pas dépasser, métropole."
+  },
+  "pelRules": {
+    "noDepositAfterYears": 10,
+    "endAfterYears": 15,
+    "endFrom": "2011-03-01",
+    "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F16140"
+  },
+  "incomeTax": {
+    "year": 2026,
+    "incomeYear": 2025,
+    "law": "Loi n° 2026-103 du 19 février 2026 de finances pour 2026 (indexation +0,9 %)",
+    "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1419",
+    "sourceName": "service-public.gouv.fr / BOFiP",
+    "brackets": [
+      {
+        "upTo": 11600,
+        "rate": 0
+      },
+      {
+        "upTo": 29579,
+        "rate": 11
+      },
+      {
+        "upTo": 84577,
+        "rate": 30
+      },
+      {
+        "upTo": 181917,
+        "rate": 41
+      },
+      {
+        "upTo": null,
+        "rate": 45
+      }
+    ],
+    "proDeduction": {
+      "rate": 10,
+      "min": 509,
+      "max": 14555,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F1989"
+    },
+    "qfCapPerHalfPart": 1807,
+    "qfSource": "https://bofip.impots.gouv.fr/bofip/2494-PGP.html/identifiant=BOI-IR-LIQ-20-20-20-20260407",
+    "decote": {
+      "single": {
+        "threshold": 1982,
+        "base": 897
+      },
+      "couple": {
+        "threshold": 3277,
+        "base": 1483
+      },
+      "rate": 45.25,
+      "source": "https://bofip.impots.gouv.fr/bofip/2495-PGP.html/identifiant%3DBOI-IR-LIQ-20-20-30-20260407"
+    },
+    "minCollected": 61
+  },
+  "per": {
+    "pass": 47100,
+    "passYear": 2025,
+    "rate": 10,
+    "min": 4710,
+    "max": 37680,
+    "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F14709",
+    "note": "Plafond de déduction des versements 2026 : 10 % des revenus d'activité 2025 nets de frais pro (max 37 680 €) ou 4 710 € si plus élevé. Plafond personnalisé sur l'avis d'impôt."
+  },
+  "ageRules": {
+    "livretJeune": {
+      "minAge": 12,
+      "closeYearOfAge": 25,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2904",
+      "note": "Clôture au plus tard le 31 décembre de l'année des 25 ans."
+    },
+    "pea": {
+      "years": 5,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2385"
+    },
+    "av": {
+      "years": 8,
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F15274"
+    },
+    "retirementAge": 64
   }
 }

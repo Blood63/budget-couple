@@ -1,7 +1,7 @@
 import subprocess,time,json,sys
 sys.path.insert(0,__import__('os').path.dirname(__file__));from fake_supabase import Fake
 from playwright.sync_api import sync_playwright
-srv=subprocess.Popen(['python3','-m','http.server','8765'],cwd=__import__('os').path.join(__import__('os').path.dirname(__file__),'..','..'),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
+srv=subprocess.Popen(['python3','-m','http.server','18765'],cwd=__import__('os').path.join(__import__('os').path.dirname(__file__),'..','..'),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);time.sleep(1)
 errs=[]
 import datetime;cm=datetime.date.today().strftime('%Y-%m');pm=(datetime.date.today().replace(day=1)-datetime.timedelta(days=1)).strftime('%Y-%m')
 V3={"version":3,"names":{"p1":"Emilien","p2":"Julie"},"ratio":55,
@@ -16,8 +16,8 @@ with sync_playwright() as p:
   c=b.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True,locale='fr-FR')
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V3))});sessionStorage.s=1}}")
   pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
-  pg.goto('http://localhost:8765/');pg.wait_for_timeout(900)
-  d=pg.evaluate('D');assert d['version']==6 and d['fixed'][0]['category']=='autre' and d['fixed'][0]['paidBy']=='joint';print('MIGRATION v3→v4 OK')
+  pg.goto('http://localhost:18765/');pg.wait_for_timeout(900)
+  d=pg.evaluate('D');assert d['version']==7 and d['fixed'][0]['category']=='autre' and d['fixed'][0]['paidBy']=='joint';print('MIGRATION v3→v4 OK')
   # choix de la personne au premier lancement
   assert pg.is_visible('#sheet .who');pg.click('[data-me=p1]');pg.wait_for_timeout(300)
   # catégories et payeur réel des charges
@@ -44,7 +44,7 @@ with sync_playwright() as p:
   pg.click('[data-seg=revenus]');pg.wait_for_timeout(1000);pg.screenshot(path='/tmp/v3-6-revenus.png')
   pg.click('[data-tab=epargne]');pg.wait_for_timeout(1200);pg.screenshot(path='/tmp/v3-7-epargne.png')
   pg.click('[data-tab=objectifs]');pg.wait_for_timeout(1200);pg.screenshot(path='/tmp/v3-8-objectifs.png')
-  pg.goto('http://localhost:8765/');pg.wait_for_timeout(600);pg.click('#gear');pg.click('#openHist');pg.wait_for_timeout(600);pg.screenshot(path='/tmp/v3-9-historique.png')
+  pg.goto('http://localhost:18765/');pg.wait_for_timeout(600);pg.click('#gear');pg.wait_for_timeout(400);pg.focus('#openHist');pg.keyboard.press('Enter');pg.wait_for_timeout(600);pg.screenshot(path='/tmp/v3-9-historique.png')
   n=pg.locator('#view .list .item').count();pg.check('[name=histWho][value=p2]',force=True);pg.wait_for_timeout(200);print('HISTORIQUE',n,'→ filtre Julie',pg.locator('#view .list .item').count())
   # accessibilité : axe-core
   pg.add_script_tag(url='https://cdn.jsdelivr.net/npm/axe-core@4/axe.min.js')

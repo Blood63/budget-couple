@@ -1,16 +1,19 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=6;
-const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations'];
-const SCAL=['names','ratio','transfer','reminderDay'];
+const DATA_VERSION=7;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed'];
+const SCAL=['names','ratio','transfer','reminderDay','births','tax'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
-const blankData=()=>({version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
+const BIRTHS={p1:'2000-06-22',p2:'2002-03-10'},TAX0={mode:'separe',children:0,childOf:'p1'};
+const blankData=()=>({births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
    v3 → v4 : horodatage par élément (u, c), suppressions (tombstones), catégories, payeur réel/bénéficiaire, historique. */
 const MIGRATIONS={
+  7:d=>{if(!Array.isArray(d.dismissed))d.dismissed=[]; // v7 : conseils masqués (liste synchronisée), dates de naissance, situation fiscale
+    if(!d.births||typeof d.births!=='object')d.births={...BIRTHS};if(!d.tax||typeof d.tax!=='object')d.tax={...TAX0};return d},
   3(d){d.fixed=(d.fixed||[]).map(f=>{if(typeof f.split!=='number')f.split=f.payer==='p1'?100:f.payer==='p2'?0:(typeof d.ratio==='number'?d.ratio:50);return f});d.incomes=d.incomes||[];return d},
   4(d){const t=d.updated||0;
     LISTS.forEach(l=>{d[l]=(d[l]||[]).map((x,i)=>Object.assign({u:t,c:i},x))});
@@ -50,7 +53,7 @@ function isinValid(raw){const s=String(raw||'').toUpperCase().replace(/\s/g,'');
 /* Signature d'un élément (sans métadonnées) pour détecter les modifications */
 const META=new Set(['u','by','fu','c']);
 const sig=x=>{const {u,by,fu,...r}=x;return JSON.stringify(r)};
-const itemLabel=(l,x)=>x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
+const itemLabel=(l,x)=>l==='dismissed'?(x.title||'Conseil'):x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
 function snapshot(d){const s={};LISTS.forEach(l=>d[l].forEach(x=>s[l+'\u0001'+x.id]={sig:sig(x),label:itemLabel(l,x),obj:JSON.parse(JSON.stringify(x))}));SCAL.forEach(k=>s['$'+k]={sig:JSON.stringify(d[k])});
   Object.keys(d.budget).forEach(m=>s['b\u0001'+m]={sig:String(d.budget[m])});return s}
 /* Compare l'état courant à l'instantané : horodate les éléments modifiés, crée les tombstones et l'historique */
@@ -86,4 +89,18 @@ function mergeData(a,b){
 }
 /* Forme canonique (sans état d'interface) pour comparer deux états */
 const canon=d=>{const {miscMonth,...r}=d;return JSON.stringify(r)};
-if(typeof module!=='undefined')module.exports={isinValid,DATA_VERSION,LISTS,migrateData,mergeData,stamp,snapshot,canon,blankData};
+/* Impôt sur le revenu : estimation pure (barème progressif, quotient familial plafonné, décote). P = rates.incomeTax */
+function irBrut(R,parts,P){const q=R/parts;let t=0,lo=0;for(const b of P.brackets){const hi=b.upTo==null?Infinity:b.upTo;if(q>lo)t+=(Math.min(q,hi)-lo)*b.rate/100;lo=hi}return t*parts}
+function tmiOf(R,parts,P){const q=R/parts;let lo=0;for(const b of P.brackets){const hi=b.upTo==null?Infinity:b.upTo;if(q<=hi)return b.rate;lo=hi}return 45}
+const proDeduct=(sal,P)=>sal>0?Math.min(sal,Math.min(P.proDeduction.max,Math.max(P.proDeduction.min,sal*P.proDeduction.rate/100))):0;
+const childParts=n=>n<=0?0:n===1?0.5:n===2?1:1+(n-2);
+function irCompute(R,base,children,P){R=Math.max(0,R);const parts=base+childParts(children);let brut=irBrut(R,parts,P);
+  if(parts>base){const capped=irBrut(R,base,P)-(parts-base)*2*P.qfCapPerHalfPart;if(capped>brut)brut=capped}
+  const D=base===2?P.decote.couple:P.decote.single;let decote=0;if(brut<D.threshold)decote=Math.min(brut,Math.max(0,D.base-brut*P.decote.rate/100));
+  let net=Math.max(0,brut-decote);if(net<P.minCollected)net=0;net=Math.round(net);
+  return{R:Math.round(R),parts,brut:Math.round(brut),decote:Math.round(decote),net,tmi:tmiOf(R,parts,P),avg:R?net/R*100:0}}
+/* incomes = {p1:{sal,other},p2:{...}} revenus annuels ; tax = {mode,children,childOf} */
+function taxEstimate(inc,tax,P){const R=k=>Math.max(0,inc[k].sal-proDeduct(inc[k].sal,P))+inc[k].other,n=+tax.children||0,co=tax.childOf||'p1';
+  const sep={p1:irCompute(R('p1'),1,co==='p1'?n:0,P),p2:irCompute(R('p2'),1,co==='p2'?n:0,P)};sep.total=sep.p1.net+sep.p2.net;
+  const com=irCompute(R('p1')+R('p2'),2,n,P);return{sep,com,diff:sep.total-com.net,net:{p1:R('p1'),p2:R('p2')}}}
+if(typeof module!=='undefined')module.exports={irCompute,taxEstimate,proDeduct,isinValid,DATA_VERSION,LISTS,migrateData,mergeData,stamp,snapshot,canon,blankData};

@@ -12,3 +12,13 @@ a.equal(m1.fixed[0].amount,950);a.equal(m1.fixed[0].label,'Loyer+');a.deepEqual(
 let C=cl(m1),E=cl(m1);C.fixed=[];S.stamp(C,S.snapshot(m1),300,'p1');E.fixed[0].amount=1000;S.stamp(E,S.snapshot(m1),310,'p2');
 a.equal(S.mergeData(C,E).fixed[0].amount,1000);let F=cl(E);F.fixed=[];S.stamp(F,S.snapshot(E),400,'p1');a.equal(S.mergeData(E,F).fixed.length,0);
 a.equal(S.canon(S.mergeData(m1,m1)),S.canon(m1));console.log('OK');
+// v7 : impôt sur le revenu (barème 2026, revenus 2025) et migration
+{const P=require('../rates.json').incomeTax;
+ a.equal(S.irCompute(30000,1,0,P).net,2104);a.equal(S.irCompute(30000,1,0,P).tmi,30);
+ const d=S.irCompute(20000,1,0,P);a.equal(d.brut,924);a.equal(d.decote,479);a.equal(d.net,445);
+ a.equal(S.irCompute(60000,2,0,P).net,4208);a.equal(S.irCompute(5000,1,0,P).net,0);
+ const q=S.irCompute(150000,2,2,P),noCap=S.irCompute(150000,2,0,P);a.ok(noCap.net-q.net<=2*2*1807+1,'quotient familial plafonné');
+ a.equal(S.proDeduct(3000,P),509);a.equal(S.proDeduct(30000,P),3000);a.equal(S.proDeduct(200000,P),14555);
+ const t=S.taxEstimate({p1:{sal:30000,other:0},p2:{sal:24000,other:0}},{mode:'separe',children:0},P);a.equal(t.sep.total,2265);a.equal(t.com.net,2575);
+ const m=S.migrateData({version:6,placements:[]});a.equal(m.version,7);a.deepEqual(m.births,{p1:'2000-06-22',p2:'2002-03-10'});a.equal(m.tax.mode,'separe');a.deepEqual(m.dismissed,[]);
+ const m2=S.migrateData(JSON.parse(JSON.stringify(m)));a.equal(S.canon(m2),S.canon(m));console.log('OK impôt + migration v7')}
