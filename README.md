@@ -61,3 +61,11 @@ python3 -m http.server 8000
 ```
 index.html  style.css  app.js  manifest.json  sw.js  icons/  supabase/schema.sql  screenshots/
 ```
+
+## v4 — Enveloppes à valorisation globale (format de données v6)
+
+- **AV / PEA / CTO / PER** : plus de lignes (ISIN, quantités, cours). Chaque enveloppe a une **valorisation globale saisie à la main**, un **historique daté** avec graphique d'évolution, le **total versé** et la **plus-value globale** (valorisation − versements), un **versement mensuel programmé** et un **rendement estimé** pour la projection à 4 ans.
+- **Migration v5 → v6** (automatique, testée, idempotente) : valorisation = somme des lignes, versé = somme des coûts, versement mensuel = somme des versements des lignes, rendement = moyenne pondérée par la valeur. Les anciennes lignes sont **conservées en archive** (visibles dans la fiche de l'enveloppe, section « Ancien détail archivé »).
+- **Rappel mensuel** : le jour est réglable dans Réglages (1er par défaut). Toute enveloppe dont la dernière valorisation est antérieure au dernier jour de rappel apparaît sur l'Accueil dans la carte « Mettre à jour la valorisation » (saisie rapide) et un badge s'affiche sur l'onglet Placements.
+- Revue UX : guide « Pour bien démarrer », confirmations de suppression nommées, messages après enregistrement, bouton retour Android qui ferme la fenêtre, validation de tous les montants, Entrée pour valider le budget, objectifs « atteint » / « échéance dépassée », badge de synchro cliquable.
+- Tests : `python3 -u tests/e2e/test_placements.py` (migration, valorisations, rappel, validations, projection, accessibilité axe).

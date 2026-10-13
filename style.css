@@ -158,3 +158,13 @@ details{margin-top:10px}summary{cursor:pointer;color:var(--acc);font-weight:600;
 button:focus:not(:focus-visible){outline:none}
 .item:focus-visible,.card:focus-visible{outline-offset:-2px}
 @media (prefers-contrast:more){:root{--mut:#b7bfd0;--line:rgba(255,255,255,.2)}}
+/* ---- v4 ---- */
+.tab-badge{position:absolute;top:4px;right:calc(50% - 22px);min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--warn);color:#1a1200;font-size:11px;font-style:normal;font-weight:800;display:grid;place-items:center;box-shadow:0 0 0 2px #121620}
+.tab-badge[hidden]{display:none}
+.remind{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--warn);font-weight:600;font-size:14px;background:rgba(255,181,71,.08);border-color:rgba(255,181,71,.25)}
+.remind-card{border-color:rgba(255,181,71,.3);background:linear-gradient(180deg,rgba(255,181,71,.10),var(--card))}.remind-card h2{color:var(--warn)}
+.qval{display:flex;gap:8px;align-items:flex-end;padding:10px 0;border-top:1px solid var(--line)}.qval label{flex:1;color:var(--txt);font-size:14px}.qval label small{color:var(--mut);font-weight:500}
+.btn.small{width:auto;padding:12px 16px}
+.warn-c{color:var(--warn)!important}
+.steps{margin:0;padding-left:20px;display:grid;gap:2px}.steps li.done .link{color:var(--ok)}
+.valform{margin:6px 0 10px}

@@ -1,11 +1,11 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=5;
-const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions'];
-const SCAL=['names','ratio','transfer'];
+const DATA_VERSION=6;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations'];
+const SCAL=['names','ratio','transfer','reminderDay'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
-const blankData=()=>({version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},
+const blankData=()=>({version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
@@ -18,7 +18,20 @@ const MIGRATIONS={
     d.misc.forEach(m=>{m.category=m.category||'autre';if(!m.paidBy){m.paidBy=m.payer==='p1'?'p1':m.payer==='p2'?'p2':'joint';m.for=m.payer==='p1'?'p1':m.payer==='p2'?'p2':'common'}});
     d.deleted=d.deleted||{};d.su=d.su||{};d.budgetU=d.budgetU||{};d.history=d.history||[];d.settlements=d.settlements||[];return d},
   /* v4 → v5 : type de placement, banque, mode de taux ; lignes d'enveloppe (positions) */
-  5(d){d.placements=(d.placements||[]).map(p=>Object.assign({type:'autre',bank:'',rateMode:'manual'},p));d.positions=d.positions||[];return d}
+  5(d){d.placements=(d.placements||[]).map(p=>Object.assign({type:'autre',bank:'',rateMode:'manual'},p));d.positions=d.positions||[];return d},
+  /* v5 → v6 : les enveloppes (AV, PEA, CTO, PER) sont suivies par valorisation globale. Les lignes deviennent une valorisation
+     (somme des lignes, aucune perte), un total versé (somme des prix de revient), un versement et un rendement agrégés ; le détail est archivé. */
+  6(d){const ENV=['av','pea','cto','per'],val=x=>x.kind==='euro'?(+x.value||0):(+x.qty||0)*(+x.price||0),cost=x=>x.kind==='euro'?(+x.invested||0):(+x.qty||0)*(+x.pru||0);
+    d.valuations=d.valuations||[];d.archive=d.archive||{};const t=d.updated||0;
+    (d.placements||[]).forEach(p=>{const L=(d.positions||[]).filter(x=>x.pid===p.id);if(!ENV.includes(p.type)||!L.length)return;
+      const v=Math.round(L.reduce((s,x)=>s+val(x),0)*100)/100,c=Math.round(L.reduce((s,x)=>s+cost(x),0)*100)/100;
+      p.capital=v;p.invested=c;p.monthly=Math.round(((+p.monthly||0)+L.reduce((s,x)=>s+(+x.monthly||0),0))*100)/100;
+      p.rate=v?Math.round(L.reduce((s,x)=>s+val(x)*(+x.rate||0),0)/v*100)/100:(+p.rate||0);
+      const date=L.map(x=>x.priceDate).filter(Boolean).sort().pop()||new Date(t||Date.now()).toISOString().slice(0,10);
+      d.valuations.push({id:'mig-'+p.id,pid:p.id,date,value:v,u:t,c:t});
+      p.archivedLines=L.map(x=>{const {u,by,fu,c,...r}=x;return r})});
+    if((d.positions||[]).length)d.archive.positions=(d.archive.positions||[]).concat(d.positions);
+    d.positions=[];if(typeof d.reminderDay!=='number')d.reminderDay=1;return d}
 };
 function migrateData(raw){
   let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;

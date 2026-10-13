@@ -20,7 +20,7 @@ const r2=x=>Math.round(x*100)/100;
 function persist(){localStorage.setItem(KEY,JSON.stringify(D))}
 function save(push=true){stamp(D,SNAP,Date.now(),me);SNAP=snapshot(D);persist();animate=false;render();if(push)pushRemote()}
 function adopt(d){const ui=D.miscMonth;D=d;if(ui)D.miscMonth=ui;SNAP=snapshot(D);persist()}
-function del(list,id){const pos=list==='positions'&&D.positions.find(x=>x.id===id);D[list]=D[list].filter(x=>x.id!==id);if(list==='placements')D.positions=D.positions.filter(x=>x.pid!==id);save();if(pos)placSheet(pos.pid);else closeSheet()}
+function del(list,id){const val=list==='valuations'&&D.valuations.find(x=>x.id===id);D[list]=D[list].filter(x=>x.id!==id);if(list==='placements')D.valuations=D.valuations.filter(x=>x.pid!==id);save();if(val)placSheet(val.pid);else closeSheet();toast('Supprimé')}
 const ownerOpts=(sel,withCommon=true)=>['p1','p2',...(withCommon?['common']:[])].map(k=>`<option value="${k}" ${k===sel?'selected':''}>${esc(N(k))}</option>`).join('');
 function on(sel,ev,fn){const e=$(sel);if(e)e.addEventListener(ev,fn)}
 const haptic=()=>{try{navigator.vibrate&&navigator.vibrate(8)}catch{}};
@@ -84,7 +84,7 @@ function incomeSheet(id){const i=D.incomes.find(x=>x.id===id)||{person:'p1',type
    <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="incomes|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>{
     $('#fIncome').addEventListener('change',e=>{if(e.target.name==='recurring')$('#incMonthL').hidden=e.target.value==='1'});
     $('#fIncome').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target),o={id:id||uid(),person:f.person,type:f.type,label:f.label,amount:num(f.amount),recurring:f.recurring==='1',month:f.recurring==='1'?null:f.month};
-      if(id)Object.assign(i,o);else D.incomes.push(o);closeSheet();save()})})}
+      if(id)Object.assign(i,o);else D.incomes.push(o);closeSheet();save();toast('Enregistré')})})}
 /* ---------- Onglet Budget (charges fixes + dépenses diverses) ---------- */
 function vBudget(){const S=[['revenus','Revenus'],['fixes','Charges'],['diverses','Dépenses']],i=Math.max(0,S.findIndex(s=>s[0]===budgetSeg));
   return `<div class="seg seg3" role="tablist" aria-label="Sections du budget">${S.map(([v,l])=>`<button role="tab" aria-selected="${budgetSeg===v}" data-seg="${v}" class="${budgetSeg===v?'on':''}">${l}</button>`).join('')}<span class="seg-ind" style="transform:translateX(${i*100}%)"></span></div>`+
@@ -120,12 +120,12 @@ function fixedSheet(id){const f=D.fixed.find(x=>x.id===id)||{split:D.ratio,categ
    R.addEventListener('input',upd);document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{haptic();R.value=b.dataset.preset;upd()});
    $('#fFixed').addEventListener('submit',e=>{e.preventDefault();const v=fd(e.target),s=Math.max(0,Math.min(100,parseInt(v.split)));
     const o={id:id||uid(),label:v.label,amount:num(v.amount),day:Math.min(31,parseInt(v.day)||0),split:s,payer:s>=100?'p1':s<=0?'p2':'common',category:v.category,paidBy:v.paidBy};
-    if(id)Object.assign(f,o);else D.fixed.push(o);closeSheet();save()})})}
+    if(id)Object.assign(f,o);else D.fixed.push(o);closeSheet();save();toast('Enregistré')})})}
 function transferSheet(){const t=D.transfer;openSheet('Virement entre vous',`<form id="fTransfer">
    <label>Libellé<input name="label" value="${esc(t.label)}"></label>
    <div class="f2"><label>De<select name="from">${ownerOpts(t.from,false)}</select></label><label>Montant (€)<input name="amount" inputmode="decimal" value="${t.amount||''}" placeholder="0"></label></div>
    <p class="mut">Informatif : indique le virement mensuel de l’un vers l’autre (ex. part du loyer).</p><button class="btn">Enregistrer</button></form>`,()=>
-   $('#fTransfer').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target);D.transfer={label:f.label,from:f.from,amount:num(f.amount)};closeSheet();save()}))}
+   $('#fTransfer').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target);D.transfer={label:f.label,from:f.from,amount:num(f.amount)};closeSheet();save();toast('Enregistré')}))}
 let miscF={q:'',cat:'',who:''};
 function vDiverses(){
   const m=D.miscMonth||curMonth(),b=D.budget[m]||0,all=D.misc.filter(x=>x.date.startsWith(m)),q=miscF.q.toLowerCase();
@@ -192,7 +192,7 @@ function monthSheet(id,draft){
    F.addEventListener('submit',ev=>{ev.preventDefault();const o=entry();if(o.manual===undefined)delete o.manual;
      const ex=ed||D.months.find(x=>x.month===o.month);
      if(ex){ex.month=o.month;ex.a=o.a;ex.b=o.b;if(o.manual)ex.manual=o.manual;else delete ex.manual;D.months=D.months.filter(x=>x===ex||x.month!==ex.month)}
-     else{o.id=uid();D.months.push(o)}closeSheet();save()})})}
+     else{o.id=uid();D.months.push(o)}closeSheet();save();toast('Enregistré')})})}
 /* ---------- Onglet Objectifs ---------- */
 let goalF='';
 function vObjectifs(){
@@ -202,7 +202,7 @@ function vObjectifs(){
     const sv=C.saved[x.id],rest=Math.max(0,x.target-sv),p=x.target?Math.min(100,sv/x.target*100):0,mo=x.date?monthsBetween(cm,x.date):0,c=C.contrib[x.id];
     return `<button class="card goal" data-edit-goal="${x.id}" style="--pc:${COL[g]}"><span class="row-b"><b>${esc(x.name)}</b><span class="pct">${p.toFixed(0)} %</span></span>
      ${bar(p,p>=100?'done':'')}<span class="row-b"><span>${money(sv)} <small class="mut">/ ${eur(x.target)}</small></span><small class="mut">reste ${eur(rest)}</small></span>
-     ${mo&&rest>0?`<small class="mut">${ic('calendar',13)} ${eur(rest/mo)}/mois pendant ${mo} mois (${monthLabel(x.date)})</small>`:''}
+     ${x.date&&x.date<cm&&rest>0?`<small class="neg">${ic('alert',13)} Échéance dépassée (${monthLabel(x.date)})</small>`:mo&&rest>0?`<small class="mut">${ic('calendar',13)} ${eur(rest/mo)}/mois pendant ${mo} mois (${monthLabel(x.date)})</small>`:p>=100?`<small class="pos">Objectif atteint 🎉</small>`:''}
      <span class="contrib"><span style="color:var(--p1)">${esc(D.names.p1)} ${eur(c.p1)}</span><span style="color:var(--p2)">${esc(D.names.p2)} ${eur(c.p2)}</span>${x.saved?`<span class="mut">initial ${eur(x.saved)}</span>`:''}</span></button>`}).join('')}).join('')+
   (D.goals.length?`<p class="mut note">L’épargne de chaque mois est répartie automatiquement entre les objectifs perso et communs, au prorata du besoin mensuel (reste ÷ mois restants ; pour les objectifs communs, part de chacun selon les réglages).</p>`:empty('target','Aucun objectif pour l’instant (ex. voyage, apport, voiture).'));
 }
@@ -213,7 +213,7 @@ function goalSheet(id){const g=D.goals.find(x=>x.id===id)||{owner:'common'};
    <div class="f2"><label>Montant cible (€)<input name="target" inputmode="decimal" value="${g.target??''}" required></label><label>Déjà économisé avant (€)<input name="saved" inputmode="decimal" value="${g.saved||''}" placeholder="0"></label></div>
    <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="goals|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>
    $('#fGoal').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target),o={id:id||uid(),name:f.name,owner:f.owner,date:f.date,target:num(f.target),saved:num(f.saved)};
-    if(id)Object.assign(g,o);else D.goals.push(o);closeSheet();save()}))}
+    if(id)Object.assign(g,o);else D.goals.push(o);closeSheet();save();toast('Enregistré')}))}
 /* ---------- Onglet Placements ---------- */
 function chart(s){
   const W=340,H=180,P=8,max=Math.max(1,...s.map(x=>x.total)),X=i=>P+i*(W-2*P)/48,Y=v=>H-24-v/max*(H-44);
@@ -228,7 +228,6 @@ let RATES=null;
 const PTYPES=[['livretA','Livret A','auto'],['ldds','LDDS','auto'],['lep','LEP','auto'],['cel','CEL','auto'],['pel','PEL','opening'],['livretJeune','Livret Jeune','floor'],
   ['av','Assurance vie','env'],['pea','PEA','env'],['cto','Compte-titres','env'],['per','PER','env'],['autre','Autre placement','manual']];
 const ptype=k=>PTYPES.find(t=>t[0]===k)||PTYPES[PTYPES.length-1];
-const PKINDS=[['euro','Fonds euros'],['etf','UC / ETF'],['action','Action'],['opcvm','OPCVM']];
 const frDate=s=>s?new Date(s+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}).replace(/^1 /,'1er '):'';
 const pct=v=>(+v||0).toLocaleString('fr-FR',{maximumFractionDigits:2})+' %';
 function currentRate(key,at){const P=RATES?.products?.[key];if(!P)return null;const d=at||new Date().toISOString().slice(0,10);return P.history.find(h=>h.from<=d)||null}
@@ -237,108 +236,107 @@ function pelRate(open){if(!RATES?.pel||!open)return null;return RATES.pel.byOpen
 function rateInfo(p){const t=ptype(p.type);
   if(t[2]==='auto'&&p.rateMode!=='manual'){const r=currentRate(p.type),P=RATES?.products?.[p.type];
     if(r)return{rate:r.rate,txt:`Taux réglementé ${pct(r.rate)} depuis le ${frDate(r.from)}`,src:P.source,srcName:P.sourceName,auto:true};
-    return{rate:p.rate||0,txt:`Taux réglementé (dernier connu ${pct(p.rate||0)}, chargement…)`,auto:true}}
-  if(t[2]==='opening')return{rate:p.rate||0,txt:`Taux figé à l’ouverture${p.openDate?` (${frDate(p.openDate)})`:''} : ${pct(p.rate||0)}`,src:RATES?.pel?.source,srcName:RATES?.pel?.sourceName};
-  if(t[2]==='env'){const L=posOf(p.id);if(L.length){const v=L.reduce((s,x)=>s+posValue(x),0),w=v?L.reduce((s,x)=>s+posValue(x)*(x.rate||0),0)/v:0;return{rate:w,txt:`Rendement estimé moyen ${pct(w)} (par ligne)`}}}
-  if(t[2]==='floor'){const la=currentRate('livretA'),low=la&&(p.rate||0)<la.rate;return{rate:p.rate||0,txt:`Taux de la banque ${pct(p.rate||0)}${la?` · minimum légal ${pct(la.rate)} (Livret A)`:''}`,warn:low?'Inférieur au minimum légal : vérifiez le taux de votre banque.':''}}
+    return{rate:p.rate||0,txt:`Taux réglementé (dernier connu ${pct(p.rate||0)})`,auto:true}}
+  if(t[2]==='opening')return{rate:p.rate||0,txt:`Taux figé à l’ouverture${p.openDate?` (${frDate(p.openDate)})`:''} : ${pct(p.rate||0)}`};
+  if(t[2]==='env')return{rate:p.rate||0,txt:`Rendement estimé ${pct(p.rate||0)}/an (non garanti)`};
+  if(t[2]==='floor'){const la=currentRate('livretA'),low=la&&(p.rate||0)<la.rate;return{rate:p.rate||0,txt:`Taux de la banque ${pct(p.rate||0)}${la?` · minimum légal ${pct(la.rate)}`:''}`,warn:low?'Inférieur au minimum légal : vérifiez le taux de votre banque.':''}}
   return{rate:p.rate||0,txt:`Taux ${p.rateMode==='manual'&&t[2]==='auto'?'manuel ':''}${pct(p.rate||0)}`};
 }
-const posOf=pid=>D.positions.filter(x=>x.pid===pid);
-const posValue=x=>x.kind==='euro'?(+x.value||0):(+x.qty||0)*(+x.price||0);
-const posCost=x=>x.kind==='euro'?(+x.invested||0):(+x.qty||0)*(+x.pru||0);
-const placValue=p=>{const L=posOf(p.id);return ptype(p.type)[2]==='env'&&L.length?L.reduce((s,x)=>s+posValue(x),0):(+p.capital||0)};
-// flux projetés : une ligne par position d'enveloppe, sinon le placement lui-même
-function streams(){const S=[];D.placements.forEach(p=>{const L=posOf(p.id);
-  if(ptype(p.type)[2]==='env'&&L.length){L.forEach(x=>S.push({pid:p.id,capital:posValue(x),monthly:+x.monthly||0,rate:+x.rate||0}));if(p.monthly)S.push({pid:p.id,capital:0,monthly:+p.monthly,rate:rateInfo(p).rate})}
-  else S.push({pid:p.id,capital:+p.capital||0,monthly:+p.monthly||0,rate:rateInfo(p).rate})});return S}
+/* Enveloppes (AV, PEA, CTO, PER) : valorisation globale saisie à la main + historique */
+const isEnv=p=>ptype(p.type)[2]==='env';
+const valsOf=pid=>D.valuations.filter(v=>v.pid===pid).sort((a,b)=>a.date.localeCompare(b.date)||(a.c??0)-(b.c??0));
+const lastVal=pid=>{const L=valsOf(pid);return L[L.length-1]||null};
+const placValue=p=>{if(isEnv(p)){const v=lastVal(p.id);if(v)return +v.value||0}return +p.capital||0};
+function streams(){return D.placements.map(p=>({pid:p.id,capital:placValue(p),monthly:+p.monthly||0,rate:rateInfo(p).rate}))}
+/* Rappel mensuel de valorisation */
+function lastReminderDate(today=new Date()){const day=Math.min(28,Math.max(1,D.reminderDay||1));let d=new Date(today.getFullYear(),today.getMonth(),day);if(d>today)d=new Date(today.getFullYear(),today.getMonth()-1,day);return d.toISOString().slice(0,10)}
+const dueValuations=()=>{const th=lastReminderDate();return D.placements.filter(p=>isEnv(p)&&(!lastVal(p.id)||lastVal(p.id).date<th))};
+function valChart(L){if(L.length<2)return'';const W=320,H=120,min=Math.min(...L.map(v=>v.value)),max=Math.max(...L.map(v=>v.value)),span=max-min||1;
+  const t0=+new Date(L[0].date),t1=+new Date(L[L.length-1].date)||t0+1,X=v=>10+(+new Date(v.date)-t0)/((t1-t0)||1)*(W-20),Y=v=>H-18-(v.value-min)/span*(H-36);
+  const path=L.map((v,i)=>`${i?'L':'M'}${X(v).toFixed(1)},${Y(v).toFixed(1)}`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Évolution de la valorisation de ${eur(L[0].value)} à ${eur(L[L.length-1].value)}"><defs><linearGradient id="gval" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d8bff" stop-opacity=".35"/><stop offset="1" stop-color="#6d8bff" stop-opacity="0"/></linearGradient></defs>
+   <path d="${path} L${X(L[L.length-1])},${H-18} L${X(L[0])},${H-18}Z" fill="url(#gval)"/><path d="${path}" fill="none" stroke="#6d8bff" stroke-width="2.5" stroke-linejoin="round"/>${L.map(v=>`<circle cx="${X(v)}" cy="${Y(v)}" r="3" fill="#6d8bff"/>`).join('')}
+   <text x="10" y="${H-3}" font-size="10" fill="#8b94a8">${new Date(L[0].date+'T12:00').toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})}</text><text x="${W-10}" y="${H-3}" font-size="10" fill="#8b94a8" text-anchor="end">${new Date(L[L.length-1].date+'T12:00').toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})}</text></svg>`}
+const gain=p=>{const v=placValue(p),inv=+p.invested||0;return{v,inv,d:v-inv,pc:inv?(v-inv)/inv*100:0}};
 let bankF='';
 function vPlacements(){
   const S=streams(),s=project(S),end=s[48],banks=[...new Set(D.placements.map(p=>p.bank||'Sans banque'))].sort((a,b)=>a.localeCompare(b,'fr'));
+  if(bankF&&!banks.includes(bankF))bankF='';
   const futureOf=pid=>S.reduce((t,x,i)=>t+(x.pid===pid?end.vals?.[i]||0:0),0);
-  const total=D.placements.reduce((t,p)=>t+placValue(p),0);
+  const total=D.placements.reduce((t,p)=>t+placValue(p),0),due=dueValuations();
   const L=D.placements.filter(p=>!bankF||(p.bank||'Sans banque')===bankF);
   const reg=['livretA','ldds','lep','cel'].map(k=>[k,currentRate(k)]).filter(x=>x[1]);
   return `${D.placements.length?`<div class="card hero"><small>Encours actuel ${money(total)} · valeur projetée dans 4 ans</small><div class="hero-n">${money(end.total)}</div>
-    <div class="hero-grid"><div><small>Versé (capital + versements)</small>${money(end.inv)}</div><div><small>Intérêts / plus-values estimés</small>${money(end.total-end.inv,'pos')}</div></div>${chart(s)}</div>
+    <div class="hero-grid"><div><small>Encours + versements</small>${money(end.inv)}</div><div><small>Intérêts / gains estimés</small>${money(end.total-end.inv,'pos')}</div></div>${chart(s)}</div>
    <div class="years">${[1,2,3,4].map(y=>{const x=s[y*12];return `<div class="card yr"><small>Fin d’année ${y}</small><b>${eur(x.total)}</b><small class="pos">+${eur(x.total-x.inv)}</small></div>`}).join('')}</div>`:''}
+  ${due.length?`<div class="card remind" role="status">${ic('alert',16)} ${due.length} valorisation${due.length>1?'s':''} à mettre à jour (rappel du ${D.reminderDay||1} de chaque mois). <button class="link" data-goto="accueil">Mettre à jour</button></div>`:''}
   ${sec('Placements',addBtn('addPlac'))}
   ${banks.length>1?chips('bankF',[['','Toutes les banques'],...banks.map(b=>[b,b])],bankF,'Filtrer par banque'):''}
   ${banks.filter(b=>!bankF||b===bankF).map(b=>{const G=L.filter(p=>(p.bank||'Sans banque')===b);if(!G.length)return'';const sub=G.reduce((t,p)=>t+placValue(p),0);
-    return `<h3 class="group row-b"><span>${esc(b)}</span><span>${eur(sub)}</span></h3><div class="list">${G.map(p=>{const ri=rateInfo(p),t=ptype(p.type),P=posOf(p.id),pv=P.reduce((a,x)=>a+posValue(x)-posCost(x),0),pc=P.reduce((a,x)=>a+posCost(x),0);
+    return `<h3 class="group row-b"><span>${esc(b)}</span><span>${eur(sub)}</span></h3><div class="list">${G.map(p=>{const ri=rateInfo(p),t=ptype(p.type),env=isEnv(p),g=gain(p),lv=lastVal(p.id),isDue=due.includes(p);
      return `<button class="item" data-edit-plac="${p.id}"><span class="avatar" style="--pc:${COL[p.owner]}">${ic('trend',16)}</span>
-     <span class="grow"><b>${esc(p.name||t[1])}</b><small>${t[1]} · ${esc(N(p.owner))}${p.monthly||P.some(x=>x.monthly)?` · +${eur((+p.monthly||0)+P.reduce((a,x)=>a+(+x.monthly||0),0))}/mois`:''}</small>
-     <small class="${ri.auto?'acc':''}">${esc(ri.txt)}</small>${P.length?`<small class="${pv>=0?'pos':'neg'}">${P.length} ligne(s) · ${pv>=0?'+':''}${eur(pv)} (${pc?(pv/pc*100).toFixed(1):'0'} %)</small>`:''}${ri.warn?`<small class="neg">${ic('alert',12)} ${esc(ri.warn)}</small>`:''}</span>
+     <span class="grow"><b>${esc(p.name||t[1])}</b><small>${t[1]} · ${esc(N(p.owner))}${p.monthly?` · +${eur(p.monthly)}/mois`:''}</small>
+     <small class="${ri.auto?'acc':''}">${esc(ri.txt)}</small>
+     ${env?`<small>${lv?`Valorisé le ${new Date(lv.date+'T12:00').toLocaleDateString('fr-FR')}`:'Aucune valorisation'}${g.inv?` · <span class="${g.d>=0?'pos':'neg'}">${g.d>=0?'+':''}${eur(g.d)} (${g.pc.toFixed(1)} %)</span>`:''}</small>`:''}
+     ${isDue?`<small class="warn-c">${ic('alert',12)} Valorisation à mettre à jour</small>`:''}${ri.warn?`<small class="neg">${ic('alert',12)} ${esc(ri.warn)}</small>`:''}</span>
      <span class="r">${money(placValue(p))}<small class="mut">4 ans : ${eur(futureOf(p.id))}</small></span></button>`}).join('')}</div>`}).join('')||empty('trend','Ajoute un livret, un PEL, une assurance vie… pour voir la projection sur 4 ans.')}
   <div class="card"><h2>${ic('calendar',18)} Taux réglementés en vigueur</h2>${reg.length?`<ul class="bal-l">${reg.map(([k,r])=>`<li><span>${RATES.products[k].name}</span><small>depuis le ${frDate(r.from)} · <a href="${RATES.products[k].source}" target="_blank" rel="noopener">${RATES.products[k].sourceName}</a></small><b>${pct(r.rate)}</b></li>`).join('')}</ul>
-   <p class="mut">Mis à jour automatiquement (fichier rates.json du dépôt, vérifié le ${frDate(RATES.checked)}). PEL : taux figé à l’ouverture. Livret Jeune : taux libre de la banque, au moins égal au Livret A.</p>`:'<p class="mut">Chargement des taux…</p>'}</div>
-  <p class="mut note">Projection : intérêts composés mensuellement (taux annuel ÷ 12), versements permanents en fin de mois, au taux en vigueur aujourd’hui (les taux réglementés futurs ne sont pas connus). Rendements des unités de compte = estimations saisies, non garanties.</p>`;
+   <p class="mut">Mis à jour automatiquement (rates.json, vérifié le ${frDate(RATES.checked)}). PEL : taux figé à l’ouverture. Livret Jeune : taux libre de la banque, au moins égal au Livret A.</p>`:'<p class="mut">Chargement des taux…</p>'}</div>
+  <p class="mut note">Projection : intérêts composés mensuellement (taux annuel ÷ 12), versements permanents en fin de mois, au taux en vigueur aujourd’hui. Rendements des assurances vie, PEA, comptes-titres et PER : estimations saisies, non garanties.</p>`;
 }
 function placSheet(id,draft){const p=draft||D.placements.find(x=>x.id===id)||{owner:'common',type:'livretA',rateMode:'auto',bank:''},t=ptype(p.type);
-  const banks=[...new Set(D.placements.map(x=>x.bank).filter(Boolean))],P=id?posOf(id):[];
-  const env=t[2]==='env',la=currentRate('livretA');
-  const rateBlock=t[2]==='auto'?`<div class="preview" id="rateAuto"><small>Taux fixé par l’État</small><b>${currentRate(p.type)?`${pct(currentRate(p.type).rate)} depuis le ${frDate(currentRate(p.type).from)}`:'chargement…'}</b>
+  const banks=[...new Set(D.placements.map(x=>x.bank).filter(Boolean))],env=t[2]==='env',la=currentRate('livretA'),V=id?valsOf(id):[],g=id?gain(D.placements.find(x=>x.id===id)||p):null;
+  const rateBlock=t[2]==='auto'?`<div class="preview"><small>Taux fixé par l’État</small><b>${currentRate(p.type)?`${pct(currentRate(p.type).rate)} depuis le ${frDate(currentRate(p.type).from)}`:'chargement…'}</b>
      ${RATES?.products?.[p.type]?`<small>Source : <a href="${RATES.products[p.type].source}" target="_blank" rel="noopener">${RATES.products[p.type].sourceName}</a> · mis à jour automatiquement</small>`:''}</div>
      <label class="switch"><input type="checkbox" id="manualRate" ${p.rateMode==='manual'?'checked':''}><span></span>Utiliser un taux manuel</label>
      <label id="rateL" ${p.rateMode==='manual'?'':'hidden'}>Taux annuel manuel (%)<input name="rate" inputmode="decimal" value="${p.rate??''}"></label>`
-   :t[2]==='opening'?`<label>Date d’ouverture du PEL<input type="date" name="openDate" id="pelDate" value="${p.openDate||''}" required></label>
+   :t[2]==='opening'?`<label>Date d’ouverture du PEL<input type="date" name="openDate" id="pelDate" value="${p.openDate||''}" required max="${new Date().toISOString().slice(0,10)}"></label>
      <label>Taux (figé pour toute la durée du plan) (%)<input name="rate" id="pelRate" inputmode="decimal" value="${p.rate??''}"></label><p class="mut" id="pelHint">${p.openDate&&pelRate(p.openDate)?`Taux officiel pour un PEL ouvert à cette date : ${pct(pelRate(p.openDate).rate)} (hors prime). Il ne sera jamais modifié.`:'Le taux officiel correspondant sera proposé selon la date d’ouverture.'}</p>`
    :t[2]==='floor'?`<label>Taux de votre banque (%)<input name="rate" inputmode="decimal" value="${p.rate??(la?la.rate:'')}"></label><p class="mut">Taux libre fixé par la banque, au moins égal au Livret A${la?` (${pct(la.rate)} actuellement)`:''}. Pas de mise à jour automatique.</p>`
-   :env?(P.length?`<p class="mut">Le taux et la valeur viennent des lignes ci-dessous.</p>`:`<label>Rendement annuel estimé (%)<input name="rate" inputmode="decimal" value="${p.rate??''}"></label>`)
+   :env?`<label>Rendement annuel estimé (%)<input name="rate" inputmode="decimal" value="${p.rate??''}" placeholder="ex. 3 (fonds euros) ou 5 (UC)"></label><p class="mut">Sert uniquement à la projection. Pour un fonds euros, indiquez son taux annuel.</p>`
    :`<label>Taux annuel (%)<input name="rate" inputmode="decimal" value="${p.rate??''}"></label>`;
-  const posList=env&&id?`<div class="sec"><h2>Lignes (${P.length})</h2><button type="button" class="chip-btn" data-add-pos="${id}">${ic('plus',16)}Ligne</button></div>
-    ${P.length?donut(P.map((x,i)=>({name:x.name||x.isin||'Ligne',v:posValue(x),col:CAT_COL[i%CAT_COL.length]})),Math.max(0.01,P.reduce((a,x)=>a+posValue(x),0)),'enveloppe'):''}
-    <div class="list">${P.map(x=>{const v=posValue(x),c=posCost(x),d=v-c;return `<button type="button" class="item" data-edit-pos="${x.id}"><span class="grow"><b>${esc(x.name||x.isin)}</b>
-     <small>${PKINDS.find(k=>k[0]===x.kind)?.[1]||''}${x.isin?' · '+esc(x.isin):''}${x.kind!=='euro'?` · ${x.qty} × ${eur(x.price)}`:''}${x.priceDate?' · au '+new Date(x.priceDate+'T12:00').toLocaleDateString('fr-FR'):''}</small>
-     <small class="${d>=0?'pos':'neg'}">${d>=0?'+':''}${eur(d)} (${c?(d/c*100).toFixed(1):'0'} %) · ${pct(x.rate||0)}/an${x.monthly?` · +${eur(x.monthly)}/mois`:''}</small></span><b>${eur(v)}</b></button>`}).join('')||'<p class="mut">Ajoute les supports (fonds euros, ETF, actions…) pour suivre la valeur et les plus-values.</p>'}</div>`:env?'<p class="mut">Enregistre l’enveloppe puis ajoute ses lignes.</p>':'';
-  openSheet(id?'Modifier le placement':'Nouveau placement',`<form id="fPlac">
+  const valBlock=env&&id?`<div class="sec"><h2>Valorisations</h2></div>
+    ${g&&g.inv?`<div class="hero-grid"><div><small>Valorisation</small><b>${eur(g.v)}</b></div><div><small>Plus-value globale</small><b class="${g.d>=0?'pos':'neg'}">${g.d>=0?'+':''}${eur(g.d)} (${g.pc.toFixed(1)} %)</b></div></div>`:''}
+    ${valChart(V)}
+    <form id="fVal" class="valform"><div class="f2"><label>Date<input type="date" name="date" value="${new Date().toISOString().slice(0,10)}" required max="${new Date().toISOString().slice(0,10)}"></label><label>Valorisation (€)<input name="value" inputmode="decimal" required placeholder="0"></label></div><button class="btn ghost">${ic('plus',16)} Ajouter la valorisation</button></form>
+    <div class="list">${[...V].reverse().map(v=>`<div class="item"><span class="grow"><b>${eur(v.value)}</b><small>${frDate(v.date)}</small></span><button type="button" class="icon-btn" data-del="valuations|${v.id}" aria-label="Supprimer la valorisation du ${frDate(v.date)}">${ic('trash',16)}</button></div>`).join('')||'<p class="mut">Aucune valorisation : ajoutez le montant affiché par votre banque ou assureur.</p>'}</div>
+    ${p.archivedLines?.length?`<details><summary>Ancien détail par ligne (archivé)</summary><ul class="bal-l">${p.archivedLines.map(x=>`<li><span>${esc(x.name||x.isin||'Ligne')}</span><small>${esc(x.isin||'')}</small><b>${eur(x.kind==='euro'?x.value:(x.qty||0)*(x.price||0))}</b></li>`).join('')}</ul></details>`:''}`:'';
+  openSheet(id?'Modifier le placement':'Nouveau placement',`<form id="fPlac" novalidate>
    <div class="f2"><label>Type<select name="type" id="ptype">${PTYPES.map(([k,l])=>`<option value="${k}" ${p.type===k?'selected':''}>${l}</option>`).join('')}</select></label><label>Titulaire<select name="owner">${ownerOpts(p.owner)}</select></label></div>
    <div class="f2"><label>Nom<input name="name" value="${esc(p.name||'')}" placeholder="${esc(t[1])}"></label><label>Banque<input name="bank" list="bankList" value="${esc(p.bank||'')}" placeholder="ex. Ma banque" autocomplete="off"><datalist id="bankList">${banks.map(b=>`<option value="${esc(b)}">`).join('')}</datalist></label></div>
-   <div class="f2">${env&&P.length?'':`<label>${env?'Valeur actuelle':'Capital actuel'} (€)<input name="capital" inputmode="decimal" value="${p.capital??''}" placeholder="0"></label>`}<label>Versement mensuel${env&&P.length?' (hors lignes)':''} (€)<input name="monthly" inputmode="decimal" value="${p.monthly??''}" placeholder="0"></label></div>
-   ${rateBlock}
-   <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="placements|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>${posList}`,()=>{
+   ${env?`<div class="f2"><label>Total versé (€)<input name="invested" inputmode="decimal" value="${p.invested??''}" placeholder="0"></label><label>Versement programmé (€/mois)<input name="monthly" inputmode="decimal" value="${p.monthly??''}" placeholder="0"></label></div>
+     ${id?'':`<label>Valorisation actuelle (€)<input name="capital" inputmode="decimal" placeholder="0"></label>`}`
+   :`<div class="f2"><label>Capital actuel (€)<input name="capital" inputmode="decimal" value="${p.capital??''}" placeholder="0"></label><label>Versement mensuel (€)<input name="monthly" inputmode="decimal" value="${p.monthly??''}" placeholder="0"></label></div>`}
+   ${rateBlock}<p class="neg" id="placErr" role="alert"></p>
+   <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="placements|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>${valBlock}`,()=>{
    const F=$('#fPlac'),cur=()=>({...p,...fd(F),rateMode:$('#manualRate')?($('#manualRate').checked?'manual':'auto'):p.rateMode});
    $('#ptype').addEventListener('change',()=>{const c=cur(),nt=ptype(c.type);c.rateMode=nt[2]==='auto'?'auto':'manual';if(nt[2]==='floor'&&la&&!num(c.rate))c.rate=la.rate;placSheet(id,c)});
    on('#manualRate','change',e=>{$('#rateL').hidden=!e.target.checked});
    on('#pelDate','change',e=>{const r=pelRate(e.target.value);if(r){$('#pelRate').value=String(r.rate).replace('.',',');$('#pelHint').textContent=`Taux officiel pour un PEL ouvert à cette date : ${pct(r.rate)} (hors prime). Il ne sera jamais modifié.`}});
-   F.addEventListener('submit',e=>{e.preventDefault();const f=fd(F),nt=ptype(f.type),o={id:id||uid(),type:f.type,name:f.name.trim(),bank:f.bank.trim(),owner:f.owner,monthly:num(f.monthly),
-     rateMode:nt[2]==='auto'?($('#manualRate').checked?'manual':'auto'):'manual'};
+   F.addEventListener('submit',e=>{e.preventDefault();const f=fd(F),nt=ptype(f.type),err=m=>{$('#placErr').textContent=m};
+     if(['capital','monthly','invested','rate'].some(k=>k in f&&f[k]!==''&&(isNaN(num(f[k]))||num(f[k])<0||!/^[\d\s.,]+$/.test(f[k]))))return err('Les montants et taux doivent être des nombres positifs.');
+     if(nt[2]==='opening'&&!f.openDate)return err('Indiquez la date d’ouverture du PEL.');
+     const o={id:id||uid(),type:f.type,name:f.name.trim(),bank:f.bank.trim(),owner:f.owner,monthly:num(f.monthly),rateMode:nt[2]==='auto'?($('#manualRate').checked?'manual':'auto'):'manual'};
+     if(nt[2]==='env'){o.invested=num(f.invested)}
      if('capital' in f)o.capital=num(f.capital);
-     if('rate' in f)o.rate=num(f.rate);else if(nt[2]==='auto'){const r=currentRate(f.type);o.rate=r?r.rate:(p.rate||0)} // dernier taux connu (secours)
-     if(nt[2]==='opening'){o.openDate=f.openDate;if(!('rate' in f)||!f.rate){const r=pelRate(f.openDate);o.rate=r?r.rate:0}}
-     const ex=D.placements.find(x=>x.id===id);if(ex)Object.assign(ex,o);else D.placements.push(o);save();
-     if(nt[2]==='env'&&!id){placSheet(o.id);toast('Enveloppe créée : ajoute ses lignes')}else closeSheet()})})}
-function posSheet(pid,id,draft){const x=draft||D.positions.find(y=>y.id===id)||{kind:'etf',priceDate:new Date().toISOString().slice(0,10)},pl=D.placements.find(p=>p.id===pid);
-  const euro=x.kind==='euro';
-  openSheet(id?'Modifier la ligne':'Nouvelle ligne',`<form id="fPos" novalidate>
-   <p class="mut">${esc(pl?.name||ptype(pl?.type)[1])}</p>
-   <label>Type de support<select name="kind" id="pkind">${PKINDS.map(([k,l])=>`<option value="${k}" ${x.kind===k?'selected':''}>${l}</option>`).join('')}</select></label>
-   <div class="f2"><label>Nom du support<input name="name" value="${esc(x.name||'')}" placeholder="${euro?'ex. Fonds euros':'ex. ETF Monde'}" required></label>
-   <label>Code ISIN${euro?' (optionnel)':''}<input name="isin" id="isinIn" value="${esc(x.isin||'')}" placeholder="FR0000000000" autocapitalize="characters" maxlength="14" aria-describedby="isinMsg"></label></div>
-   <p class="mut" id="isinMsg" aria-live="polite"></p>
-   ${euro?`<div class="f2"><label>Montant versé (€)<input name="invested" inputmode="decimal" value="${x.invested??''}"></label><label>Valeur actuelle (€)<input name="value" inputmode="decimal" value="${x.value??''}" required></label></div>
-     <label>Taux annuel du fonds euros (%)<input name="rate" inputmode="decimal" value="${x.rate??''}" placeholder="ex. 2,5"></label>`
-   :`<div class="f2"><label>Quantité de parts<input name="qty" inputmode="decimal" value="${x.qty??''}" required></label><label>Prix de revient unitaire (€)<input name="pru" inputmode="decimal" value="${x.pru??''}"></label></div>
-     <div class="f2"><label>Cours actuel (€)<input name="price" inputmode="decimal" value="${x.price??''}" required></label><label>Rendement annuel estimé (%)<input name="rate" inputmode="decimal" value="${x.rate??''}" placeholder="ex. 5"></label></div>
-     <p class="mut">Cours saisi manuellement (aucune source de cours gratuite, fiable et sans clé n’est utilisable depuis le navigateur).</p>`}
-   <div class="f2"><label>Date de valorisation<input type="date" name="priceDate" value="${x.priceDate||''}"></label><label>Versement programmé (€/mois)<input name="monthly" inputmode="decimal" value="${x.monthly??''}" placeholder="0"></label></div>
-   <div id="posPrev" class="preview"></div>
-   <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="positions|${id}">${ic('trash',16)} Supprimer la ligne</button>`:''}<button type="button" class="btn ghost" data-back-plac="${pid}">Retour à l’enveloppe</button></form>`,()=>{
-   const F=$('#fPos'),chk=()=>{const v=F.isin.value.trim().toUpperCase().replace(/\s/g,''),m=$('#isinMsg');if(!v){m.textContent='';F.isin.removeAttribute('aria-invalid');return true}
-     const ok=isinValid(v);m.textContent=ok?'✓ ISIN valide':'ISIN invalide : 2 lettres, 9 caractères, 1 chiffre de contrôle (vérifiez la saisie).';m.className=ok?'pos':'neg';F.isin.setAttribute('aria-invalid',!ok);return ok};
-   const prev=()=>{const f=fd(F),o={kind:f.kind,qty:num(f.qty),pru:num(f.pru),price:num(f.price),invested:num(f.invested),value:num(f.value)},v=posValue(o),c=posCost(o),d=v-c;
-     $('#posPrev').innerHTML=`<small>Valeur ${eur(v)} · investi ${eur(c)}</small><b class="${d>=0?'pos':'neg'}">${d>=0?'+':''}${eur(d)} (${c?(d/c*100).toFixed(2):'0'} %)</b>`};
-   F.addEventListener('input',e=>{if(e.target.name==='isin')chk();prev()});chk();prev();
-   $('#pkind').addEventListener('change',e=>{posSheet(pid,id,{...x,...fd(F),kind:e.target.value})});
-   F.addEventListener('submit',e=>{e.preventDefault();if(!chk()){F.isin.focus();return}const f=fd(F);if(!f.name.trim()){F.name.focus();return}
-     const o={id:id||uid(),pid,kind:f.kind,name:f.name.trim(),isin:f.isin.trim().toUpperCase().replace(/\s/g,''),priceDate:f.priceDate,monthly:num(f.monthly),rate:num(f.rate)};
-     if(f.kind==='euro'){o.invested=num(f.invested);o.value=num(f.value)}else{o.qty=num(f.qty);o.pru=num(f.pru);o.price=num(f.price)}
-     const ex=D.positions.find(y=>y.id===id);if(ex){Object.keys(ex).forEach(k=>{if(!['u','by','fu','c','id'].includes(k)&&!(k in o))delete ex[k]});Object.assign(ex,o)}else D.positions.push(o);save();placSheet(pid)})})}
+     if('rate' in f)o.rate=num(f.rate);else if(nt[2]==='auto'){const r=currentRate(f.type);o.rate=r?r.rate:(p.rate||0)}
+     if(nt[2]==='opening'){o.openDate=f.openDate;if(!f.rate){const r=pelRate(f.openDate);o.rate=r?r.rate:0}}
+     const ex=D.placements.find(x=>x.id===id);if(ex)Object.assign(ex,o);else{D.placements.push(o);if(nt[2]==='env'&&o.capital)D.valuations.push({id:uid(),pid:o.id,date:new Date().toISOString().slice(0,10),value:o.capital})}
+     save();if(nt[2]==='env'&&!id){placSheet(o.id);toast('Enveloppe créée')}else{closeSheet();toast('Placement enregistré')}});
+   on('#fVal','submit',e=>{e.preventDefault();const f=fd(e.target),v=num(f.value);if(!f.value||v<0){e.target.value.focus();return}
+     D.valuations.push({id:uid(),pid:id,date:f.date,value:v});save();placSheet(id);toast('Valorisation ajoutée')})})}
+/* Carte de rappel sur l'accueil */
+function remindCard(){const due=dueValuations();if(!due.length)return'';
+  return `<div class="card remind-card"><h2>${ic('alert',18)} Mettre à jour la valorisation</h2><p class="mut">Rappel le ${(D.reminderDay||1)==1?"1er":D.reminderDay} de chaque mois : saisissez le montant indiqué par votre banque ou assureur.</p>
+   ${due.map(p=>{const lv=lastVal(p.id);return `<form class="qval" data-pid="${p.id}"><label class="grow">${esc(p.name||ptype(p.type)[1])}<small>${lv?`Dernière : ${eur(lv.value)} le ${new Date(lv.date+'T12:00').toLocaleDateString('fr-FR')}`:'Jamais valorisé'}</small>
+     <input name="value" inputmode="decimal" placeholder="${lv?String(lv.value).replace('.',','):'0'}" aria-label="Nouvelle valorisation de ${esc(p.name||ptype(p.type)[1])} en euros" required></label><button class="btn small">OK</button></form>`}).join('')}</div>`}
 /* ---------- Réglages ---------- */
 function vReglages(){
   return `<div class="card"><h2>Prénoms & répartition</h2><form id="fNames">
    <div class="f2"><label>Personne 1<input name="p1" value="${esc(D.names.p1)}"></label><label>Personne 2<input name="p2" value="${esc(D.names.p2)}"></label></div>
    <label>Part de ${esc(D.names.p1)} dans les dépenses communes (%)<input name="ratio" type="number" min="0" max="100" value="${D.ratio}"></label>
    <p class="mut">Sert de valeur par défaut pour les nouvelles charges, les dépenses diverses communes et les objectifs communs.</p>
+   <label>Jour du rappel mensuel de valorisation (assurance vie, PEA…)<input name="reminderDay" type="number" min="1" max="28" value="${D.reminderDay||1}"></label>
    <button class="btn">Enregistrer</button></form></div>
   <div class="card"><h2>${ic('edit',18)} Cet appareil</h2><p class="mut">Utilisé par <b style="color:${COL[me]||'var(--txt)'}">${me?esc(N(me)):'personne (non défini)'}</b> : vos modifications sont signées dans l’historique.</p>
    <div class="f2"><button class="btn ghost" id="chooseMe">Changer</button><button class="btn ghost" id="openHist">${ic('repeat',16)} Historique</button></div></div>
@@ -374,7 +372,9 @@ function allocate(k,amount,month,rem){
   return{alloc:out,unassigned:r2(Math.max(0,left))};
 }
 // Rejoue tout l'historique chronologiquement → affectations par mois + contributions par objectif
-function compute(extra){
+let _cmp=null,_cmpKey=null;
+function compute(extra){if(!extra){const k=D.updated+':'+D.months.length+':'+D.goals.length+':'+D.ratio;if(_cmpKey===k&&_cmp)return _cmp;_cmpKey=k;return _cmp=computeRaw()}return computeRaw(extra)}
+function computeRaw(extra){
   const rem={},contrib={};D.goals.forEach(g=>{rem[g.id]=Math.round(Math.max(0,g.target-(g.saved||0))*100)/100;contrib[g.id]={p1:0,p2:0}});
   const res={},list=[...D.months].filter(m=>!extra||m.id!==extra.id);if(extra)list.push(extra);
   list.sort((a,b)=>a.month.localeCompare(b.month)).forEach(m=>{
@@ -496,6 +496,8 @@ function balanceCard(m){const b=balance(m),abs=Math.abs(b.net),from=b.net>0?'p2'
 /* ---------- Tableau de bord ---------- */
 function nextCharges(n=5){const t=new Date(),today=t.getDate(),dim=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
   return D.fixed.filter(f=>f.day).map(f=>{const d=f.day>=today?f.day-today:dim-today+f.day;return{...f,inDays:d}}).sort((a,b)=>a.inDays-b.inDays).slice(0,n)}
+function onboarding(){const steps=[[D.incomes.length,'Ajouter vos revenus','budget','revenus'],[D.fixed.length,'Ajouter vos charges fixes','budget','fixes'],[D.goals.length,'Créer un objectif','objectifs'],[sbOn(),'Synchroniser vos deux téléphones','reglages']];
+  if(steps.every(x=>x[0]))return'';return `<div class="card"><h2>Pour bien démarrer</h2><ol class="steps">${steps.map(([ok,l,t,sg])=>`<li class="${ok?'done':''}"><button class="link" data-goto="${t}" ${sg?`data-seg-to="${sg}"`:''}>${ok?'✓ ':''}${l}</button></li>`).join('')}</ol></div>`}
 function vAccueil(){
   const m=curMonth(),a=summary('p1',m),b=summary('p2',m),rest=a.rest+b.rest,rev=a.rev+b.rev,ep=a.ep+b.ep,bud=D.budget[m]||0,spent=D.misc.filter(x=>x.date.startsWith(m)).reduce((s,x)=>s+x.amount,0),C=compute();
   const goals=[...D.goals].map(g=>({g,p:g.target?Math.min(100,C.saved[g.id]/g.target*100):0})).sort((x,y)=>y.p-x.p).slice(0,4);
@@ -506,7 +508,8 @@ function vAccueil(){
    <div><small>Dépenses diverses</small>${money(spent)}${bud?`<small> / ${eur(bud)}</small>`:''}</div><div><small>Taux d’épargne</small><span class="num">${rev?(ep/rev*100).toFixed(0):0} %</span></div></div>
    ${bud?bar(spent/bud*100,spent>bud?'over':''):''}</div>
   <button class="btn wide" id="quickAdd">${ic('plus',18)} Ajouter une dépense</button>
-  ${balanceCard(m)}
+  ${remindCard()}${onboarding()}
+  ${D.fixed.length||D.misc.length||D.settlements.length||D.transfer.amount?balanceCard(m):''}
   ${sec('Prochains prélèvements',`<button class="link" data-goto="budget" data-seg-to="fixes">Tout voir</button>`)}
   <div class="list">${nc.map(f=>`<div class="item"><span class="day" aria-hidden="true">${f.day}</span><span class="grow"><b>${esc(f.label)}</b><small>${f.inDays===0?'Aujourd’hui':f.inDays===1?'Demain':`Dans ${f.inDays} jours`} · ${esc(paidName(f.paidBy))}</small></span>${money(f.amount)}</div>`).join('')||empty('calendar','Ajoute des charges avec un jour de prélèvement.')}</div>
   ${sec('Objectifs',`<button class="link" data-goto="objectifs">Tout voir</button>`)}
@@ -541,7 +544,7 @@ function whoSheet(){openSheet('Qui utilise cet appareil ?',`<p class="mut">Sert 
 const TABS=[['accueil','Accueil','grid',vAccueil],['budget','Budget','wallet',vBudget],['epargne','Épargne','piggy',vEpargne],['objectifs','Objectifs','target',vObjectifs],['placements','Placements','trend',vPlacements]];
 const views=Object.fromEntries(TABS.map(t=>[t[0],t[3]]));views.reglages=vReglages;views.activite=vActivite;
 const titles={...Object.fromEntries(TABS.map(t=>[t[0],t[1]])),reglages:'Réglages',activite:'Historique'};
-function buildNav(){const n=$('#tabs');n.setAttribute('role','tablist');n.innerHTML=TABS.map(([k,l,i])=>`<button role="tab" data-tab="${k}" aria-controls="view" id="tab-${k}">${ic(i,22)}<span>${l}</span></button>`).join('')+'<span class="tab-ind" aria-hidden="true"></span>';
+function buildNav(){const n=$('#tabs');n.setAttribute('role','tablist');n.innerHTML=TABS.map(([k,l,i])=>`<button role="tab" data-tab="${k}" aria-controls="view" id="tab-${k}">${ic(i,22)}<span>${l}</span>${k==='placements'?'<i class="tab-badge" hidden></i>':''}</button>`).join('')+'<span class="tab-ind" aria-hidden="true"></span>';
   n.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;const b=[...n.querySelectorAll('button')],i=b.indexOf(document.activeElement);if(i<0)return;const j=(i+(e.key==='ArrowRight'?1:-1)+b.length)%b.length;b[j].focus();b[j].click()})}
 function go(t){if(t===tab&&$('#view').childElementCount)return;const order=Object.keys(views),dir=order.indexOf(t)>=order.indexOf(tab)?1:-1;tab=t;animate=true;render(dir);scrollTo({top:0})}
 function render(dir=0){
@@ -549,6 +552,7 @@ function render(dir=0){
   const i=TABS.findIndex(t=>t[0]===tab);document.querySelectorAll('#tabs button').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('active',on);b.setAttribute('aria-selected',on);b.tabIndex=on||(i<0&&b.dataset.tab==='accueil')?0:-1});$('#view').setAttribute('aria-labelledby',i>=0?'tab-'+tab:'title');
   const ind=$('.tab-ind');ind.style.opacity=i<0?0:1;if(i>=0)ind.style.transform=`translateX(${i*100}%)`;
   const ae=document.activeElement,keep=ae&&ae.id&&ae.matches('#view input')?{id:ae.id,s:ae.selectionStart}:null;
+  const nd=dueValuations().length,tb=$('#tab-placements .tab-badge');if(tb){tb.hidden=!nd;tb.textContent=nd;$('#tab-placements').setAttribute('aria-label',nd?`Placements, ${nd} valorisation${nd>1?'s':''} à mettre à jour`:'Placements')}
   const v=$('#view');v.innerHTML=views[tab]();
   if(keep){const el=document.getElementById(keep.id);if(el){el.focus();try{el.setSelectionRange(keep.s,keep.s)}catch{}}}
   if(animate&&!reduced()){v.classList.remove('enter-l','enter-r');void v.offsetWidth;v.classList.add(dir<0?'enter-l':'enter-r');countUp(v)}
@@ -558,10 +562,10 @@ function render(dir=0){
 function countUp(root){root.querySelectorAll('.num[data-v]').forEach(el=>{const to=+el.dataset.v;if(!to)return;const t0=performance.now(),d=650;
   const step=t=>{const p=Math.min(1,(t-t0)/d),e=1-Math.pow(1-p,3);el.textContent=eur(to*e);if(p<1)requestAnimationFrame(step);else el.textContent=eur(to)};requestAnimationFrame(step)})}
 let sheetReturn=null;
-function openSheet(title,html,bind){if($('#sheet').hidden)sheetReturn=document.activeElement;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;const w=$('#sheet');w.hidden=false;
+function openSheet(title,html,bind){if($('#sheet').hidden){sheetReturn=document.activeElement;try{history.pushState({sheet:1},'')}catch{}}$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;const w=$('#sheet');w.hidden=false;
   requestAnimationFrame(()=>w.classList.add('open'));document.body.classList.add('locked');bind&&bind();
   const first=w.querySelector('input:not([type=radio]):not([type=checkbox]):not([type=range])');if(first&&!first.value&&matchMedia('(pointer:fine)').matches)first.focus()}
-function closeSheet(){const w=$('#sheet');if(w.hidden)return;w.classList.remove('open');if(sheetReturn&&document.contains(sheetReturn))sheetReturn.focus();sheetReturn=null;document.body.classList.remove('locked');setTimeout(()=>{if(!w.classList.contains('open'))w.hidden=true},reduced()?0:260)}
+function closeSheet(fromPop){const w=$('#sheet');if(w.hidden)return;if(!fromPop&&history.state&&history.state.sheet)history.back();w.classList.remove('open');if(sheetReturn&&document.contains(sheetReturn))sheetReturn.focus();sheetReturn=null;document.body.classList.remove('locked');setTimeout(()=>{if(!w.classList.contains('open'))w.hidden=true},reduced()?0:260)}
 // glisser vers le bas pour fermer
 (()=>{let y0=null,dy=0;const s=()=>$('.sheet-panel');document.addEventListener('touchstart',e=>{if(e.target.closest('.grab'))y0=e.touches[0].clientY},{passive:true});
   document.addEventListener('touchmove',e=>{if(y0===null)return;dy=Math.max(0,e.touches[0].clientY-y0);s().style.transform=`translateY(${dy}px)`},{passive:true});
@@ -575,12 +579,11 @@ document.addEventListener('click',e=>{
   if(d.goto){if(d.segTo)budgetSeg=d.segTo;return go(d.goto)}
   if(d.me){me=d.me;localStorage.setItem(ME,me);closeSheet();render();return toast(`Appareil associé à ${N(me)}`)}
   if(t.id==='settle'){const v=+d.amount;if(confirm(`Enregistrer un règlement de ${eur(v)} de ${N(d.from)} à ${N(d.to)} ?`)){D.settlements.push({id:uid(),month:d.month,from:d.from,to:d.to,amount:r2(v),date:new Date().toISOString().slice(0,10)});save();toast('Règlement enregistré')}return}
-  if(t.id==='gear')return go('reglages');
-  if(d.del){const [l,id]=d.del.split('|');if(confirm('Supprimer cet élément ?'))del(l,id);return}
+  if(t.id==='gear'||t.closest('#syncState'))return go('reglages');
+  if(d.del){const [l,id]=d.del.split('|'),it=(D[l]||[]).find(x=>x.id===id),nm=it?(it.label||it.name||(it.month?monthLabel(it.month):'')||(it.date?frDate(it.date):'')):'';if(confirm(`Supprimer ${nm?'« '+nm+' »':'cet élément'} ?${l==='placements'?' Son historique de valorisations sera aussi supprimé.':''}`))del(l,id);return}
   if(d.seg){budgetSeg=d.seg;animate=true;return render()}
   if(t.closest('#sheet .sheet-close')||t.id==='sheetBackdrop')return closeSheet();
   if(d.editIncome)return incomeSheet(d.editIncome);if(d.editFixed)return fixedSheet(d.editFixed);if(d.editMonth)return monthSheet(d.editMonth);
-  if(d.addPos)return posSheet(d.addPos);if(d.editPos){const x=D.positions.find(y=>y.id===d.editPos);return posSheet(x.pid,x.id)}if(d.backPlac)return placSheet(d.backPlac);
   if(d.editGoal)return goalSheet(d.editGoal);if(d.editPlac)return placSheet(d.editPlac);
   ({addIncome:()=>incomeSheet(),addFixed:()=>fixedSheet(),editTransfer:transferSheet,addMisc:miscSheet,quickAdd:miscSheet,openHist:()=>go('activite'),chooseMe:whoSheet,addMonth:()=>monthSheet(),addGoal:()=>goalSheet(),addPlac:()=>placSheet(),
     inviteBtn:showInvite,disconnect:()=>{cfg={};localStorage.removeItem(CFG);lastErr='';render();setSync('Local')},
@@ -588,9 +591,10 @@ document.addEventListener('click',e=>{
     reset:()=>{if(confirm(sbOn()?'Vider le cache de cet appareil et recharger depuis Supabase ?':'Effacer toutes les données de cet appareil ?')){adopt(blank());render();pullRemote()}}
   }[t.id]||(()=>{}))();
 });
-$('#sheetBackdrop').addEventListener('click',closeSheet);
+$('#sheetBackdrop').addEventListener('click',()=>closeSheet());
+addEventListener('popstate',()=>closeSheet(true));
 document.addEventListener('input',e=>{const t=e.target;if(t.id==='fixQ'){fixF.q=t.value;render()}if(t.id==='miscQ'){miscF.q=t.value;render()}if(t.id==='histQ'){histF.q=t.value;render()}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&e.target.id==='budgetIn')e.target.blur();
   if(e.key==='Tab'&&!$('#sheet').hidden){const f=[...$('#sheet').querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled&&x.offsetParent);if(!f.length)return;
     const first=f[0],last=f[f.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
 function toast(t){let el=$('#toast');if(!el){el=document.createElement('div');el.id='toast';el.className='toast';el.setAttribute('role','status');document.body.appendChild(el)}el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200)}
@@ -602,8 +606,13 @@ document.addEventListener('change',async e=>{const t=e.target;
   if(t.id==='budgetIn'){D.budget[D.miscMonth||curMonth()]=num(t.value);save()}
   if(t.id==='imp'){try{adopt(mergeData(D,migrate(JSON.parse(await t.files[0].text()))));render();pushRemote();alert('Sauvegarde fusionnée avec les données actuelles.')}catch{alert('Fichier invalide')}}
 });
+// validation commune : champs numériques positifs
+document.addEventListener('submit',e=>{const bad=[...e.target.querySelectorAll('input[inputmode=decimal]')].find(i=>i.value.trim()&&(!/^[\d\s]*[.,]?\d*$/.test(i.value.trim())||isNaN(num(i.value))));
+  if(bad){e.preventDefault();e.stopImmediatePropagation();bad.setCustomValidity('Saisissez un nombre positif (ex. 12,50)');bad.reportValidity();bad.addEventListener('input',()=>bad.setCustomValidity(''),{once:true})}},true);
 document.addEventListener('submit',async e=>{const f=e.target;
-  if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));save()}
+  if(f.classList.contains('qval')){e.preventDefault();const v=num(f.value.value);if(!f.value.value.trim()||v<0)return f.value.focus();
+    D.valuations.push({id:uid(),pid:f.dataset.pid,date:new Date().toISOString().slice(0,10),value:v});save();toast('Valorisation enregistrée');return}
+  if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));D.reminderDay=Math.min(28,Math.max(1,parseInt(v.reminderDay)||1));save();toast('Réglages enregistrés')}
   if(f.id==='fSync'){e.preventDefault();const v=fd(f);cfg=normCfg(v);if(cfg.space&&cfg.space.length<8){$('#syncMsg').textContent='Code d’espace trop court (8 caractères minimum).';return}
     localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote()}
 });
