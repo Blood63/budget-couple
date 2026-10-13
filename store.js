@@ -1,7 +1,7 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=4;
-const LISTS=['months','goals','fixed','misc','placements','incomes','settlements'];
+const DATA_VERSION=5;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions'];
 const SCAL=['names','ratio','transfer'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
@@ -16,7 +16,9 @@ const MIGRATIONS={
     LISTS.forEach(l=>{d[l]=(d[l]||[]).map((x,i)=>Object.assign({u:t,c:i},x))});
     d.fixed.forEach(f=>{f.category=f.category||'autre';if(!f.paidBy)f.paidBy=f.split>=100?'p1':f.split<=0?'p2':'joint'});
     d.misc.forEach(m=>{m.category=m.category||'autre';if(!m.paidBy){m.paidBy=m.payer==='p1'?'p1':m.payer==='p2'?'p2':'joint';m.for=m.payer==='p1'?'p1':m.payer==='p2'?'p2':'common'}});
-    d.deleted=d.deleted||{};d.su=d.su||{};d.budgetU=d.budgetU||{};d.history=d.history||[];d.settlements=d.settlements||[];return d}
+    d.deleted=d.deleted||{};d.su=d.su||{};d.budgetU=d.budgetU||{};d.history=d.history||[];d.settlements=d.settlements||[];return d},
+  /* v4 → v5 : type de placement, banque, mode de taux ; lignes d'enveloppe (positions) */
+  5(d){d.placements=(d.placements||[]).map(p=>Object.assign({type:'autre',bank:'',rateMode:'manual'},p));d.positions=d.positions||[];return d}
 };
 function migrateData(raw){
   let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;
@@ -27,6 +29,11 @@ function migrateData(raw){
   d.misc.forEach(m=>{if(!m.payer)m.payer=m.for==='p1'?'p1':m.for==='p2'?'p2':'common'});
   return d;
 }
+/* ISIN : 2 lettres pays + 9 caractères alphanumériques + 1 chiffre de contrôle (Luhn sur la conversion lettres→nombres) */
+function isinValid(raw){const s=String(raw||'').toUpperCase().replace(/\s/g,'');if(!/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(s))return false;
+  const digits=s.split('').map(c=>/[A-Z]/.test(c)?String(c.charCodeAt(0)-55):c).join('');let sum=0,dbl=true;
+  for(let i=digits.length-2;i>=0;i--){let n=+digits[i];if(dbl){n*=2;if(n>9)n-=9}sum+=n;dbl=!dbl}
+  return (10-sum%10)%10===+digits[digits.length-1]}
 /* Signature d'un élément (sans métadonnées) pour détecter les modifications */
 const META=new Set(['u','by','fu','c']);
 const sig=x=>{const {u,by,fu,...r}=x;return JSON.stringify(r)};
@@ -66,4 +73,4 @@ function mergeData(a,b){
 }
 /* Forme canonique (sans état d'interface) pour comparer deux états */
 const canon=d=>{const {miscMonth,...r}=d;return JSON.stringify(r)};
-if(typeof module!=='undefined')module.exports={DATA_VERSION,LISTS,migrateData,mergeData,stamp,snapshot,canon,blankData};
+if(typeof module!=='undefined')module.exports={isinValid,DATA_VERSION,LISTS,migrateData,mergeData,stamp,snapshot,canon,blankData};

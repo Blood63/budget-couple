@@ -1,0 +1,91 @@
+{
+  "checked": "2026-10-13",
+  "note": "Taux annuels bruts de l'épargne réglementée. Mis à jour par .github/workflows/taux.yml (vérification mensuelle) ou à la main : ajouter une entrée en tête de 'history'.",
+  "products": {
+    "livretA": {
+      "name": "Livret A",
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2365",
+      "sourceName": "service-public.gouv.fr",
+      "history": [
+        {"from": "2026-08-01", "rate": 1.7, "ref": "Arrêté du 28 juillet 2026"},
+        {"from": "2026-02-01", "rate": 1.5},
+        {"from": "2025-08-01", "rate": 1.7},
+        {"from": "2025-02-01", "rate": 2.4},
+        {"from": "2023-02-01", "rate": 3.0},
+        {"from": "2022-08-01", "rate": 2.0},
+        {"from": "2022-02-01", "rate": 1.0},
+        {"from": "2020-02-01", "rate": 0.5}
+      ]
+    },
+    "ldds": {
+      "name": "LDDS",
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2368",
+      "sourceName": "service-public.gouv.fr",
+      "history": [
+        {"from": "2026-08-01", "rate": 1.7, "ref": "Arrêté du 28 juillet 2026"},
+        {"from": "2026-02-01", "rate": 1.5},
+        {"from": "2025-08-01", "rate": 1.7},
+        {"from": "2025-02-01", "rate": 2.4},
+        {"from": "2023-02-01", "rate": 3.0},
+        {"from": "2022-08-01", "rate": 2.0},
+        {"from": "2022-02-01", "rate": 1.0},
+        {"from": "2020-02-01", "rate": 0.5}
+      ]
+    },
+    "lep": {
+      "name": "LEP",
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2367",
+      "sourceName": "service-public.gouv.fr",
+      "history": [
+        {"from": "2026-08-01", "rate": 2.5, "ref": "Arrêté du 29 juillet 2026"},
+        {"from": "2026-02-01", "rate": 2.5},
+        {"from": "2025-08-01", "rate": 2.7},
+        {"from": "2025-02-01", "rate": 3.5},
+        {"from": "2024-08-01", "rate": 4.0},
+        {"from": "2024-02-01", "rate": 5.0},
+        {"from": "2023-08-01", "rate": 6.0},
+        {"from": "2023-02-01", "rate": 6.1},
+        {"from": "2022-08-01", "rate": 4.6},
+        {"from": "2022-02-01", "rate": 2.2},
+        {"from": "2020-02-01", "rate": 1.0}
+      ]
+    },
+    "cel": {
+      "name": "CEL",
+      "source": "https://www.banque-france.fr/fr/a-votre-service/particuliers/connaitre-pratiques-bancaires-assurance/epargne/epargne-logement",
+      "sourceName": "banque-france.fr",
+      "history": [
+        {"from": "2026-08-01", "rate": 1.25, "ref": "Arrêté du 28 juillet 2026"},
+        {"from": "2026-02-01", "rate": 1.0},
+        {"from": "2025-08-01", "rate": 1.25},
+        {"from": "2025-02-01", "rate": 1.5},
+        {"from": "2023-02-01", "rate": 2.0},
+        {"from": "2022-08-01", "rate": 1.25},
+        {"from": "2022-02-01", "rate": 0.75},
+        {"from": "2020-02-01", "rate": 0.25}
+      ]
+    }
+  },
+  "pel": {
+    "name": "PEL",
+    "source": "https://www.banque-france.fr/fr/a-votre-service/particuliers/connaitre-pratiques-bancaires-assurance/epargne/epargne-logement",
+    "sourceName": "banque-france.fr",
+    "note": "Taux fixé à l'ouverture et garanti pendant toute la durée du plan (hors prime d'État).",
+    "byOpening": [
+      {"from": "2026-01-01", "rate": 2.0},
+      {"from": "2025-01-01", "rate": 1.75},
+      {"from": "2024-01-01", "rate": 2.25},
+      {"from": "2023-01-01", "rate": 2.0},
+      {"from": "2016-08-01", "rate": 1.0},
+      {"from": "2016-02-01", "rate": 1.5},
+      {"from": "2015-02-01", "rate": 2.0},
+      {"from": "2003-08-01", "rate": 2.5}
+    ]
+  },
+  "livretJeune": {
+    "name": "Livret Jeune",
+    "note": "Taux libre fixé par la banque, au moins égal à celui du Livret A.",
+    "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2369",
+    "sourceName": "service-public.gouv.fr"
+  }
+}

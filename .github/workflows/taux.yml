@@ -1,0 +1,30 @@
+name: Vérification des taux réglementés
+on:
+  schedule:
+    - cron: "0 7 2 * *"   # le 2 de chaque mois à 7 h UTC (les taux changent au 1er février / 1er août)
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comparer rates.json aux sources officielles
+        id: check
+        run: |
+          set +e
+          python3 scripts/check_rates.py rates.json
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Ouvrir une issue si un taux a changé ou n'est plus lisible
+        if: steps.check.outputs.code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Taux réglementés : mise à jour de rates.json nécessaire"
+          [ "${{ steps.check.outputs.code }}" = "20" ] && title="Taux réglementés : vérification manuelle nécessaire"
+          if gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[].number' | grep -q .; then
+            echo "Issue déjà ouverte"; exit 0
+          fi
+          gh issue create --title "$title" --body-file rates-report.md
