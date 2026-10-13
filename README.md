@@ -31,7 +31,7 @@ python3 -m http.server 8000
 ## Synchroniser vos deux téléphones (Supabase, gratuit)
 1. Créez un projet sur <https://supabase.com>.
 2. **SQL Editor** → collez et exécutez `supabase/schema.sql`.
-3. **Project Settings → API** : copiez l'**URL du projet** et la clé **anon public**.
+3. **Project Settings → API** : copiez l'**URL du projet** et la clé **publishable** (`sb_publishable_…`) ou l'ancienne clé **anon**. En cas de problème, Réglages affiche le message d'erreur précis (table absente, clé refusée, URL injoignable).
 4. Dans l'appli → **Réglages** : collez URL + clé, puis choisissez un **code d'espace** long et secret (8 caractères min.). Faites la même chose sur l'autre téléphone avec **le même code**.
 5. La synchro se fait à chaque modification et à l'ouverture (la version la plus récente gagne).
 

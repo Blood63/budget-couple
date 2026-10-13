@@ -199,26 +199,38 @@ function vReglages(){
    <label>Code d’espace partagé (même code sur vos deux téléphones)<input name="space" value="${esc(cfg.space||'')}" placeholder="un code long et secret"></label>
    <button class="btn">Enregistrer & synchroniser</button>
    <button type="button" class="btn ghost" id="disconnect">Désactiver la synchro</button></form>
-   <p class="mut" id="syncMsg"></p></div>
+   <p class="mut" id="syncMsg">${esc(lastErr)}</p></div>
   <div class="card"><h2>Sauvegarde</h2><div class="f2"><button class="btn ghost" id="exp">Exporter (JSON)</button>
    <label class="btn ghost" style="text-align:center;color:var(--txt);font-size:15px">Importer<input type="file" id="imp" accept=".json" hidden></label></div>
    <button class="btn ghost" id="reset" style="margin-top:8px;width:100%;color:var(--bad)">Tout effacer</button></div>`;
 }
 /* ---------- Supabase (REST, sans SDK) ---------- */
 const sbOn=()=>cfg.url&&cfg.key&&cfg.space;
-const sbH=()=>({apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json'});
+// Nouvelles clés sb_publishable_ : uniquement dans "apikey" (pas de Bearer). Anciennes clés JWT anon : apikey + Bearer.
+const sbH=()=>{const h={apikey:cfg.key,'Content-Type':'application/json'};if(!cfg.key.startsWith('sb_'))h.Authorization='Bearer '+cfg.key;return h};
+function normCfg(c){const url=(c.url||'').trim().replace(/\/+$/,'').replace(/\/rest\/v1$/,'');return{url:url&&!/^https?:\/\//.test(url)?'https://'+url:url,key:(c.key||'').replace(/\s+/g,''),space:(c.space||'').trim()}}
+cfg=normCfg(cfg);
+let lastErr='';
+async function sbErr(r){let j={};try{j=await r.json()}catch{}const m=j.message||'';
+  if(r.status===404||j.code==='PGRST205'||j.code==='42P01')return'Table budget_spaces introuvable : exécutez supabase/schema.sql dans le SQL Editor de Supabase.';
+  if(r.status===401||/api key|apikey|JWT/i.test(m))return'Clé refusée ('+r.status+') : vérifiez la clé publishable/anon (attention aux l/I).';
+  if(r.status===403||j.code==='42501')return'Accès refusé par les politiques RLS : ré-exécutez supabase/schema.sql.';
+  if(j.code==='23514')return'Code d’espace trop court (8 caractères minimum).';
+  return'Erreur Supabase '+r.status+(m?' : '+m:'');}
+function netErr(e){return e&&e.sb?e.sb:'Impossible de joindre '+(cfg.url||'Supabase')+' : vérifiez l’URL (projet .supabase.co complet) et la connexion.'}
+function showErr(t){lastErr=t;const m=$('#syncMsg');if(m)m.textContent=t}
 function setSync(t,on){const b=$('#syncState');b.textContent=t;b.className='badge'+(on?' on':'')}
 async function pullRemote(){
-  if(!sbOn())return setSync('Local');
+  if(!sbOn())return setSync('Local');if(!navigator.onLine){setSync('Hors ligne');return showErr('Pas de connexion internet.')}
   try{const r=await fetch(`${cfg.url}/rest/v1/budget_spaces?code=eq.${encodeURIComponent(cfg.space)}&select=data,updated_at`,{headers:sbH()});
-    if(!r.ok)throw new Error(r.status);const [row]=await r.json();
+    if(!r.ok)throw{sb:await sbErr(r)};const [row]=await r.json();
     if(row&&row.data&&(row.data.updated||0)>(D.updated||0)){D=Object.assign(blank(),row.data);save(false)}
-    else if(!row||(D.updated||0)>(row.data?.updated||0))await pushRemote();
-    setSync('Synchro ✓',true)}catch(e){setSync('Hors ligne');console.warn('sync',e)}
+    else if(!row||(D.updated||0)>(row.data?.updated||0)){await pushRemote();return}
+    setSync('Synchro ✓',true);showErr('Synchronisé ✓')}catch(e){setSync('Erreur synchro');showErr(netErr(e));console.warn('sync',e)}
 }
 let pt;function pushRemote(){if(!sbOn())return;clearTimeout(pt);return new Promise(res=>pt=setTimeout(async()=>{
   try{const r=await fetch(`${cfg.url}/rest/v1/budget_spaces?on_conflict=code`,{method:'POST',headers:{...sbH(),Prefer:'resolution=merge-duplicates'},body:JSON.stringify({code:cfg.space,data:D,updated_at:new Date().toISOString()})});
-   if(!r.ok)throw new Error(r.status);setSync('Synchro ✓',true)}catch(e){setSync('Hors ligne');console.warn('push',e)}res()},600))}
+   if(!r.ok)throw{sb:await sbErr(r)};setSync('Synchro ✓',true);showErr('Synchronisé ✓')}catch(e){setSync('Erreur synchro');showErr(netErr(e));console.warn('push',e)}res()},600))}
 /* ---------- Rendu & événements ---------- */
 const views={epargne:vEpargne,objectifs:vObjectifs,fixes:vFixes,diverses:vDiverses,placements:vPlacements,reglages:vReglages};
 function render(){$('#view').innerHTML=views[tab]();bind()}
@@ -240,8 +252,8 @@ function bind(){
   on('#fMisc','submit',e=>{e.preventDefault();const f=fd(e.target);D.misc.push({id:uid(),date:f.date,label:f.label,amount:num(f.amount),payer:f.payer});save()});
   on('#fPlac','submit',e=>{e.preventDefault();const f=fd(e.target);D.placements.push({id:uid(),name:f.name,owner:f.owner,capital:num(f.capital),monthly:num(f.monthly),rate:num(f.rate)});save()});
   on('#fNames','submit',e=>{e.preventDefault();const f=fd(e.target);D.names={p1:f.p1||'Personne 1',p2:f.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(f.ratio)));save()});
-  on('#fSync','submit',async e=>{e.preventDefault();const f=fd(e.target);cfg={url:f.url.trim().replace(/\/$/,''),key:f.key.trim(),space:f.space.trim()};
-    localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote();$('#syncMsg').textContent=$('#syncState').textContent});
+  on('#fSync','submit',async e=>{e.preventDefault();const f=fd(e.target);cfg=normCfg(f);if(cfg.space&&cfg.space.length<8){$('#syncMsg').textContent='Code d’espace trop court (8 caractères minimum).';return}
+    localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote();await pushRemote()});
   on('#disconnect','click',()=>{cfg={};localStorage.removeItem(CFG);render();setSync('Local')});
   on('#exp','click',()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,2)],{type:'application/json'}));a.download='budget-couple.json';a.click()});
   on('#imp','change',async e=>{try{D=Object.assign(blank(),JSON.parse(await e.target.files[0].text()));save()}catch{alert('Fichier invalide')}});
