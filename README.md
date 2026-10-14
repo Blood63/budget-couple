@@ -110,3 +110,9 @@ manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + 
 - Coût estimé des frais sur 10 ans comparé à trois repères (moyenne du marché, contrats en ligne, contrats bancaires), même rendement brut pour tous.
 - Repères dans `market.json` (sources et dates : France Assureurs, UFC-Que Choisir, comparateurs publics, AMF, ACPR…). Les seuils de franchise sont des repères internes, signalés comme tels.
 - Migration de données v10 (champ `contract` sur les enveloppes, profil / personnes sur les assurances), tests `tests/test_quality.js` et `tests/e2e/test_qualite.py`.
+
+## v10 — Répartition des objectifs communs
+- Par objectif commun : répartition de la cible selon les réglages (défaut), en % (curseur + presets 50/50, 60/40, 70/30, 80/20, 40/60, 30/70) ou en montants fixes par personne (la somme doit égaler la cible).
+- La répartition automatique de l'épargne finance la **part cible de chaque personne** (besoin = reste de sa part ÷ mois restants) ; l'historique est recalculé à chaque changement. Les répartitions manuelles d'un mois sont conservées (au-delà de sa part, elles complètent la part de l'autre).
+- Affichage par personne : part cible, déjà versé (dont part de l'initial), reste, €/mois nécessaire.
+- Migration v11 additive (`split: null` = réglages). Tests : `tests/e2e/test_objectif_repartition.py`, check-up global `tests/e2e/test_checkup.py` (données vides, anciennes, volumineuses ; 320/390/768 px ; réseau externe bloqué).
