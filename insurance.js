@@ -77,14 +77,14 @@ function insSheet(id,pre){const i=D.insurances.find(x=>x.id===id)||Object.assign
    <div class="ins-doc">${i.doc?`<p>${ic('link',14)} <b>${esc(i.doc.name)}</b> <small class="mut">${Math.round(i.doc.size/1024)} Ko · ${i.doc.storage==='supabase'?'Supabase (privé)':'cet appareil uniquement'}</small></p>
     <div class="f2"><button type="button" class="btn ghost" id="insOpen">Ouvrir le document</button><button type="button" class="btn ghost" id="insReread">Relire le document</button></div>
     ${i.doc.storage==='local'&&sbOn()?`<button type="button" class="btn ghost wide" id="insPush">Envoyer vers Supabase</button>${i.doc.why&&STORAGE_HELP[i.doc.why]?`<p class="mut">${STORAGE_HELP[i.doc.why]}</p>`:''}`:''}`:''}
-    <label class="file-l">${i.doc?'Remplacer le document':'Ajouter le document (PDF ou photo)'}<input type="file" id="insFile" accept="application/pdf,image/*"></label>
-    <label class="check"><input type="checkbox" id="insOcr"> Reconnaissance de texte (OCR) pour les photos et scans <small class="mut">— plus lent, fait sur le téléphone</small></label>
+    <label class="btn ghost file-l">${i.doc?'Remplacer le document':'Ajouter le document (PDF ou photo)'}<input type="file" id="insFile" accept="application/pdf,image/*"></label>
+    <label class="check"><input type="checkbox" id="insOcr"><span>Reconnaissance de texte (OCR) pour les photos et scans<small class="mut">Plus lent, fait sur le téléphone</small></span></label>
     <p id="insStatus" class="mut" role="status" aria-live="polite"></p><div id="insPreview"></div></div>
    <form id="fIns" novalidate>
     <div class="f2"><label>Type<select name="type">${INS_TYPES.map(([k,l])=>`<option value="${k}" ${i.type===k?'selected':''}>${l}</option>`).join('')}</select></label><label>Nom<input name="label" value="${v('label')}" placeholder="ex. Habitation appartement"></label></div>
     <div class="f2"><label>Assureur<input name="insurer" value="${v('insurer')}"></label><label>N° de contrat<input name="contract" value="${v('contract')}"></label></div>
     <label>Assuré(s)<input name="insured" value="${v('insured')}"></label><label>Bien / véhicule assuré<input name="object" value="${v('object')}"></label>
-    <div class="f2"><label>Cotisation (€)<input name="premium" inputmode="decimal" value="${i.premium??''}"></label><label>Fréquence<select name="premiumFreq">${[['mois','par mois'],['trimestre','par trimestre'],['an','par an']].map(([k,l])=>`<option value="${k}" ${i.premiumFreq===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
+    <div class="f2"><label>Cotisation (€)<input name="premium" inputmode="decimal" value="${i.premium!=null?(+i.premium).toFixed(2).replace('.',','):''}"></label><label>Fréquence<select name="premiumFreq">${[['mois','par mois'],['trimestre','par trimestre'],['an','par an']].map(([k,l])=>`<option value="${k}" ${i.premiumFreq===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
     <div class="f2"><label>Date d’effet<input name="start" type="date" value="${i.start&&!i.start.startsWith('--')?i.start:''}"></label><label>Échéance<input name="end" value="${i.end?isoFr(i.end):''}" placeholder="jj/mm ou jj/mm/aaaa"></label></div>
     <label class="check"><input type="checkbox" name="tacit" ${i.tacit?'checked':''}> Renouvelé par tacite reconduction</label>
     ${area('guarantees','Garanties principales')}${area('franchise','Franchises')}${area('ceilings','Plafonds')}${area('exclusions','Exclusions notables')}
@@ -94,7 +94,7 @@ function insSheet(id,pre){const i=D.insurances.find(x=>x.id===id)||Object.assign
     ${ci||d?`<div class="preview">${d?`<small>Prochaine échéance</small><b>${isoFr(d)}</b>`:''}${ci?`<small>${esc(ci.txt)}</small>`:''}<small><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F19083" target="_blank" rel="noopener">Règles de résiliation (service-public.gouv.fr)</a></small></div>`:''}
     <p id="insErr" class="neg" role="alert"></p><button class="btn">Enregistrer</button>${!isNew?`<button type="button" class="btn danger" data-del="insurances|${i.id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>bindIns(i,isNew))}
 function fillIns(o){const f=$('#fIns');if(!f)return 0;let n=0;Object.entries(o).forEach(([k,v])=>{const el=f.elements[k];if(!el||v==null||v==='')return;
-  if(el.type==='checkbox'){el.checked=!!v;n++;return}if(k==='end'||k==='renewal'){el.value=isoFr(v)}else el.value=v;n++;el.classList.add('filled')});if(o.renewal&&!o.end&&f.elements.end){f.elements.end.value=isoFr(o.renewal)}
+  if(el.type==='checkbox'){el.checked=!!v;n++;return}if(k==='end'||k==='renewal'){el.value=isoFr(v)}else if(k==='premium')el.value=(+v).toFixed(2).replace('.',',');else el.value=v;n++;el.classList.add('filled')});if(o.renewal&&!o.end&&f.elements.end){f.elements.end.value=isoFr(o.renewal)}
   if(o.type&&!f.elements.label.value)f.elements.label.value=insType(o.type)[1]+(o.insurer?' '+o.insurer:'');return n}
 function bindIns(i,isNew){const st=$('#insStatus');let pendingFile=null;
   const analyse=async(file)=>{st.textContent='Lecture du document…';try{const r=await extractFromFile(file,{allowOcr:$('#insOcr').checked,progress:p=>st.textContent=`Reconnaissance du texte… ${p} %`});

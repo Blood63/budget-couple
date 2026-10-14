@@ -22,7 +22,7 @@ try:
   A.wait_for_function("/information/.test(document.querySelector('#insStatus').textContent)",timeout=20000)
   g=lambda pg,n:pg.eval_on_selector(f'#fIns [name={n}]','e=>e.value')
   got={k:g(A,k) for k in ['insurer','contract','premium','premiumFreq','end','phone','franchise']};print('extraction PDF',got)
-  assert got['insurer']=='MACIF' and got['contract']=='HAB-2024-778812' and got['premium'].replace(',','.') in('214.8','214.80') and got['premiumFreq']=='an' and got['end']=='01/03' and '05 49' in got['phone'],got
+  assert got['insurer']=='MACIF' and got['contract']=='HAB-2024-778812' and got['premium']=='214,80' and got['premiumFreq']=='an' and got['end']=='01/03' and '05 49' in got['phone'],got
   A.select_option('#fIns [name=fixedId]','f1');A.screenshot(path=f'{OUT}/v7-3-assurance-extraction.png')
   A.click('#fIns button:not([type])');A.wait_for_timeout(600)
   d=A.evaluate("D.insurances[0].doc");print('doc sans bucket',d);assert d['storage']=='local' and d['why']=='missing'
@@ -42,7 +42,7 @@ try:
   A.wait_for_function("/trouvée|aucune information/.test(document.querySelector('#insStatus').textContent)",timeout=180000)
   got={k:g(A,k) for k in ['insurer','contract','premium','premiumFreq','object','type']};print('OCR photo',A.inner_text('#insStatus'),got)
   # le logo « AXA » en très gros caractères n'est pas toujours reconnu par l'OCR : champ laissé vide à compléter
-  assert '0098765432' in got['contract'] and got['premiumFreq']=='mois' and got['type']=='auto',got
+  assert '0098765432' in got['contract'] and got['premiumFreq']=='mois' and got['premium']=='42,50' and got['type']=='auto',got
   A.select_option('#fIns [name=fixedId]','__new');A.click('#fIns button:not([type])');A.wait_for_timeout(800)
   print('charge créée',A.evaluate("D.fixed.map(f=>f.label+':'+f.amount)"))
   # suppression : le fichier Storage est supprimé aussi

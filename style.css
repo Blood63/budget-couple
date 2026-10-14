@@ -208,3 +208,4 @@ fieldset.feed{border:1px solid rgba(255,255,255,.1);border-radius:var(--r-sm);pa
 .ibar.est::after{background:var(--acc)}.ibar.fut::after{background:repeating-linear-gradient(45deg,var(--acc) 0 4px,transparent 4px 8px)}
 .rep-card{border-color:rgba(124,108,255,.35)}
 .bal-l li>span{grid-column:1}.bal-l li>b{grid-column:2}.bal-l li>small{grid-column:1}
+.check span small{display:block;font-size:12.5px}

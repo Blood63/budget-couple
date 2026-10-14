@@ -27,14 +27,14 @@ try:
   assert r['savings']=={'p1':350,'p2':200} and r['prevSavings']==550 and r['misc']==120 and r['goals'][0]['saved']==400+300+250+350+200,r
   t=pg.inner_text('#view');assert 'Bilan de décembre 2026' in t and 'Intérêts 2026 à valider' in t;print('BILAN + CARTE INTÉRÊTS OK')
   pg.add_script_tag(path='/tmp/axe.min.js');v=pg.evaluate(AX);print('AXE accueil',v);assert not v
-  pg.screenshot(path=f'{OUT}/v7-1-accueil-janvier.png',full_page=True)
+  pg.wait_for_timeout(800);pg.screenshot(path=f'{OUT}/v7-1-accueil-janvier.png')
   est=pg.evaluate("liInt(D.placements[0],2026)");print('livret estimé',est['amount'],'B0',est['B0']);assert est['B0']==7700 and 100<est['amount']<200
   f='form.qint[data-pid=pl1]';pg.fill(f+' [name=amount]','131,25');pg.click(f+' button:not([type])');pg.wait_for_timeout(300)
   li=pg.evaluate("[D.interests.find(i=>i.id==='int-pl1-2026'),D.placements[0].capital]");print(li);assert li[0]['amount']==131.25 and li[0]['added'] and li[1]==8131.25
   f='form.qint[data-pid=pl2]';pg.fill(f+' [name=rate]','2,5');pg.click(f+' button:not([type])');pg.wait_for_timeout(300)
   av=pg.evaluate("D.interests.find(i=>i.id==='int-pl2-2026')");print(av);assert av['amount']==round(10500*0.6*0.025,2) and av['rate']==2.5
   assert 'à valider' not in pg.inner_text('#view');print('VALIDATION INTÉRÊTS OK')
-  pg.evaluate("go('interets')");pg.wait_for_timeout(900);t=pg.inner_text('#view');assert '2026' in t and '288,75' in t.replace('\u202f',' ').replace('\xa0',' '),t[:400]
+  pg.evaluate("go('interets')");pg.wait_for_timeout(1200);t=pg.inner_text('#view');assert '2026' in t and '288,75' in t.replace('\u202f',' ').replace('\xa0',' '),t[:400]
   v=pg.evaluate(AX);print('AXE intérêts',v);assert not v;pg.screenshot(path=f'{OUT}/v7-5-recap-interets.png',full_page=True)
   pg.evaluate("go('bilans')");pg.wait_for_timeout(500);pg.click('[data-rep="rep-2026-12"]');pg.wait_for_timeout(500);v=pg.evaluate(AX);print('AXE bilan',v);assert not v
   pg.screenshot(path=f'{OUT}/v7-6-bilan-du-mois.png')
@@ -48,7 +48,7 @@ try:
     sw=q.evaluate("document.documentElement.scrollWidth");assert sw<=w,('débordement',w,sw)
     for t in ['accueil','assurances','interets','bilans','placements','reglages']:
       q.evaluate(f"go('{t}')");q.wait_for_timeout(250);sw=q.evaluate("document.documentElement.scrollWidth");assert sw<=w,('débordement',t,w,sw)
-    if w==360:q.evaluate("budgetSeg='comptes';go('budget')");q.wait_for_timeout(500);q.screenshot(path=f'{OUT}/v7-2-comptes-360.png',full_page=True)
+    if w==360:q.evaluate("budgetSeg='comptes';go('budget')");q.wait_for_timeout(1000);q.screenshot(path=f'{OUT}/v7-2-comptes-360.png')
     q.context.close()
   print('LARGEURS 360/390/430 OK')
   b.close()
