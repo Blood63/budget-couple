@@ -17,7 +17,7 @@ with sync_playwright() as p:
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V3))});sessionStorage.s=1}}")
   pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
   pg.goto('http://localhost:18765/');pg.wait_for_timeout(900)
-  d=pg.evaluate('D');assert d['version']==7 and d['fixed'][0]['category']=='autre' and d['fixed'][0]['paidBy']=='joint';print('MIGRATION v3→v4 OK')
+  d=pg.evaluate('D');assert d['version']==8 and d['fixed'][0]['category']=='autre' and d['fixed'][0]['paidBy']=='joint';print('MIGRATION v3→v4 OK')
   # choix de la personne au premier lancement
   assert pg.is_visible('#sheet .who');pg.click('[data-me=p1]');pg.wait_for_timeout(300)
   # catégories et payeur réel des charges

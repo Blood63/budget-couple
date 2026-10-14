@@ -20,5 +20,22 @@ a.equal(S.canon(S.mergeData(m1,m1)),S.canon(m1));console.log('OK');
  const q=S.irCompute(150000,2,2,P),noCap=S.irCompute(150000,2,0,P);a.ok(noCap.net-q.net<=2*2*1807+1,'quotient familial plafonné');
  a.equal(S.proDeduct(3000,P),509);a.equal(S.proDeduct(30000,P),3000);a.equal(S.proDeduct(200000,P),14555);
  const t=S.taxEstimate({p1:{sal:30000,other:0},p2:{sal:24000,other:0}},{mode:'separe',children:0},P);a.equal(t.sep.total,2265);a.equal(t.com.net,2575);
- const m=S.migrateData({version:6,placements:[]});a.equal(m.version,7);a.deepEqual(m.births,{p1:'2000-06-22',p2:'2002-03-10'});a.equal(m.tax.mode,'separe');a.deepEqual(m.dismissed,[]);
+ const m=S.migrateData({version:6,placements:[]});a.equal(m.version,8);a.deepEqual(m.births,{p1:'2000-06-22',p2:'2002-03-10'});a.equal(m.tax.mode,'separe');a.deepEqual(m.dismissed,[]);
  const m2=S.migrateData(JSON.parse(JSON.stringify(m)));a.equal(S.canon(m2),S.canon(m));console.log('OK impôt + migration v7')}
+/* v8 : comptes courants, assurances, intérêts, bilans */
+{const a=require('assert'),S=require('../store.js');
+ const v7={version:7,names:{p1:'Paul',p2:'Lucie'},ratio:50,fixed:[{id:'f1',label:'Loyer',amount:900,day:5,split:50,paidBy:'joint'},{id:'f2',label:'Mobile',amount:20,day:8,split:100,paidBy:'p1'}],
+   incomes:[{id:'i1',person:'p1',type:'salaire',amount:2000,recurring:true},{id:'i2',person:'p2',type:'salaire',amount:1800,recurring:true}],misc:[],months:[],goals:[],placements:[],transfer:{amount:0}};
+ const m=S.migrateData(JSON.parse(JSON.stringify(v7)));a.equal(m.version,8);
+ a.deepEqual(m.accounts.map(x=>x.id).sort(),['acc-joint','acc-p1','acc-p2']);a.equal(m.fixed[0].account,'acc-joint');a.equal(m.fixed[1].account,'acc-p1');a.equal(m.incomes[1].account,'acc-p2');
+ ['insurances','interests','movements','reports'].forEach(k=>a.deepEqual(m[k],[]));
+ // deux appareils migrent indépendamment → données identiques ; la fusion ne duplique rien
+ const m2=S.migrateData(JSON.parse(JSON.stringify(v7)));a.equal(S.canon(m),S.canon(m2));const mg=S.mergeData(m,m2);a.equal(mg.accounts.length,3);
+ a.equal(S.canon(S.migrateData(JSON.parse(JSON.stringify(m)))),S.canon(m),'migration idempotente');
+ // toutes les versions de départ
+ for(const v of [undefined,1,2,3,4,5,6,7]){const d=S.migrateData({version:v,fixed:[{id:'x',label:'A',amount:10,day:3,split:50}],misc:[],goals:[]});a.equal(d.version,8,'depuis v'+v);a.ok(Array.isArray(d.accounts)&&Array.isArray(d.reports),'listes v'+v);a.equal(d.fixed.length,1)}
+ // données vides
+ const e=S.migrateData({});a.equal(e.version,8);a.equal(e.accounts.length,0);
+ // pas d'historique pour les bilans automatiques
+ const snap=S.snapshot(e);e.reports.push({id:'rep-2026-09',month:'2026-09'});S.stamp(e,snap,1000,'p1');a.equal(e.history.length,0);
+ console.log('OK migration v8 (toutes versions, 2 appareils)')}

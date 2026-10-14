@@ -1,17 +1,27 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=7;
-const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed'];
-const SCAL=['names','ratio','transfer','reminderDay','births','tax'];
+const DATA_VERSION=8;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports'];
+const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
 const BIRTHS={p1:'2000-06-22',p2:'2002-03-10'},TAX0={mode:'separe',children:0,childOf:'p1'};
-const blankData=()=>({births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
+const blankData=()=>({accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
    v3 → v4 : horodatage par élément (u, c), suppressions (tombstones), catégories, payeur réel/bénéficiaire, historique. */
+/* Comptes courants créés à la migration v8 : identifiants déterministes (deux appareils qui migrent chacun de leur côté obtiennent les mêmes comptes) */
+const ACC_ID={joint:'acc-joint',p1:'acc-p1',p2:'acc-p2'};
 const MIGRATIONS={
+  /* v7 → v8 : comptes courants (une charge = un compte de prélèvement, un revenu = un compte de réception), assurances, intérêts, mouvements de livrets, bilans mensuels */
+  8(d){const t=d.updated||0,names=Object.assign({p1:'Emilien',p2:'Julie'},d.names);d.accounts=Array.isArray(d.accounts)?d.accounts:[];
+    const used=new Set();(d.fixed||[]).forEach(f=>used.add(f.paidBy==='p1'||f.paidBy==='p2'?f.paidBy:'joint'));(d.incomes||[]).forEach(i=>used.add(i.person==='p2'?'p2':'p1'));
+    (d.misc||[]).forEach(m=>used.add(m.paidBy==='p1'||m.paidBy==='p2'?m.paidBy:'joint'));if(d.transfer&&d.transfer.amount){used.add('p1');used.add('p2')}
+    ['joint','p1','p2'].forEach((o,i)=>{if(used.has(o)&&!d.accounts.some(a=>a.id===ACC_ID[o]))d.accounts.push({id:ACC_ID[o],label:o==='joint'?'Compte joint':'Compte '+names[o],bank:'',owner:o,u:t,c:i})});
+    (d.fixed||[]).forEach(f=>{if(!f.account)f.account=ACC_ID[f.paidBy==='p1'||f.paidBy==='p2'?f.paidBy:'joint']});
+    (d.incomes||[]).forEach(i=>{if(!i.account)i.account=ACC_ID[i.person==='p2'?'p2':'p1']});
+    ['insurances','interests','movements','reports'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});if(!d.notify||typeof d.notify!=='object')d.notify={reports:false};return d},
   7:d=>{if(!Array.isArray(d.dismissed))d.dismissed=[]; // v7 : conseils masqués (liste synchronisée), dates de naissance, situation fiscale
     if(!d.births||typeof d.births!=='object')d.births={...BIRTHS};if(!d.tax||typeof d.tax!=='object')d.tax={...TAX0};return d},
   3(d){d.fixed=(d.fixed||[]).map(f=>{if(typeof f.split!=='number')f.split=f.payer==='p1'?100:f.payer==='p2'?0:(typeof d.ratio==='number'?d.ratio:50);return f});d.incomes=d.incomes||[];return d},
@@ -52,13 +62,14 @@ function isinValid(raw){const s=String(raw||'').toUpperCase().replace(/\s/g,'');
   return (10-sum%10)%10===+digits[digits.length-1]}
 /* Signature d'un élément (sans métadonnées) pour détecter les modifications */
 const META=new Set(['u','by','fu','c']);
+const QUIET=new Set(['reports','notify']); // générés automatiquement / propres à l'appareil : pas d'historique
 const sig=x=>{const {u,by,fu,...r}=x;return JSON.stringify(r)};
-const itemLabel=(l,x)=>l==='dismissed'?(x.title||'Conseil'):x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
+const itemLabel=(l,x)=>l==='dismissed'?(x.title||'Conseil'):l==='interests'?`Intérêts ${x.year}`:l==='movements'?(x.label||'Mouvement'):x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
 function snapshot(d){const s={};LISTS.forEach(l=>d[l].forEach(x=>s[l+'\u0001'+x.id]={sig:sig(x),label:itemLabel(l,x),obj:JSON.parse(JSON.stringify(x))}));SCAL.forEach(k=>s['$'+k]={sig:JSON.stringify(d[k])});
   Object.keys(d.budget).forEach(m=>s['b\u0001'+m]={sig:String(d.budget[m])});return s}
 /* Compare l'état courant à l'instantané : horodate les éléments modifiés, crée les tombstones et l'historique */
 function stamp(d,snap,now,me){
-  const seen=new Set(),hist=[];const H=(op,kind,label)=>hist.push({id:Math.random().toString(36).slice(2,10)+now.toString(36),t:now,by:me||null,op,kind,label});
+  const seen=new Set(),hist=[];const H=(op,kind,label)=>QUIET.has(kind)||hist.push({id:Math.random().toString(36).slice(2,10)+now.toString(36),t:now,by:me||null,op,kind,label});
   LISTS.forEach(l=>d[l].forEach((x,i)=>{const k=l+'\u0001'+x.id;seen.add(k);const p=snap[k];
     if(!p){x.u=now;x.by=me||null;if(x.c===undefined)x.c=now+i/1000;H('add',l,itemLabel(l,x))}
     else if(p.sig!==sig(x)){x.u=now;x.by=me||null;x.fu=Object.assign({},x.fu);new Set([...Object.keys(x),...Object.keys(p.obj)]).forEach(f=>{if(!META.has(f)&&JSON.stringify(x[f])!==JSON.stringify(p.obj[f]))x.fu[f]=now});H('edit',l,itemLabel(l,x))}}));
@@ -103,4 +114,4 @@ function irCompute(R,base,children,P){R=Math.max(0,R);const parts=base+childPart
 function taxEstimate(inc,tax,P){const R=k=>Math.max(0,inc[k].sal-proDeduct(inc[k].sal,P))+inc[k].other,n=+tax.children||0,co=tax.childOf||'p1';
   const sep={p1:irCompute(R('p1'),1,co==='p1'?n:0,P),p2:irCompute(R('p2'),1,co==='p2'?n:0,P)};sep.total=sep.p1.net+sep.p2.net;
   const com=irCompute(R('p1')+R('p2'),2,n,P);return{sep,com,diff:sep.total-com.net,net:{p1:R('p1'),p2:R('p2')}}}
-if(typeof module!=='undefined')module.exports={irCompute,taxEstimate,proDeduct,isinValid,DATA_VERSION,LISTS,migrateData,mergeData,stamp,snapshot,canon,blankData};
+if(typeof module!=='undefined')module.exports={ACC_ID,irCompute,taxEstimate,proDeduct,isinValid,DATA_VERSION,LISTS,migrateData,mergeData,stamp,snapshot,canon,blankData};

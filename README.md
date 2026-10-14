@@ -21,16 +21,21 @@ Les taux sont dans `rates.json` (date d'effet, historique, sources officielles s
 Les cours des titres sont saisis à la main (pas de source de cours gratuite, fiable et sans clé utilisable depuis le navigateur).
 
 ### Format des données
-Les données sont versionnées (actuellement **v5**) et migrées automatiquement à l'ouverture (localStorage, Supabase, fichier importé) : v2→v3 charges en %, v3→v4 horodatage par élément, catégories, payeur réel, historique, v4→v5 placements typés et lignes d'enveloppe. Le schéma Supabase ne change pas (tout est dans `data jsonb`).
+Les données sont versionnées (actuellement **v8**) et migrées automatiquement à l'ouverture (localStorage, Supabase, fichier importé) : v2→v3 charges en %, v3→v4 horodatage par élément, catégories, payeur réel, historique, v4→v5 placements typés et lignes d'enveloppe, v5→v6 valorisations globales, v6→v7 âges/impôt/conseils, v7→v8 comptes courants (identifiants déterministes `acc-joint`, `acc-p1`, `acc-p2` : deux téléphones qui migrent séparément obtiennent exactement les mêmes données), assurances, intérêts, mouvements, bilans. Le schéma Supabase ne change pas (tout est dans `data jsonb`).
 
 ## Tests
 ```bash
-node tests/test_store.js                 # migrations, fusion, ISIN
+node tests/test_store.js                 # migrations (toutes versions → v8), fusion, ISIN, impôt
+node tests/test_finance.js               # comptes, intérêts par quinzaines, extraction assurance
 python3 tests/test_check_rates.py        # script de vérification des taux
 python3 tests/e2e/test_sync_deux_appareils.py   # Playwright : 2 appareils simulés en parallèle
 python3 tests/e2e/test_tableau_de_bord.py
 python3 tests/e2e/test_placements.py
+python3 tests/e2e/test_conseils.py
+python3 tests/e2e/test_assurances.py     # pdf.js + OCR local, Storage simulé, repli local, 2 appareils, axe
+python3 tests/e2e/test_interets_bilans.py # horloge au 3/01 : intérêts à valider, bilan du mois, comptes 360/390/430 px
 ```
+Les documents de test (`tests/fixtures/`) sont fictifs et générés par `tests/fixtures/generer_documents_fictifs.py`.
 
 ## Tester en local
 ```bash
@@ -59,7 +64,8 @@ python3 -m http.server 8000
 
 ## Structure
 ```
-index.html  style.css  app.js  manifest-v2.webmanifest  sw.js  icons/  supabase/schema.sql  screenshots/
+index.html  style.css  store.js  finance.js  accounts.js  insurance.js  interests.js  reports.js  app.js
+manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + français)  supabase/schema.sql  supabase/storage.sql  screenshots/
 ```
 
 ## v4 — Enveloppes à valorisation globale (format de données v6)
@@ -78,3 +84,13 @@ index.html  style.css  app.js  manifest-v2.webmanifest  sw.js  icons/  supabase/
 - **Impôt sur le revenu (estimation approximative)** dans Budget › Revenus : situation (célibataires / pacsés-mariés), enfants, abattement 10 % (min 509 €, max 14 555 €), barème 2026 sur revenus 2025, quotient familial plafonné, décote, TMI, taux moyen, comparaison imposition séparée vs commune. Sans prélèvements sociaux ni cas particuliers.
 - `rates.json` contient désormais les plafonds (`ceilings`), le plafond de revenus LEP, le barème (`incomeTax`), le plafond PER et les règles d'âge, chacun avec sa source officielle (service-public.gouv.fr, BOFiP), vérifiés le 13/10/2026.
 - Migration v6 → v7 : liste `dismissed`, `births`, `tax` (testée dans `tests/test_store.js`). Tests navigateur : `python3 -u tests/e2e/test_conseils.py`.
+
+## v7 — Comptes, assurances, intérêts, bilans (format de données v8)
+- **Comptes courants** (Budget › Comptes) : banque, titulaire (Emilien, Julie ou joint), libellé, solde à une date. Chaque charge a un compte débité et chaque revenu un compte crédité (jour de réception). Pour chaque compte : entrées, sorties, solde prévu en fin de mois, prochains prélèvements et alerte de découvert. Un compte joint peut être alimenté chaque mois par chacun.
+- **Assurances** (Accueil › Assurances) : fiche par contrat et document (PDF ou photo). Le texte est lu **sur le téléphone** (pdf.js et, en option, l'OCR tesseract.js en français, tous deux dans `vendor/`) : aucun envoi à un service tiers. Des règles repèrent l'assureur, le n° de contrat, l'assuré, le bien/véhicule, la cotisation (mois/an), les dates, les franchises, les garanties, les plafonds, les exclusions et le téléphone d'assistance ; tout reste modifiable. Une fiche peut être liée à une charge (ou en créer une). Rappel 45 jours avant l'échéance, avec la règle de résiliation (loi Hamon après 1 an pour habitation/auto/moto/affinitaire, complémentaire santé après 1 an, loi Lemoine pour l'emprunteur, sinon à l'échéance – loi Chatel).
+  - Documents : bucket **privé** Supabase Storage `documents`, à créer **une fois** avec `supabase/storage.sql` (SQL Editor). Sans bucket, sans synchro ou en cas d'erreur, le document reste sur l'appareil (IndexedDB) et peut être envoyé plus tard (« Envoyer vers Supabase »). Le dossier est l'empreinte SHA-256 du code d'espace (le code n'apparaît pas dans le stockage). Limite : même modèle de sécurité que la table (clé publishable + code d'espace).
+- **Assurance vie** : part fonds euros (en % ou en €) / unités de compte. En janvier, l'appli demande le rendement net du fonds euros de l'année passée et calcule les intérêts crédités.
+- **Livrets** : intérêts calculés par **quinzaines** (versement rémunéré à partir du 1er ou 16 suivant, retrait non rémunéré dès le 1er ou 16 précédent ; taux successifs de `rates.json`), avec les versements programmés (jour du versement), les mouvements exceptionnels et le solde au 1er janvier (estimé ou saisi). Proposés du 31/12 à fin février, montant réel corrigeable, ajouté au solde.
+- **Récap des intérêts** (Accueil › Intérêts) : par année et par placement, estimation de l'année en cours et potentiel des 4 années suivantes.
+- **Bilan du mois** : généré automatiquement le 1er pour le mois écoulé (épargne, écart avec le mois précédent, objectifs, intérêts, charges et dépenses), carte sur l'accueil du 1er au 7, historique (Accueil › Bilans). Notification locale optionnelle (Réglages) affichée à la première ouverture du mois : une vraie notification push application fermée demanderait un serveur d'envoi (clés VAPID + tâche planifiée), non utilisé ici.
+- Export CSV (Réglages › Sauvegarde).
