@@ -107,4 +107,89 @@ function nextDue(ins,today){const t=today||new Date().toISOString().slice(0,10);
   if(e.startsWith('--')){const md=e.slice(2);let y=+t.slice(0,4);let d=`${y}-${md}`;if(d<t)d=`${y+1}-${md}`;return d}
   if(e<t&&(ins.tacit||ins.renewal)){let d=e;while(d<t){d=String(+d.slice(0,4)+1)+d.slice(4)}return d}return e}
 
-if(typeof module!=='undefined')module.exports={accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+
+/* ---------- Relevés de compte : lecture (CSV, OFX, QIF, lignes de PDF) et rapprochement ---------- */
+const stripAcc=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function frAmount(s){if(s==null)return NaN;let t=String(s).replace(/[\s\u00a0\u202f€]|EUR/g,'').replace(/[−–]/g,'-');if(!t)return NaN;let neg=/^-|-$|^\(.*\)$/.test(t);t=t.replace(/^[+-]|[+-]$|[()]/g,'');
+  if(/,\d{1,2}$/.test(t))t=t.replace(/\./g,'').replace(',','.');else if(/\.\d{1,2}$/.test(t))t=t.replace(/,/g,'');else t=t.replace(/[.,]/g,'');const v=parseFloat(t);return isNaN(v)?NaN:R2(neg?-v:v)}
+function anyDate(s,year){s=String(s||'').trim();let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+  m=s.match(/^(\d{4})(\d{2})(\d{2})/);if(m&&+m[2]>=1&&+m[2]<=12)return `${m[1]}-${m[2]}-${m[3]}`;
+  m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?/);if(!m)return'';let y=m[3]?+m[3]:year;if(!y)return'';if(y<100)y+=2000;const mo=+m[2],d=+m[1];if(mo<1||mo>12||d<1||d>31)return'';return ymd(y,mo,d)}
+function splitCsvLine(l,sep){const o=[];let cur='',q=false;for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='"'){if(l[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else if(c==='"')q=true;else if(c===sep){o.push(cur);cur=''}else cur+=c}o.push(cur);return o.map(x=>x.trim())}
+function parseCSV(text){const lines=String(text).replace(/^\ufeff/,'').split(/\r?\n/).filter(l=>l.trim());if(!lines.length)return[];
+  const sep=[';','\t',','].map(c=>[c,lines.slice(0,8).reduce((n,l)=>n+splitCsvLine(l,c).length-1,0)]).sort((a,b)=>b[1]-a[1])[0][0];
+  const rows=lines.map(l=>splitCsvLine(l,sep));let h=-1,col={};
+  for(let i=0;i<Math.min(rows.length,15)&&h<0;i++){const r=rows[i].map(c=>stripAcc(c).toLowerCase());const f=re=>r.findIndex(c=>re.test(c));
+    const d=f(/date ?(d.)?op|^date$|dateop|date comptable|^date/),lab=[f(/libelle (de l.)?operation|libelle complet|^libelle$|label|description|intitule|detail|nature/),f(/libelle/)].find(x=>x>=0),am=f(/^montant|amount|montant/),db=f(/debit/),cr=f(/credit/);
+    if(d>=0&&lab!==undefined&&(am>=0||db>=0||cr>=0)){h=i;col={d,lab,am,db,cr}}}
+  if(h<0)return[];const out=[];
+  rows.slice(h+1).forEach(r=>{const date=anyDate(r[col.d]);if(!date)return;let a=col.am>=0?frAmount(r[col.am]):NaN;
+    if(isNaN(a)){const db=col.db>=0?frAmount(r[col.db]):NaN,cr=col.cr>=0?frAmount(r[col.cr]):NaN;a=!isNaN(db)&&db!==0?-Math.abs(db):!isNaN(cr)&&cr!==0?Math.abs(cr):NaN}
+    if(isNaN(a)||!a)return;out.push({date,label:(r[col.lab]||'').replace(/\s+/g,' ').trim(),amount:a})});return out}
+function parseOFX(text){const out=[];const T=String(text).split(/<STMTTRN>/i).slice(1);const g=(b,k)=>{const m=b.match(new RegExp('<'+k+'>([^<\\r\\n]*)','i'));return m?m[1].trim():''};
+  T.forEach(b=>{const date=anyDate(g(b,'DTPOSTED')),a=frAmount(g(b,'TRNAMT').replace(',','.')),nm=g(b,'NAME'),me=g(b,'MEMO'),label=!me?nm:!nm?me:me.startsWith(nm)?me:nm.includes(me)?nm:nm+' '+me;
+    if(date&&!isNaN(a)&&a)out.push({date,label:label.replace(/&amp;/g,'&'),amount:a,fitid:g(b,'FITID')})});return out}
+function parseQIF(text){const out=[];let c={};String(text).split(/\r?\n/).forEach(l=>{const k=l[0],v=l.slice(1).trim();
+  if(k==='D'){let s=v.replace(/'/g,'/').replace(/\s/g,'');const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);c.date=m?anyDate(s):anyDate(s)}else if(k==='T'||k==='U')c.amount=frAmount(v.replace(/,(?=\d{3}\b)/g,''));else if(k==='P')c.payee=v;else if(k==='M')c.memo=v;
+  else if(k==='^'){if(c.date&&c.amount)out.push({date:c.date,label:[c.payee,c.memo].filter(Boolean).join(' '),amount:c.amount});c={}}});return out}
+/* Lignes d'un relevé PDF : [{y, items:[{str,x}]}] (positions pdf.js). Les colonnes Débit / Crédit sont repérées dans l'en-tête. */
+const AMT_ONLY=/^[+\-−]?\s?\d{1,3}(?:[ .\u00a0\u202f]\d{3})*,\d{2}\s?(?:€|EUR)?$|^[+\-−]?\d+[.,]\d{2}\s?(?:€|EUR)?$/;
+function parseStatementLines(lines){const text=lines.map(l=>l.items.map(i=>i.str).join(' ')).join('\n');
+  const per=stripAcc(text).match(/du\s+(\d{1,2}[\/.]\d{1,2}[\/.](\d{2,4}))\s+au\s+(\d{1,2}[\/.]\d{1,2}[\/.](\d{2,4}))/i),anyY=text.match(/\b\d{1,2}[\/.]\d{1,2}[\/.](20\d{2})\b/)||text.match(/\b(20\d{2})\b/);
+  let year=per?(+per[4]<100?2000+ +per[4]:+per[4]):anyY?+anyY[1]:new Date().getFullYear();const endMonth=per?+per[3].split(/[\/.]/)[1]:null;
+  let colD=null,colC=null,colM=null;const out=[];let last=null;
+  lines.forEach(l=>{const its=l.items.filter(i=>i.str.trim());if(!its.length)return;const low=stripAcc(its.map(i=>i.str).join(' ')).toLowerCase();
+    if(/debit/.test(low)&&/credit/.test(low)){its.forEach(i=>{const t=stripAcc(i.str).toLowerCase();if(/debit/.test(t))colD=i.x+(i.w||0)/2;if(/credit/.test(t))colC=i.x+(i.w||0)/2});last=null;return}
+    if(/^(date.*)?(libelle|operation|montant)/.test(low)&&/montant/.test(low)&&!/debit/.test(low)){const m=its.find(i=>/montant/i.test(i.str));if(m)colM=m.x;last=null;return}
+    const first=its[0].str.trim(),dm=first.match(/^(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\b/);
+    let amts=its.filter((i,k)=>k>0&&AMT_ONLY.test(i.str.trim()));const cx=i=>i.x+(i.w||0)/2,dateLike=i=>/^\d{1,2}[.\/](0[1-9]|1[0-2])$/.test(i.str.trim());
+    if(colD!=null&&colC!=null){const near=amts.filter(i=>Math.min(Math.abs(cx(i)-colD),Math.abs(cx(i)-colC))<70);if(near.length||amts.every(dateLike))amts=near}
+    else if(amts.length>1&&amts.some(i=>!dateLike(i)))amts=amts.filter(i=>!dateLike(i));
+    if(dm&&amts.length){let y=dm[3]?+dm[3]:year;if(!dm[3]&&endMonth&&+dm[2]>endMonth)y=year-1;const date=anyDate(`${dm[1]}/${dm[2]}/${y}`);if(!date){last=null;return}
+      const amIt=colD!=null&&colC!=null?amts[0]:amts[amts.length-1];
+      // libellé : éléments textuels hors dates de valeur et montants
+      const lab=its.slice(1).filter(i=>!amts.includes(i)&&!(AMT_ONLY.test(i.str.trim())&&!dateLike(i))&&!/^\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?$/.test(i.str.trim())).map(i=>i.str.trim()).join(' ');
+      let a=frAmount(amIt.str);const raw=amIt.str.trim();
+      if(colD!=null&&colC!=null&&!/^[+\-−]/.test(raw)){const cx=amIt.x+(amIt.w||0)/2;a=Math.abs(cx-colC)<Math.abs(cx-colD)?Math.abs(a):-Math.abs(a)}
+      else if(!/^[+\-−]/.test(raw)&&colM==null)a=/\b(vir(ement)?\s+(sepa\s+)?(recu|de)|salaire|remise|remboursement|avoir|interets)\b/i.test(stripAcc(lab))?Math.abs(a):-Math.abs(a);
+      if(/^(solde|total|ancien solde|nouveau solde)/i.test(stripAcc(lab))){last=null;return}
+      last={date,label:lab.replace(/\s+/g,' '),amount:a};out.push(last);return}
+    if(last&&!dm&&!amts.length&&its.length<=3&&!/^(solde|total|page|date)/i.test(stripAcc(first))&&last.label.length<90)last.label+=' '+its.map(i=>i.str.trim()).join(' ');else last=null});
+  return out}
+function parseStatementText(name,text){const n=String(name||'').toLowerCase(),t=String(text);
+  if(/\.ofx$|\.qfx$/.test(n)||/<OFX>|<STMTTRN>/i.test(t))return{format:'OFX',ops:parseOFX(t)};
+  if(/\.qif$/.test(n)||/^!Type:/m.test(t))return{format:'QIF',ops:parseQIF(t)};return{format:'CSV',ops:parseCSV(t)}}
+/* Normalisation du libellé : sans accents, sans préfixes bancaires, numéros, dates */
+function normLabel(s){return stripAcc(s).toUpperCase().replace(/\b(PRLV|PRELEVEMENT|PRELEV|SEPA|CB|CARTE|PAIEMENT|PAIE|FACTURE|FAC|ACHAT|ECH|ECHEANCE|PRET|DU|LE|DE|LA|DES|ET|X\d{3,4}|\d{2}\/\d{2}(\/\d{2,4})?|EUR|EUROS)\b/g,' ').replace(/[^A-Z ]+/g,' ').replace(/\s+/g,' ').trim()}
+const merchantKey=s=>normLabel(s).split(' ').filter(w=>w.length>2&&!/^(VIR|VIREMENT|INST|RECU|EMIS|VERS|POUR|REF|MOTIF|MANDAT|ICS|RUM|FR)$/.test(w)).slice(0,2).join(' ');
+function labelSim(a,b){const A=new Set(normLabel(a).split(' ').filter(w=>w.length>2)),B=new Set(normLabel(b).split(' ').filter(w=>w.length>2));if(!A.size||!B.size)return 0;let n=0;A.forEach(w=>{if(B.has(w)||[...B].some(v=>v.length>3&&w.length>3&&(v.startsWith(w)||w.startsWith(v))))n++});return n/Math.min(A.size,B.size)}
+const opHash=o=>`${o.date}|${Math.round(o.amount*100)}|${normLabel(o.label).slice(0,40)}`;
+const CAT_RULES=[['courses',/CARREFOUR|LECLERC|AUCHAN|LIDL|INTERMARCHE|MONOPRIX|FRANPRIX|CASINO|SUPER U|HYPER U|SYSTEME U|\bU EXPRESS|ALDI|PICARD|BIOCOOP|GRAND FRAIS|NATURALIA|LEADER PRICE|NETTO|COLRUYT|SPAR|MARCHE|PRIMEUR|BOUCHERIE/],
+  ['resto',/RESTAU|MC ?DO|MCDONALD|BURGER|KFC|DELIVEROO|UBER ?EATS|JUST ?EAT|BOULANG|PATISS|CAFE|BRASSERIE|PIZZ|SUSHI|KEBAB|STARBUCKS|PAUL\b|BAR\b|CREPERIE|BISTRO/],
+  ['transport',/SNCF|OUIGO|TOTAL|ESSO|SHELL|\bBP\b|AVIA|STATION|CARBURANT|PEAGE|APRR|VINCI|SANEF|RATP|UBER(?! ?EATS)|BOLT|BLABLACAR|PARKING|INDIGO|TCL|T2C|TISSEO|NAVIGO|LIME|AUTOROUTE/],
+  ['sante',/PHARMA|DOCTOLIB|MEDECIN|DOCTEUR|\bDR\b|DENTIST|OPTIC|OPTIQUE|LABO|KINE|HOPITAL|CLINIQUE|OSTEO/],
+  ['maison',/IKEA|LEROY MERLIN|CASTORAMA|BRICO|MR BRICOLAGE|CONFORAMA|BUT\b|MAISONS DU MONDE|GIFI|ACTION\b|JARDI|TRUFFAUT|BOULANGER\b|DARTY/],
+  ['shopping',/AMAZON|AMZN|ZARA|H ?M\b|DECATHLON|FNAC|ZALANDO|KIABI|CDISCOUNT|PRIMARK|SEPHORA|UNIQLO|CELIO|JULES|VINTED|SHEIN|NIKE|GO SPORT|INTERSPORT|LA REDOUTE/],
+  ['loisirs',/CINEMA|PATHE|UGC|GAUMONT|MEGARAMA|CONCERT|TICKETMASTER|FNAC SPECTACLE|STEAM|PLAYSTATION|NINTENDO|MUSEE|BOWLING|PISCINE|PARC|DISNEY|AIRBNB|BOOKING|HOTEL|VOYAGE/],
+  ['cadeaux',/CADEAU|INTERFLORA|SMARTBOX|WONDERBOX|FLEUR/]];
+function guessCategory(label,rules){const k=merchantKey(label);const r=(rules||[]).find(x=>x.key===k);if(r)return{cat:r.category,learned:true};
+  const n=' '+normLabel(label)+' ';const f=CAT_RULES.find(([,re])=>re.test(n));return{cat:f?f[0]:'autre',learned:false}}
+const SAVE_RE=/LIVRET|\bLDD|\bLDDS|\bLEP\b|\bPEL\b|\bCEL\b|EPARGNE|ASSURANCE VIE|ASS VIE|\bPEA\b|\bPER\b|PLACEMENT/;
+/* Classe une opération : depense | charge | virement | revenu | epargne (+ fixedId, category) */
+function classifyOp(o,D,accId,opts={}){const n=normLabel(o.label),acc=(D.accounts||[]).find(a=>a.id===accId),names=['p1','p2'].map(k=>stripAcc((D.names||{})[k]||'').toUpperCase()).filter(x=>x.length>2);
+  const day=+o.date.slice(8,10),isVir=/\bVIR|VIREMENT|VRT\b|VIRT/.test(stripAcc(o.label).toUpperCase());
+  const otherAcc=(D.accounts||[]).filter(a=>a.id!==accId).some(a=>{const w=normLabel(a.label).split(' ').filter(x=>x.length>3&&!/COMPTE|JOINT|COURANT/.test(x));return w.some(x=>n.includes(x))||(/JOINT|COMMUN/.test(n)&&a.owner==='joint')});
+  const named=names.filter(x=>n.includes(x)).length;
+  const t=D.transfer||{},feeds=(D.accounts||[]).flatMap(a=>a.feed?[+a.feed.p1||0,+a.feed.p2||0]:[]).filter(Boolean);
+  const internal=isVir&&(otherAcc||named>=1&&/JOINT|COMMUN|COMPTE/.test(n)||named>=2||(t.amount&&Math.abs(Math.abs(o.amount)-t.amount)<0.01)||feeds.some(v=>Math.abs(Math.abs(o.amount)-v)<0.01));
+  if(o.amount>0){if(internal)return{type:'virement'};
+    const inc=(D.incomes||[]).find(i=>(!i.account||!accId||i.account===accId)&&Math.abs(i.amount-o.amount)<=Math.max(20,i.amount*0.1));return{type:'revenu',incomeId:inc?inc.id:null}}
+  const A=-o.amount;
+  if(SAVE_RE.test(n)||(D.placements||[]).some(p=>+p.monthly>0&&Math.abs(p.monthly-A)<0.01&&isVir))return{type:'epargne'};
+  if(internal)return{type:'virement'};
+  let best=null;(D.fixed||[]).forEach(f=>{if(accId&&f.account&&f.account!==accId)return;const tol=Math.max(2,f.amount*0.05),da=Math.abs(f.amount-A);if(da>tol*(f.variable?4:1))return;
+    const sim=labelSim(o.label,f.label),dd=Math.min(Math.abs((+f.day||1)-day),31-Math.abs((+f.day||1)-day));if(sim<0.34&&dd>3)return;
+    const sc=(1-da/(tol*4))+sim*2+(dd<=3?1-dd/4:0);if(!best||sc>best.sc)best={f,sc}});
+  if(best)return{type:'charge',fixedId:best.f.id};
+  const g=guessCategory(o.label,opts.rules);return{type:'depense',category:g.cat,learned:g.learned}}
+if(typeof module!=='undefined')module.exports={frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

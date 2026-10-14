@@ -1,12 +1,12 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=8;
-const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports'];
+const DATA_VERSION=9;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules'];
 const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
 const BIRTHS={p1:'2000-06-22',p2:'2002-03-10'},TAX0={mode:'separe',children:0,childOf:'p1'};
-const blankData=()=>({accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
+const blankData=()=>({imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
@@ -14,6 +14,8 @@ const blankData=()=>({accounts:[],insurances:[],interests:[],movements:[],report
 /* Comptes courants créés à la migration v8 : identifiants déterministes (deux appareils qui migrent chacun de leur côté obtiennent les mêmes comptes) */
 const ACC_ID={joint:'acc-joint',p1:'acc-p1',p2:'acc-p2'};
 const MIGRATIONS={
+  /* v8 → v9 : relevés importés (imports) et catégories apprises (catrules, id déterministe kw-<marchand>) ; aucune donnée existante modifiée */
+  9(d){['imports','catrules'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});return d},
   /* v7 → v8 : comptes courants (une charge = un compte de prélèvement, un revenu = un compte de réception), assurances, intérêts, mouvements de livrets, bilans mensuels */
   8(d){const t=d.updated||0,names=Object.assign({p1:'Emilien',p2:'Julie'},d.names);d.accounts=Array.isArray(d.accounts)?d.accounts:[];
     const used=new Set();(d.fixed||[]).forEach(f=>used.add(f.paidBy==='p1'||f.paidBy==='p2'?f.paidBy:'joint'));(d.incomes||[]).forEach(i=>used.add(i.person==='p2'?'p2':'p1'));
@@ -62,9 +64,9 @@ function isinValid(raw){const s=String(raw||'').toUpperCase().replace(/\s/g,'');
   return (10-sum%10)%10===+digits[digits.length-1]}
 /* Signature d'un élément (sans métadonnées) pour détecter les modifications */
 const META=new Set(['u','by','fu','c']);
-const QUIET=new Set(['reports','notify']); // générés automatiquement / propres à l'appareil : pas d'historique
+const QUIET=new Set(['reports','notify','catrules']); // générés automatiquement / propres à l'appareil : pas d'historique
 const sig=x=>{const {u,by,fu,...r}=x;return JSON.stringify(r)};
-const itemLabel=(l,x)=>l==='dismissed'?(x.title||'Conseil'):l==='interests'?`Intérêts ${x.year}`:l==='movements'?(x.label||'Mouvement'):x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
+const itemLabel=(l,x)=>l==='dismissed'?(x.title||'Conseil'):l==='interests'?`Intérêts ${x.year}`:l==='movements'?(x.label||'Mouvement'):l==='imports'?`Relevé ${x.file||''}`.trim():x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
 function snapshot(d){const s={};LISTS.forEach(l=>d[l].forEach(x=>s[l+'\u0001'+x.id]={sig:sig(x),label:itemLabel(l,x),obj:JSON.parse(JSON.stringify(x))}));SCAL.forEach(k=>s['$'+k]={sig:JSON.stringify(d[k])});
   Object.keys(d.budget).forEach(m=>s['b\u0001'+m]={sig:String(d.budget[m])});return s}
 /* Compare l'état courant à l'instantané : horodate les éléments modifiés, crée les tombstones et l'historique */

@@ -17,7 +17,7 @@ with sync_playwright() as p:
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V3))});sessionStorage.s=1}}")
   pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
   pg.goto('http://localhost:18765/');pg.wait_for_timeout(900)
-  d=pg.evaluate('D');assert d['version']==8 and d['fixed'][0]['category']=='autre' and d['fixed'][0]['paidBy']=='joint';print('MIGRATION v3→v4 OK')
+  d=pg.evaluate('D');assert d['version']==9 and d['fixed'][0]['category']=='autre' and d['fixed'][0]['paidBy']=='joint';print('MIGRATION v3→v4 OK')
   # choix de la personne au premier lancement
   assert pg.is_visible('#sheet .who');pg.click('[data-me=p1]');pg.wait_for_timeout(300)
   # catégories et payeur réel des charges
@@ -39,7 +39,7 @@ with sync_playwright() as p:
   pg.fill('#fixQ','loyer');pg.wait_for_timeout(200);assert pg.locator('[data-edit-fixed]').count()==1 and pg.evaluate("document.activeElement.id")=='fixQ';pg.fill('#fixQ','');print('RECHERCHE OK')
   pg.select_option('#fixCat','energie');assert pg.locator('[data-edit-fixed]').count()==1;pg.select_option('#fixCat','')
   pg.click('[data-seg=diverses]');pg.wait_for_timeout(1200);pg.screenshot(path='/tmp/v3-5-depenses.png')
-  pg.select_option('#miscCat','courses');assert pg.locator('[data-del^="misc|"]').count()==2;pg.select_option('#miscWho','p1');assert pg.locator('[data-del^="misc|"]').count()==1;print('FILTRES OK')
+  pg.select_option('#miscCat','courses');assert pg.locator('[data-del-misc]').count()==2;pg.select_option('#miscWho','p1');assert pg.locator('[data-del-misc]').count()==1;print('FILTRES OK')
   pg.select_option('#miscCat','');pg.select_option('#miscWho','')
   pg.click('[data-seg=revenus]');pg.wait_for_timeout(1000);pg.screenshot(path='/tmp/v3-6-revenus.png')
   pg.click('[data-tab=epargne]');pg.wait_for_timeout(1200);pg.screenshot(path='/tmp/v3-7-epargne.png')

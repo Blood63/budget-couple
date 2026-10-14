@@ -1,5 +1,5 @@
 // Réseau uniquement : toujours la dernière version. Le SW sert seulement à rendre l’appli installable.
-const V='budget-couple-v14';
+const V='budget-couple-v15';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;

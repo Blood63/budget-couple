@@ -209,3 +209,14 @@ fieldset.feed{border:1px solid rgba(255,255,255,.1);border-radius:var(--r-sm);pa
 .rep-card{border-color:rgba(124,108,255,.35)}
 .bal-l li>span{grid-column:1}.bal-l li>b{grid-column:2}.bal-l li>small{grid-column:1}
 .check span small{display:block;font-size:12.5px}
+/* v8 : relevés, annulation */
+.rv-l{list-style:none;margin:12px 0;padding:0;display:grid;gap:8px}
+.rv{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:var(--r-sm);padding:10px;display:grid;gap:8px}
+.rv .grow{min-width:0}.rv .grow b{display:block;overflow-wrap:anywhere;font-size:14px}.rv .grow small{color:var(--mut);font-size:12.5px}
+.rv-f{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.rv-f select{flex:1 1 140px;min-width:0;padding:8px 10px;min-height:40px;font-size:14px}
+.rv.charge{border-color:rgba(109,139,255,.35)}.rv.exclu,.rv.virement,.rv.revenu,.rv.epargne{opacity:.78}.rv.depense{border-color:rgba(62,207,142,.3)}
+.toast{display:flex;align-items:center;gap:12px}.toast-undo{background:none;border:0;color:#2340c4;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer;padding:6px 4px;pointer-events:auto}
+.plain{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;text-align:left;cursor:pointer;display:grid;gap:2px;min-width:0}
+.plain:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:6px}
+.sec-int{margin-top:18px;scroll-margin-top:70px}
+.toast:not(.show) .toast-undo{visibility:hidden;pointer-events:none}.toast{max-width:calc(100vw - 32px)}

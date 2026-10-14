@@ -21,7 +21,7 @@ Les taux sont dans `rates.json` (date d'effet, historique, sources officielles s
 Les cours des titres sont saisis à la main (pas de source de cours gratuite, fiable et sans clé utilisable depuis le navigateur).
 
 ### Format des données
-Les données sont versionnées (actuellement **v8**) et migrées automatiquement à l'ouverture (localStorage, Supabase, fichier importé) : v2→v3 charges en %, v3→v4 horodatage par élément, catégories, payeur réel, historique, v4→v5 placements typés et lignes d'enveloppe, v5→v6 valorisations globales, v6→v7 âges/impôt/conseils, v7→v8 comptes courants (identifiants déterministes `acc-joint`, `acc-p1`, `acc-p2` : deux téléphones qui migrent séparément obtiennent exactement les mêmes données), assurances, intérêts, mouvements, bilans. Le schéma Supabase ne change pas (tout est dans `data jsonb`).
+Les données sont versionnées (actuellement **v9**) et migrées automatiquement à l'ouverture (localStorage, Supabase, fichier importé) : v2→v3 charges en %, v3→v4 horodatage par élément, catégories, payeur réel, historique, v4→v5 placements typés et lignes d'enveloppe, v5→v6 valorisations globales, v6→v7 âges/impôt/conseils, v7→v8 comptes courants (identifiants déterministes `acc-joint`, `acc-p1`, `acc-p2` : deux téléphones qui migrent séparément obtiennent exactement les mêmes données), assurances, intérêts, mouvements, bilans, v8→v9 relevés importés et catégories apprises (aucune donnée existante modifiée). Le schéma Supabase ne change pas (tout est dans `data jsonb`).
 
 ## Tests
 ```bash
@@ -33,6 +33,7 @@ python3 tests/e2e/test_tableau_de_bord.py
 python3 tests/e2e/test_placements.py
 python3 tests/e2e/test_conseils.py
 python3 tests/e2e/test_assurances.py     # pdf.js + OCR local, Storage simulé, repli local, 2 appareils, axe
+python3 tests/e2e/test_releves.py        # relevés fictifs BNP / Crédit Mutuel / Boursorama (PDF, CSV), OFX, QIF
 python3 tests/e2e/test_interets_bilans.py # horloge au 3/01 : intérêts à valider, bilan du mois, comptes 360/390/430 px
 ```
 Les documents de test (`tests/fixtures/`) sont fictifs et générés par `tests/fixtures/generer_documents_fictifs.py`.
@@ -64,7 +65,7 @@ python3 -m http.server 8000
 
 ## Structure
 ```
-index.html  style.css  store.js  finance.js  accounts.js  insurance.js  interests.js  reports.js  app.js
+index.html  style.css  store.js  finance.js  accounts.js  insurance.js  interests.js  reports.js  statements.js  app.js
 manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + français)  supabase/schema.sql  supabase/storage.sql  screenshots/
 ```
 
@@ -94,3 +95,11 @@ manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + 
 - **Récap des intérêts** (Accueil › Intérêts) : par année et par placement, estimation de l'année en cours et potentiel des 4 années suivantes.
 - **Bilan du mois** : généré automatiquement le 1er pour le mois écoulé (épargne, écart avec le mois précédent, objectifs, intérêts, charges et dépenses), carte sur l'accueil du 1er au 7, historique (Accueil › Bilans). Notification locale optionnelle (Réglages) affichée à la première ouverture du mois : une vraie notification push application fermée demanderait un serveur d'envoi (clés VAPID + tâche planifiée), non utilisé ici.
 - Export CSV (Réglages › Sauvegarde).
+
+## v8 — Import de relevés de compte (format de données v9)
+- Budget › Dépenses ou Budget › Comptes › **Importer un relevé** : PDF (pdf.js, colonnes Débit/Crédit repérées), CSV (en-têtes BNP, Crédit Mutuel, Boursorama et génériques, `;` `,` ou tabulation, UTF-8 ou Windows-1252), OFX/QFX, QIF. Tout est lu dans le navigateur ; le fichier n'est ni envoyé ni conservé.
+- Rapprochement automatique par opération : **charge fixe** (montant ± 5 % / 2 €, libellé proche ou jour à ± 3 jours, même compte), **virement interne** (vers/depuis un autre compte du couple, prénoms, montant du virement ou de l'alimentation du compte joint), **versement épargne** (livret, LDDS, PEL, assurance vie, versement programmé), **revenu** ; ces lignes ne deviennent pas des dépenses (pas de double comptage). Le reste devient **dépense diverse** avec catégorie automatique (mots-clés) ; une catégorie corrigée est **apprise** pour ce marchand (synchronisée).
+- Écran de revue : type, catégorie, payeur, charge associée, suppression de ligne (annulable). Doublons : une opération déjà importée (même date, montant, libellé, quel que soit le format) est exclue ; une dépense saisie à la main au même montant à ± 3 jours est signalée.
+- Après import : récap des dépenses diverses du mois par catégorie ; un import peut être annulé (et rétabli).
+- Toute dépense se modifie en la touchant et se supprime d'un geste, avec « Annuler » pendant 6 s.
+- Le récap des intérêts est maintenant dans l'onglet **Épargne** (section Intérêts) ; le raccourci « Intérêts » de l'accueil y mène.

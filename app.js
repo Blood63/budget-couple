@@ -141,7 +141,7 @@ function vDiverses(){
   <div class="card hero"><small>Restant sur le budget</small><div class="hero-n">${money(b-spent,b-spent<0?'neg':'')}</div>
    ${bar(b?spent/b*100:0,spent>b&&b?'over':'')}<div class="hero-grid"><div><small>Dépensé</small>${money(spent)}</div>
    <div><label for="budgetIn" class="lbl-s">Budget disponible</label><input id="budgetIn" class="inline" inputmode="decimal" value="${b||''}" placeholder="0 €"></div></div></div>
-  <button class="btn wide" id="quickAdd">${ic('plus',18)} Ajouter une dépense</button>
+  <div class="f2"><button class="btn" id="quickAdd">${ic('plus',18)} Ajouter</button><button class="btn ghost" id="impStmt">${ic('file',18)} Importer un relevé</button></div>
   ${spent?`<div class="card"><h2>Par catégorie</h2>${donut(catBreakdown('misc',all),spent,'ce mois')}</div>`:''}
   ${sec('Dépenses du mois')}
   ${all.length?`<div class="filters" role="search"><label class="search">${ic('search',16)}<input type="search" id="miscQ" placeholder="Rechercher" value="${esc(miscF.q)}" aria-label="Rechercher une dépense"></label>
@@ -149,19 +149,19 @@ function vDiverses(){
    <select id="miscWho" aria-label="Filtrer par payeur"><option value="">Tous les payeurs</option>${paidOpts().map(([v,l])=>`<option value="${v}" ${miscF.who===v?'selected':''}>${esc(l)}</option>`).join('')}</select></div>
    ${L.length!==all.length?`<p class="mut" aria-live="polite">${L.length} dépense(s) · ${eur(fsum)}</p>`:''}</div>`:''}
   <div class="list">${L.map(x=>`<div class="item"><span class="avatar" style="--pc:${catColor('misc',x.category)}">${ic('cart',16)}</span>
-   <span class="grow"><b>${esc(x.label||catName('misc',x.category))}</b><small>${new Date(x.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})} · ${catName('misc',x.category)} · ${esc(paidName(x.paidBy))}${x.for&&x.for!=='common'?' · pour '+esc(N(x.for)):''}</small></span>${money(x.amount)}
-   <button class="icon-btn" data-del="misc|${x.id}" aria-label="Supprimer ${esc(x.label||'la dépense')}">${ic('trash',16)}</button></div>`).join('')||empty('cart',all.length?'Aucune dépense ne correspond.':'Aucune dépense ce mois-ci.')}</div>`;
+   <button class="grow plain" data-edit-misc="${x.id}" aria-label="Modifier ${esc(x.label||catName('misc',x.category))}, ${eur(x.amount)}"><b>${esc(x.label||catName('misc',x.category))}</b><small>${new Date(x.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})} · ${catName('misc',x.category)} · ${esc(paidName(x.paidBy))}${x.for&&x.for!=='common'?' · pour '+esc(N(x.for)):''}${x.source==='import'?' · relevé':''}</small></button>${money(x.amount)}
+   <button class="icon-btn" data-del-misc="${x.id}" aria-label="Supprimer ${esc(x.label||'la dépense')}">${ic('trash',16)}</button></div>`).join('')||empty('cart',all.length?'Aucune dépense ne correspond.':'Aucune dépense ce mois-ci.')}</div>`;
 }
-function miscSheet(){const m=D.miscMonth||curMonth(),last=D.misc[D.misc.length-1]||{};
-  openSheet('Dépense rapide',`<form id="fMisc">
-   <label class="amount-l">Montant<input name="amount" inputmode="decimal" placeholder="0,00 €" required autocomplete="off" class="amount-in"></label>
+function miscSheet(id){const m=D.miscMonth||curMonth(),ex=id&&D.misc.find(x=>x.id===id),last=ex||D.misc[D.misc.length-1]||{};
+  openSheet(ex?'Modifier la dépense':'Dépense rapide',`<form id="fMisc">
+   <label class="amount-l">Montant<input name="amount" inputmode="decimal" placeholder="0,00 €" required autocomplete="off" class="amount-in" value="${ex?String(ex.amount).replace('.',','):''}"></label>
    ${chips('category',CAT_MISC.map(([k,n])=>[k,n,catColor('misc',k)]),last.category||'courses','Catégorie')}
-   ${chips('paidBy',paidOpts(),me||'joint','Payé par')}
-   ${chips('for',forOpts(),'common','Pour')}
-   <div class="f2"><label>Libellé (optionnel)<input name="label" placeholder="ex. Marché"></label><label>Date<input type="date" name="date" value="${m===curMonth()?new Date().toISOString().slice(0,10):m+'-01'}" required></label></div>
-   <button class="btn">Ajouter</button></form>`,()=>{setTimeout(()=>$('#fMisc .amount-in')?.focus(),50);
+   ${chips('paidBy',paidOpts(),ex?ex.paidBy:(me||'joint'),'Payé par')}
+   ${chips('for',forOpts(),ex?(ex.for||'common'):'common','Pour')}
+   <div class="f2"><label>Libellé (optionnel)<input name="label" placeholder="ex. Marché" value="${ex?esc(ex.label||''):''}"></label><label>Date<input type="date" name="date" value="${ex?ex.date:m===curMonth()?new Date().toISOString().slice(0,10):m+'-01'}" required></label></div>
+   ${ex&&ex.source==='import'?`<p class="mut">Importée depuis un relevé (${esc(accName(ex.account))}).</p>`:''}<button class="btn">${ex?'Enregistrer':'Ajouter'}</button>${ex?`<button type="button" class="btn danger" data-del-misc="${ex.id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>{setTimeout(()=>$('#fMisc .amount-in')?.focus(),50);
    $('#fMisc').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target),a=num(f.amount);if(!a){$('#fMisc .amount-in').focus();return}
-    D.misc.push({id:uid(),date:f.date,label:f.label.trim(),amount:a,category:f.category,paidBy:f.paidBy,for:f.for,payer:f.for==='common'?'common':f.for});
+    const o={date:f.date,label:f.label.trim(),amount:a,category:f.category,paidBy:f.paidBy,for:f.for,payer:f.for==='common'?'common':f.for};if(ex){Object.assign(ex,o);closeSheet();save();return toast('Dépense modifiée')}D.misc.push({id:uid(),...o});
     if(!D.miscMonth||!f.date.startsWith(D.miscMonth))D.miscMonth=f.date.slice(0,7);closeSheet();save();toast(`Dépense de ${eur(a)} ajoutée`)})})}
 /* ---------- Onglet Épargne ---------- */
 const gName=id=>(D.goals.find(g=>g.id===id)||{name:'?'}).name;
@@ -177,7 +177,8 @@ function vEpargne(){
   ${savingsChart()}
   <button class="btn wide" id="addMonth">${ic('plus',18)} Saisir l’épargne d’un mois</button>
   ${sec('Historique des affectations')}<div class="list">${m.map(x=>`<button class="item col" data-edit-month="${x.id}"><span class="row-b"><b>${monthLabel(x.month)}</b>${money(x.a+x.b)}</span>
-   <small>${esc(D.names.p1)} ${eur(x.a)} · ${esc(D.names.p2)} ${eur(x.b)}</small>${allocHtml(C.res[x.id].p1,'p1')}${allocHtml(C.res[x.id].p2,'p2')}</button>`).join('')||empty('piggy','Aucun mois saisi. Commence par ajouter tes objectifs.')}</div>`;
+   <small>${esc(D.names.p1)} ${eur(x.a)} · ${esc(D.names.p2)} ${eur(x.b)}</small>${allocHtml(C.res[x.id].p1,'p1')}${allocHtml(C.res[x.id].p2,'p2')}</button>`).join('')||empty('piggy','Aucun mois saisi. Commence par ajouter tes objectifs.')}</div>
+  <section id="sec-interets" class="sec-int" aria-labelledby="h-int"><div class="sec"><h2 id="h-int" tabindex="-1">Intérêts</h2></div>${vInterets()}</section>`;
 }
 function monthSheet(id,draft){
   const ed=D.months.find(x=>x.id===id),e=draft||ed||{month:curMonth(),a:'',b:''},manual=draft?!!draft.manual:!!ed?.manual;
@@ -533,12 +534,12 @@ function vAccueil(){
   <div class="list">${nc.map(f=>`<div class="item"><span class="day" aria-hidden="true">${f.day}</span><span class="grow"><b>${esc(f.label)}</b><small>${f.inDays===0?'Aujourd’hui':f.inDays===1?'Demain':`Dans ${f.inDays} jours`} · ${esc(paidName(f.paidBy))}</small></span>${money(f.amount)}</div>`).join('')||empty('calendar','Ajoute des charges avec un jour de prélèvement.')}</div>
   ${sec('Objectifs',`<button class="link" data-goto="objectifs">Tout voir</button>`)}
   <div class="list">${goals.map(({g,p})=>`<button class="item col" data-edit-goal="${g.id}"><span class="row-b"><b>${esc(g.name)}</b><span class="pct" style="--pc:${COL[g.owner]}">${p.toFixed(0)} %</span></span>${bar(p,p>=100?'done':'')}<small>${eur(C.saved[g.id])} sur ${eur(g.target)}</small></button>`).join('')||empty('target','Aucun objectif pour l’instant.')}</div>
-  <nav class="shortcuts" aria-label="Raccourcis"><button data-goto="assurances">${ic('shield',18)}<span>Assurances</span></button><button data-goto="interets">${ic('trend',18)}<span>Intérêts</span></button><button data-goto="bilans">${ic('chart',18)}<span>Bilans</span></button><button data-goto="budget" data-seg-to="comptes">${ic('wallet',18)}<span>Comptes</span></button></nav>
+  <nav class="shortcuts" aria-label="Raccourcis"><button data-goto="assurances">${ic('shield',18)}<span>Assurances</span></button><button data-goto="epargne" data-scroll="sec-interets">${ic('trend',18)}<span>Intérêts</span></button><button data-goto="bilans">${ic('chart',18)}<span>Bilans</span></button><button data-goto="budget" data-seg-to="comptes">${ic('wallet',18)}<span>Comptes</span></button></nav>
   ${sec('Activité récente',`<button class="link" data-goto="activite">Historique</button>`)}
   <div class="list">${D.history.slice(0,4).map(histItem).join('')||empty('repeat','Les modifications apparaîtront ici.')}</div>`;
 }
 /* ---------- Historique ---------- */
-const KIND={months:'Épargne',goals:'Objectif',fixed:'Charge',misc:'Dépense',placements:'Placement',accounts:'Compte',insurances:'Assurance',interests:'Intérêts',movements:'Mouvement',reports:'Bilan',dismissed:'Conseil masqué',valuations:'Valorisation',incomes:'Revenu',settlements:'Règlement',names:'Prénoms',births:'Dates de naissance',tax:'Situation fiscale',ratio:'Répartition',transfer:'Virement',budget:'Budget'};
+const KIND={months:'Épargne',goals:'Objectif',fixed:'Charge',misc:'Dépense',placements:'Placement',accounts:'Compte',insurances:'Assurance',interests:'Intérêts',movements:'Mouvement',imports:'Relevé',reports:'Bilan',dismissed:'Conseil masqué',valuations:'Valorisation',incomes:'Revenu',settlements:'Règlement',names:'Prénoms',births:'Dates de naissance',tax:'Situation fiscale',ratio:'Répartition',transfer:'Virement',budget:'Budget'};
 const OP={add:'a ajouté',edit:'a modifié',del:'a supprimé'};
 function ago(t){const s=(Date.now()-t)/1000;if(s<60)return'à l’instant';if(s<3600)return`il y a ${Math.floor(s/60)} min`;if(s<86400)return`il y a ${Math.floor(s/3600)} h`;return new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 function histItem(h){const lab=h.kind==='budget'?monthLabel(h.label):['names','ratio','transfer'].includes(h.kind)?'':h.kind==='months'?monthLabel(h.label):h.label;
@@ -680,8 +681,8 @@ document.addEventListener('click',e=>{const h=e.target.closest('[data-hide-tip]'
   if(e.target.closest('#showTips')){D.dismissed=[];save();toast('Conseils réaffichés');return}
   const s=e.target.closest('[data-scroll]');if(s)setTimeout(()=>{const el=document.getElementById(s.dataset.scroll);if(el)el.scrollIntoView({block:'start'})},50)});
 const TABS=[['accueil','Accueil','grid',vAccueil],['budget','Budget','wallet',vBudget],['epargne','Épargne','piggy',vEpargne],['objectifs','Objectifs','target',vObjectifs],['placements','Placements','trend',vPlacements]];
-const views=Object.fromEntries(TABS.map(t=>[t[0],t[3]]));views.reglages=vReglages;views.activite=vActivite;views.assurances=vAssurances;views.interets=vInterets;views.bilans=vBilans;
-const titles={...Object.fromEntries(TABS.map(t=>[t[0],t[1]])),reglages:'Réglages',activite:'Historique',assurances:'Assurances',interets:'Intérêts',bilans:'Bilans du mois'};
+const views=Object.fromEntries(TABS.map(t=>[t[0],t[3]]));views.reglages=vReglages;views.activite=vActivite;views.assurances=vAssurances;views.bilans=vBilans;
+const titles={...Object.fromEntries(TABS.map(t=>[t[0],t[1]])),reglages:'Réglages',activite:'Historique',assurances:'Assurances',bilans:'Bilans du mois'};
 function buildNav(){const n=$('#tabs');n.setAttribute('role','tablist');n.innerHTML=TABS.map(([k,l,i])=>`<button role="tab" data-tab="${k}" aria-controls="view" id="tab-${k}">${ic(i,22)}<span>${l}</span>${k==='placements'?'<i class="tab-badge" hidden></i>':''}</button>`).join('')+'<span class="tab-ind" aria-hidden="true"></span>';
   n.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;const b=[...n.querySelectorAll('button')],i=b.indexOf(document.activeElement);if(i<0)return;const j=(i+(e.key==='ArrowRight'?1:-1)+b.length)%b.length;b[j].focus();b[j].click()})}
 function go(t){if(t===tab&&$('#view').childElementCount)return;const order=Object.keys(views),dir=order.indexOf(t)>=order.indexOf(tab)?1:-1;tab=t;animate=true;render(dir);scrollTo({top:0})}
@@ -714,7 +715,7 @@ document.addEventListener('click',e=>{
   if(t.matches('.btn,.chip-btn,.item,#tabs button,.seg button,.icon-btn,.goal,[data-preset]'))haptic();
   const d=t.dataset;
   if(d.tab)return go(d.tab);
-  if(d.goto){if(d.segTo)budgetSeg=d.segTo;return go(d.goto)}
+  if(d.goto){if(d.segTo)budgetSeg=d.segTo;closeSheet();go(d.goto);if(d.scroll)setTimeout(()=>{const el=document.getElementById(d.scroll);if(el){el.scrollIntoView({block:'start'});el.querySelector('h2,h3')?.focus?.()}},60);return}
   if(d.me){me=d.me;localStorage.setItem(ME,me);closeSheet();render();return toast(`Appareil associé à ${N(me)}`)}
   if(t.id==='settle'){const v=+d.amount;if(confirm(`Enregistrer un règlement de ${eur(v)} de ${N(d.from)} à ${N(d.to)} ?`)){D.settlements.push({id:uid(),month:d.month,from:d.from,to:d.to,amount:r2(v),date:new Date().toISOString().slice(0,10)});save();toast('Règlement enregistré')}return}
   if(t.id==='gear'||t.closest('#syncState'))return go('reglages');

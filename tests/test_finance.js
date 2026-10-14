@@ -31,3 +31,28 @@ console.log('OK finance');
  const j=F.accountForecast(D,D.accounts[0],'2026-10');a.equal(j.inn,1100);a.equal(j.out,1100);a.ok(!j.risk);const e=F.accountForecast(D,D.accounts[1],'2026-10');a.equal(e.out,600);console.log('OK alimentation compte joint')}
 {const a=require('assert'),F=require('../finance.js');const o=F.insuranceExtract("MACIF\nÉchéance principale : 1er mars\nDate d'effet : 12 avril 2024\nVéhicule : Clio immatriculée AB-123-CD");
  a.equal(o.end,'--03-01');a.equal(o.start,'2024-04-12');a.equal(o.object,'Clio immatriculée AB-123-CD');console.log('OK dates en toutes lettres')}
+/* Relevés : CSV (BNP, Crédit Mutuel, Boursorama), OFX, QIF, rapprochement */
+{const a=require('assert'),F=require('../finance.js'),fs=require('fs'),path=require('path'),fx=n=>path.join(__dirname,'fixtures',n);
+ const iconv=b=>new TextDecoder('windows-1252').decode(b);
+ const sets={bnp:F.parseStatementText('x.csv',fs.readFileSync(fx('releve-bnp-fictif.csv'),'utf8')),cm:F.parseStatementText('x.csv',iconv(fs.readFileSync(fx('releve-creditmutuel-fictif.csv')))),
+   bourso:F.parseStatementText('x.csv',fs.readFileSync(fx('releve-boursorama-fictif.csv'),'utf8')),ofx:F.parseStatementText('x.ofx',fs.readFileSync(fx('releve-fictif.ofx'),'utf8')),qif:F.parseStatementText('x.qif',fs.readFileSync(fx('releve-fictif.qif'),'utf8'))};
+ for(const [k,s] of Object.entries(sets)){a.equal(s.ops.length,17,k);a.equal(s.ops[2].date,'2026-09-03',k);a.equal(s.ops[2].amount,-54.2,k);a.equal(s.ops[0].amount,900,k);a.ok(/CARREFOUR/.test(s.ops[2].label),k);
+   a.equal(Math.round(s.ops.reduce((t,o)=>t+o.amount,0)*100)/100,32.87,k+' total')}
+ const D={names:{p1:'Paul',p2:'Lucie'},accounts:[{id:'acc-joint',label:'Compte joint',owner:'joint',feed:{p1:900,p2:800,day:1}},{id:'acc-p1',label:'Compte Paul',owner:'p1'}],
+   fixed:[{id:'f1',label:'Loyer',amount:950,day:5,account:'acc-joint'},{id:'f2',label:'Électricité EDF',amount:75,day:8,account:'acc-joint'},{id:'f3',label:'Forfait Free',amount:19.99,day:12,account:'acc-joint'}],
+   incomes:[],placements:[{id:'p',type:'livretA',monthly:100}],transfer:{amount:0}};
+ const T=sets.bnp.ops.map(o=>[o.label.slice(0,22),F.classifyOp(o,D,'acc-joint',{rules:[]})]),ty=i=>T[i][1].type;
+ a.equal(ty(0),'virement');a.equal(ty(1),'virement');a.equal(ty(3),'charge');a.equal(T[3][1].fixedId,'f1');a.equal(T[5][1].fixedId,'f2');a.equal(T[6][1].fixedId,'f3');
+ a.equal(ty(11),'epargne');a.equal(ty(16),'virement');a.equal(T[2][1].category,'courses');a.equal(T[4][1].category,'resto');a.equal(T[7][1].category,'shopping');a.equal(T[8][1].category,'transport');
+ a.equal(T[9][1].category,'sante');a.equal(T[10][1].category,'loisirs');a.equal(T[14][1].category,'maison');a.equal(T[15][1].category,'autre');
+ // apprentissage : règle apprise prioritaire
+ a.equal(F.classifyOp(sets.bnp.ops[15],D,'acc-joint',{rules:[{key:F.merchantKey(sets.bnp.ops[15].label),category:'cadeaux'}]}).category,'cadeaux');
+ // doublon : même hachage quel que soit le format
+ a.equal(F.opHash(sets.bnp.ops[2]),F.opHash(sets.cm.ops[2]));
+ // montants
+ a.equal(F.frAmount('1 234,56'),1234.56);a.equal(F.frAmount('-0,99 €'),-0.99);a.equal(F.frAmount('(12,00)'),-12);a.equal(F.frAmount('1,234.50'),1234.5);
+ // lignes PDF synthétiques : colonnes Débit / Crédit
+ const L=[{items:[{str:'Date',x:10},{str:'Libellé',x:60},{str:'Débit',x:400,w:30},{str:'Crédit',x:480,w:30}]},{items:[{str:'03/09/2026',x:10},{str:'CB CARREFOUR',x:60},{str:'54,20',x:405,w:25}]},
+   {items:[{str:'04/09/2026',x:10},{str:'VIR RECU',x:60},{str:'1 000,00',x:478,w:35}]},{items:[{str:'suite du libellé',x:60}]}];
+ const P=F.parseStatementLines(L);a.deepEqual(P.map(o=>o.amount),[-54.2,1000]);a.equal(P[1].label,'VIR RECU suite du libellé');
+ console.log('OK relevés (CSV ×3, OFX, QIF, PDF, rapprochement)')}

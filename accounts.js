@@ -20,6 +20,7 @@ function vComptes(){const m=accMonth||curMonth(),t=todayIso();
     ${f.risk?`<p class="neg acc-alert">${ic('alert',14)} ${f.hasBalance?`Risque de découvert : ${eur(f.min)} vers le ${f.minDay} ${monthLabel(m).split(' ')[0]}.`:`Les sorties dépassent les entrées : prévoir au moins ${eur(f.needed)} sur le compte en début de mois.`}</p>`:''}
     ${f.upcoming&&f.upcoming.length?`<ul class="acc-up">${f.upcoming.map(e=>`<li><span class="day">${e.day}</span><span>${esc(e.label)}</span><b>${eur(-e.amount)}</b></li>`).join('')}</ul>`:''}
    </button>`).join(''):empty('wallet','Ajoutez vos comptes courants (compte joint, comptes personnels) pour suivre les entrées, les sorties et le solde prévisionnel.')}
+  ${F.length?`<button class="btn ghost wide" id="impStmt">${ic('file',18)} Importer un relevé de compte</button>`:''}${importsList()}
   ${F.length?`<p class="mut note">Prévision : solde saisi + revenus reçus − charges prélevées − dépenses diverses − épargne du mois − virements, jour par jour. Mettez à jour le solde de temps en temps pour une prévision fiable.</p>`:''}`}
 function accSheet(id){const a=D.accounts.find(x=>x.id===id)||{owner:'joint'},used=id?D.fixed.filter(f=>f.account===id).length+D.incomes.filter(i=>i.account===id).length:0;
   openSheet(id?'Modifier le compte':'Nouveau compte',`<form id="fAcc" novalidate>
