@@ -220,3 +220,12 @@ fieldset.feed{border:1px solid rgba(255,255,255,.1);border-radius:var(--r-sm);pa
 .plain:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:6px}
 .sec-int{margin-top:18px;scroll-margin-top:70px}
 .toast:not(.show) .toast-undo{visibility:hidden;pointer-events:none}.toast{max-width:calc(100vw - 32px)}
+/* v9 : indicateur de qualité */
+.qcard{background:var(--card2);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:12px 0}
+.qhead{display:inline-flex;align-items:center;gap:8px}
+.qbadge{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:10px;font-weight:800;font-size:1.05rem;color:#0b0f14}
+.qbadge.sm{width:22px;height:22px;border-radius:6px;font-size:.75rem;margin-left:6px;vertical-align:middle}
+.q-A{background:#3ddc84}.q-B{background:#9bd84a}.q-C{background:#f2c94c}.q-D{background:#f2994a}.q-E{background:#ff6b6b}
+.qcrit{list-style:none;margin:8px 0;padding:0;display:grid;gap:10px}
+.qcrit li{display:grid;gap:4px}.qcrit small{color:var(--mut)}.qcrit small.neg{color:var(--bad)}.qcrit small.warn-t{color:var(--warn)}
+.qsrc{margin-top:8px;font-size:.85rem}.qsrc ul{padding-left:18px;margin:6px 0}.qsrc li{margin:4px 0;color:var(--mut)}

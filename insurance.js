@@ -64,7 +64,7 @@ function vAssurances(){const tot=D.insurances.reduce((s,i)=>s+yearly(i),0),t=tod
   <div class="list">${[...D.insurances].sort((a,b)=>(nextDue(a,t)||'9').localeCompare(nextDue(b,t)||'9')).map(i=>{const d=nextDue(i,t),soon=d&&(new Date(d)-new Date(t))/864e5<=60,ty=insType(i.type);
     return `<button class="item" data-edit-ins="${i.id}"><span class="avatar">${ic(ty[2],16)}</span><span class="grow"><b>${esc(i.label||ty[1])}</b><small>${esc(ty[1])}${i.insurer?' · '+esc(i.insurer):''}${i.doc?' · 📎':''}</small>
      ${d?`<small class="${soon?'warn-c':''}">Échéance ${isoFr(d)}</small>`:''}${i.fixedId&&D.fixed.find(f=>f.id===i.fixedId)?`<small>Charge liée : ${esc(D.fixed.find(f=>f.id===i.fixedId).label)}</small>`:''}</span>
-     <span class="r">${money(yearly(i))}<small class="mut">/an</small></span></button>`}).join('')||empty('shield','Ajoutez vos contrats (habitation, auto, mutuelle…) et leur document : l’appli en extrait un récapitulatif, sur votre téléphone.')}</div>
+     <span class="r">${money(yearly(i))}<small class="mut">/an</small>${typeof insQ==='function'?qBadge(insQ(i),1):''}</span></button>`}).join('')||empty('shield','Ajoutez vos contrats (habitation, auto, mutuelle…) et leur document : l’appli en extrait un récapitulatif, sur votre téléphone.')}</div>
   <p class="disclaimer" role="note">${ic('info',14)} Récapitulatif extrait automatiquement du document, sur cet appareil (aucun envoi à un service tiers) : vérifiez et corrigez les champs. Seules les conditions de votre contrat font foi.</p>
   ${storageNote()}`}
 function storageNote(){const loc=D.insurances.filter(i=>i.doc&&i.doc.storage==='local').length;if(!loc)return'';
@@ -82,6 +82,7 @@ function insSheet(id,pre){const i=D.insurances.find(x=>x.id===id)||Object.assign
     <p id="insStatus" class="mut" role="status" aria-live="polite"></p><div id="insPreview"></div></div>
    <form id="fIns" novalidate>
     <div class="f2"><label>Type<select name="type">${INS_TYPES.map(([k,l])=>`<option value="${k}" ${i.type===k?'selected':''}>${l}</option>`).join('')}</select></label><label>Nom<input name="label" value="${v('label')}" placeholder="ex. Habitation appartement"></label></div>
+    <div id="insExtra">${typeof insExtraFields==='function'?insExtraFields(i):''}</div>
     <div class="f2"><label>Assureur<input name="insurer" value="${v('insurer')}"></label><label>N° de contrat<input name="contract" value="${v('contract')}"></label></div>
     <label>Assuré(s)<input name="insured" value="${v('insured')}"></label><label>Bien / véhicule assuré<input name="object" value="${v('object')}"></label>
     <div class="f2"><label>Cotisation (€)<input name="premium" inputmode="decimal" value="${i.premium!=null?(+i.premium).toFixed(2).replace('.',','):''}"></label><label>Fréquence<select name="premiumFreq">${[['mois','par mois'],['trimestre','par trimestre'],['an','par an']].map(([k,l])=>`<option value="${k}" ${i.premiumFreq===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
@@ -92,7 +93,7 @@ function insSheet(id,pre){const i=D.insurances.find(x=>x.id===id)||Object.assign
     <label>Charge correspondante<select name="fixedId"><option value="">— Aucune —</option>${[...D.fixed].sort((a,b)=>(b.category==='assurance')-(a.category==='assurance')).map(f=>`<option value="${f.id}" ${i.fixedId===f.id?'selected':''}>${esc(f.label)} · ${eur(f.amount)}/mois</option>`).join('')}<option value="__new">+ Créer la charge mensuelle</option></select></label>
     ${area('notes','Notes')}
     ${ci||d?`<div class="preview">${d?`<small>Prochaine échéance</small><b>${isoFr(d)}</b>`:''}${ci?`<small>${esc(ci.txt)}</small>`:''}<small><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F19083" target="_blank" rel="noopener">Règles de résiliation (service-public.gouv.fr)</a></small></div>`:''}
-    <p id="insErr" class="neg" role="alert"></p><button class="btn">Enregistrer</button>${!isNew?`<button type="button" class="btn danger" data-del="insurances|${i.id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>bindIns(i,isNew))}
+    <p id="insErr" class="neg" role="alert"></p><button class="btn">Enregistrer</button>${!isNew?`<button type="button" class="btn danger" data-del="insurances|${i.id}">${ic('trash',16)} Supprimer</button>`:''}</form><div id="insQ">${typeof insQualityBlock==='function'?insQualityBlock(i):''}</div>`,()=>bindIns(i,isNew))}
 function fillIns(o){const f=$('#fIns');if(!f)return 0;let n=0;Object.entries(o).forEach(([k,v])=>{const el=f.elements[k];if(!el||v==null||v==='')return;
   if(el.type==='checkbox'){el.checked=!!v;n++;return}if(k==='end'||k==='renewal'){el.value=isoFr(v)}else if(k==='premium')el.value=(+v).toFixed(2).replace('.',',');else el.value=v;n++;el.classList.add('filled')});if(o.renewal&&!o.end&&f.elements.end){f.elements.end.value=isoFr(o.renewal)}
   if(o.type&&!f.elements.label.value)f.elements.label.value=insType(o.type)[1]+(o.insurer?' '+o.insurer:'');return n}
@@ -111,11 +112,15 @@ function bindIns(i,isNew){const st=$('#insStatus');let pendingFile=null;
     else{$('#insPreview').innerHTML=`<canvas class="doc-img" aria-label="Première page du document"></canvas><a class="btn ghost wide" href="${u}" download="${esc(i.doc.name)}">Télécharger le PDF</a>`;try{const lib=await pdfjs(),doc=await lib.getDocument({data:await b.arrayBuffer(),isEvalSupported:false}).promise,c=(await pdfPagesToCanvas(doc,1))[0],dst=$('#insPreview canvas');dst.width=c.width;dst.height=c.height;dst.getContext('2d').drawImage(c,0,0)}catch{}}
     st.textContent=''}catch(e){st.textContent='Ouverture impossible : '+e.message}});
   on('#insPush','click',async()=>{st.textContent='Envoi…';try{const b=await loadDoc(i);const doc=await saveDoc(i,new File([b],i.doc.name,{type:i.doc.mime}));i.doc=doc;save();insSheet(i.id);toast(doc.storage==='supabase'?'Document envoyé':'Envoi impossible')}catch(e){st.textContent=e.message}});
+  {const F=$('#fIns'),cur=()=>{const v=fd(F);return{...i,...v,premium:num(v.premium)||null,tacit:!!v.tacit}};
+   F.elements.type.addEventListener('change',()=>{if(typeof insExtraFields==='function')$('#insExtra').innerHTML=insExtraFields(cur())});
+   const upd=()=>{if(typeof insQualityBlock==='function')$('#insQ').innerHTML=insQualityBlock(cur())};F.addEventListener('input',upd);F.addEventListener('change',upd)}
   $('#fIns').addEventListener('submit',async e=>{e.preventDefault();const v=fd(e.target),err=$('#insErr');err.textContent='';
     const pr=String(v.premium).trim(),premium=pr===''?null:parseFloat(pr.replace(/\s/g,'').replace(',','.'));if(pr!==''&&!(premium>=0)){err.textContent='Cotisation invalide.';return}
     let end='';if(v.end.trim()){end=frDateToIso(v.end.trim());if(!end){err.textContent='Échéance : format jj/mm ou jj/mm/aaaa.';return}}
     const o={type:v.type,label:v.label.trim()||insType(v.type)[1],insurer:v.insurer.trim(),contract:v.contract.trim(),insured:v.insured.trim(),object:v.object.trim(),premium:premium==null?null:r2(premium),premiumFreq:v.premiumFreq,
       start:v.start||'',end,tacit:!!v.tacit,guarantees:v.guarantees.trim(),franchise:v.franchise.trim(),ceilings:v.ceilings.trim(),exclusions:v.exclusions.trim(),phone:v.phone.trim(),notes:v.notes.trim()};
+    if(v.profile)o.profile=v.profile;if(v.persons!=null){const n=parseInt(v.persons);o.persons=n>=1&&n<=10?n:1}if(v.holder)o.holder=v.holder;
     if(v.fixedId==='__new'){const f={id:uid(),label:'Assurance '+o.label,amount:r2((yearly(o)||0)/12),day:5,split:D.ratio,category:'assurance',paidBy:'joint',account:accOfOwner(D,'joint')||D.accounts[0]?.id||null};D.fixed.push(f);o.fixedId=f.id}else o.fixedId=v.fixedId||null;
     if(pendingFile){const sb=e.submitter||$('#fIns button:not([type])');if(sb)sb.disabled=true;st.textContent='Envoi du document…';try{o.doc=await saveDoc(i,pendingFile)}catch(x){err.textContent=x.message;if(sb)sb.disabled=false;return}}
     Object.assign(i,o);if(isNew)D.insurances.push(i);delete draftIns[i.id];closeSheet();save();toast(o.doc&&o.doc.storage==='local'&&o.doc.why!=='local'?'Enregistré (document gardé sur cet appareil)':'Assurance enregistrée')})}

@@ -103,3 +103,10 @@ manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + 
 - Après import : récap des dépenses diverses du mois par catégorie ; un import peut être annulé (et rétabli).
 - Toute dépense se modifie en la touchant et se supprime d'un geste, avec « Annuler » pendant 6 s.
 - Le récap des intérêts est maintenant dans l'onglet **Épargne** (section Intérêts) ; le raccourci « Intérêts » de l'accueil y mène.
+
+## v9 — Indicateur de qualité (indicatif, pas un conseil)
+- **Assurances** (habitation, auto, moto, santé, prévoyance, trottinette) : note /100 et lettre A-E, détail par critère (cotisation vs repère du profil ou de l'âge, franchise, garanties clés, plafonds) et garanties importantes manquantes. Nouveaux champs : profil (locataire / propriétaire / PNO, formule auto), personnes couvertes et assuré principal (santé).
+- **AV, PER, PEA, CTO** : fiche contrat (frais d'entrée, gestion UC et fonds euros, arbitrage, rendement N-1, supports et ETF, gestion pilotée, versement minimum ; courtage, droits de garde, tenue de compte pour PEA/CTO). Préremplissage depuis une liste de contrats connus (frais publics, source et date), uniquement pour décrire **son propre** contrat : aucun produit n'est recommandé.
+- Coût estimé des frais sur 10 ans comparé à trois repères (moyenne du marché, contrats en ligne, contrats bancaires), même rendement brut pour tous.
+- Repères dans `market.json` (sources et dates : France Assureurs, UFC-Que Choisir, comparateurs publics, AMF, ACPR…). Les seuils de franchise sont des repères internes, signalés comme tels.
+- Migration de données v10 (champ `contract` sur les enveloppes, profil / personnes sur les assurances), tests `tests/test_quality.js` et `tests/e2e/test_qualite.py`.

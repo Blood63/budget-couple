@@ -192,4 +192,50 @@ function classifyOp(o,D,accId,opts={}){const n=normLabel(o.label),acc=(D.account
     const sc=(1-da/(tol*4))+sim*2+(dd<=3?1-dd/4:0);if(!best||sc>best.sc)best={f,sc}});
   if(best)return{type:'charge',fixedId:best.f.id};
   const g=guessCategory(o.label,opts.rules);return{type:'depense',category:g.cat,learned:g.learned}}
-if(typeof module!=='undefined')module.exports={frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+
+/* ---------- Indicateur de qualité (indicatif) : assurances et contrats d'épargne vs repères de marché ---------- */
+const gradeOf=n=>n>=80?'A':n>=65?'B':n>=50?'C':n>=35?'D':'E';
+const firstEuro=t=>{const m=String(t||'').match(/(\d{1,3}(?:[\s\u00a0\u202f.]\d{3})*|\d+)(?:,\d{1,2})?\s*(?:€|euros?)/i);return m?toNum(m[0].replace(/€|euros?/i,'')):null};
+const firstDays=t=>{const m=String(t||'').match(/(\d{1,3})\s*jours?/i);return m?+m[1]:null};
+function finish(C){const ev=C.filter(c=>c.score!=null),W=ev.reduce((s,c)=>s+c.w,0);const score=W?Math.round(ev.reduce((s,c)=>s+c.score*c.w,0)/W):null;return{score,grade:score==null?null:gradeOf(score),criteria:C,coverage:Math.round(W/C.reduce((s,c)=>s+c.w,0)*100)}}
+const ratioPts=(r)=>r<=0.8?100:r<=1?80:r<=1.25?55:r<=1.6?30:10;
+/* ins : fiche assurance ; ctx : {age} (âge de l'assuré pour la santé), {persons} nombre de personnes couvertes */
+function insQuality(ins,M,ctx={}){const R=M&&M.insurance&&M.insurance[ins.type];if(!R)return null;const C=[],yr=(+ins.premium||0)*({mois:12,trimestre:4}[ins.premiumFreq]||1);
+  let ref=null,refNote='';const prof=R.profiles[ins.profile]||R.profiles[Object.keys(R.profiles)[0]];
+  if(R.ages&&ctx.age){const a=R.ages.find(x=>ctx.age>=x[0]&&ctx.age<=x[1]);if(a){ref=a[2];refNote=`moyenne ${a[0]}-${a[1]} ans : ${a[2]} €/an/personne`}}
+  if(!ref&&prof){ref=prof.avg;refNote=`${prof.label} : moyenne ${prof.avg} €/an`}
+  const per=R.perPerson?Math.max(1,+ins.persons||ctx.persons||1):1,cost=yr/per;
+  C.push({k:'prix',label:'Cotisation',w:40,score:yr&&ref?ratioPts(cost/ref):null,value:yr?`${Math.round(cost)} €/an${per>1?' par personne':''}`:'non renseignée',ref:refNote,tip:yr&&ref&&cost>ref*1.25?'Au-dessus des repères : comparez les garanties et les devis à garanties équivalentes.':''});
+  if(R.franchise){const f=R.franchise.unit==='jours'?firstDays(ins.franchise):firstEuro(ins.franchise),u=R.franchise.unit==='jours'?' jours':' €';
+    C.push({k:'franchise',label:'Franchise',w:15,score:f==null?null:f<=R.franchise.good?100:f<=R.franchise.avg?65:f<=R.franchise.avg*2?35:10,value:f==null?'non renseignée':f+u,ref:`repère usuel ≤ ${R.franchise.good}${u}`})}
+  const txt=[ins.guarantees,ins.ceilings,ins.notes,ins.label].join(' \n '),found=[],miss=[];R.key.forEach(([k,l,re])=>(new RegExp(re,'i').test(txt)?found:miss).push(l));
+  C.push({k:'garanties',label:'Garanties clés',w:35,score:String(ins.guarantees||'').trim()?Math.round(found.length/R.key.length*100):null,value:String(ins.guarantees||'').trim()?`${found.length}/${R.key.length}`:'non renseignées',ref:'garanties habituelles pour ce type de contrat',missing:String(ins.guarantees||'').trim()?miss:[]});
+  const hasCeil=/\d/.test(String(ins.ceilings||''));C.push({k:'plafonds',label:'Plafonds',w:10,score:hasCeil?100:null,value:hasCeil?'indiqués':'non renseignés',ref:'des plafonds chiffrés permettent de vérifier la couverture'});
+  return{...finish(C),ref:R}}
+/* Contrat d'épargne : av / per (frais en %), pea / cto (courtage, droits de garde) */
+function contractQuality(c,type,M){const S=M&&M.savings&&M.savings[type];if(!S||!c)return null;const C=[],n=v=>v===''||v==null||isNaN(+v)?null:+v,mk=S.market,on=S.online,bk=S.bank;
+  const sc=(v,best,avg,worst)=>v==null?null:v<=best?100:v<=avg?Math.round(100-(v-best)/((avg-best)||1)*30):v<=worst?Math.round(70-(v-avg)/((worst-avg)||1)*50):10;
+  const pc=v=>v==null?'non renseigné':String(v).replace('.',',')+' %';
+  if(type==='av'||type==='per'){const ef=n(c.entryFee),uf=n(c.ucFee),eu=n(c.euroFee),ar=n(c.arbFee),ey=n(c.euroYield);
+    C.push({k:'entree',label:'Frais sur versement',w:20,score:sc(ef,on.entryFee,mk.entryFee,bk.entryFee),value:pc(ef),ref:`moyenne marché ${pc(mk.entryFee)} · en ligne ${pc(on.entryFee)} · bancaire jusqu’à ${pc(bk.entryFee)}`});
+    C.push({k:'uc',label:'Frais de gestion UC',w:25,score:sc(uf,on.ucFee,mk.ucFee,1.2),value:pc(uf),ref:`moyenne ${pc(mk.ucFee)} · en ligne ${pc(on.ucFee)}`});
+    C.push({k:'euro',label:ey!=null?'Rendement net du fonds euros':'Frais de gestion fonds euros',w:20,score:ey!=null?(ey>=mk.euroYield+0.4?100:ey>=mk.euroYield?80:ey>=mk.euroYield-0.5?55:25):sc(eu,on.euroFee,mk.euroFee,1),value:ey!=null?`${pc(ey)}${c.euroYieldYear?' ('+c.euroYieldYear+')':''}`:pc(eu),ref:ey!=null?`moyenne 2025 ${pc(mk.euroYield)} (ACPR)`:`moyenne ${pc(mk.euroFee)}`});
+    C.push({k:'arb',label:'Frais d’arbitrage',w:10,score:ar==null?null:ar<=0?100:ar<=0.5?60:20,value:pc(ar),ref:'en ligne souvent 0 %'});
+    C.push({k:'etf',label:'Offre de supports (dont ETF)',w:15,score:c.etf==null&&!n(c.supports)?null:(c.etf?60:20)+(n(c.supports)>=300?40:n(c.supports)>=50?25:n(c.supports)?10:20),value:`${n(c.supports)?c.supports+' supports':'nombre non renseigné'}${c.etf?' · ETF':c.etf===false?' · sans ETF':''}`,ref:'un large choix avec des ETF peu chargés réduit les frais'});
+    C.push({k:'pilot',label:'Gestion pilotée',w:10,score:c.pilot==null?null:c.pilot?(n(c.pilotFee)!=null&&n(c.pilotFee)>0.5?60:100):60,value:c.pilot?`disponible${n(c.pilotFee)!=null?' (+'+pc(n(c.pilotFee))+')':''}`:c.pilot===false?'non':'non renseigné',ref:'option, non indispensable'})}
+  else{const op=n(c.orderPct),om=n(c.orderMin)||0,cu=n(c.custodyPct),af=n(c.accountFee),o=S.order||500,ordCost=op==null?null:Math.max(om,o*op/100)/o*100;
+    C.push({k:'courtage',label:`Courtage (ordre de ${o} €)`,w:45,score:sc(ordCost,on.orderPct,mk.orderPct,1.2),value:ordCost==null?'non renseigné':`${(Math.max(om,o*op/100)).toFixed(2).replace('.',',')} € (${ordCost.toFixed(2).replace('.',',')} %)`,ref:`en ligne ~${pc(on.orderPct)} · bancaire ${pc(bk.orderPct)}`});
+    C.push({k:'garde',label:'Droits de garde',w:35,score:cu==null?null:cu<=0?100:cu<=0.2?60:cu<=0.4?30:5,value:cu==null?'non renseignés':pc(cu)+(n(c.custodyLine)?` + ${c.custodyLine} €/ligne`:''),ref:'0 % chez la plupart des courtiers en ligne ; plafond PEA 0,4 %'});
+    C.push({k:'tenue',label:'Frais de tenue de compte',w:20,score:af==null?null:af<=0?100:af<=30?60:20,value:af==null?'non renseignés':af+' €/an',ref:'souvent 0 €'})}
+  return finish(C)}
+/* Coût des frais sur 10 ans (même rendement brut de 3 %/an, seuls les frais diffèrent) */
+function feeCost10(c,type,M,{capital=10000,monthly=0,euroShare=0.5,years=10,gross=3}={}){const S=M&&M.savings&&M.savings[type];if(!S)return null;
+  const run=f=>{let v=0,noFee=0,fees=0;const dep=(amt)=>{const e=amt*(f.entryFee||0)/100;fees+=e;v+=amt-e;noFee+=amt};
+    if(type==='av'||type==='per'){dep(capital);const mf=(euroShare*(f.euroFee||0)+(1-euroShare)*(f.ucFee||0))/100;
+      for(let m=0;m<years*12;m++){if(monthly)dep(monthly);const g=v*gross/100/12,fee=v*mf/12;v+=g-fee;fees+=fee;noFee+=noFee*gross/100/12}}
+    else{const o=S.order||500;v=capital;noFee=capital;for(let m=0;m<years*12;m++){if(monthly){const oc=Math.max(f.orderMin||0,monthly*(f.orderPct||0)/100);fees+=oc;v+=monthly-oc;noFee+=monthly}
+      v+=v*gross/100/12;noFee+=noFee*gross/100/12;if(m%12===11){const cu=v*(f.custodyPct||0)/100+(f.custodyLine||0)*(f.lines||1)+(f.accountFee||0);fees+=cu;v-=cu}}}
+    return{fees:R2(fees),final:R2(v),gap:R2(noFee-v)}};
+  const own=Object.fromEntries(Object.entries(c||{}).map(([k,x])=>[k,x===''||x==null?undefined:+x]).filter(([,x])=>x!==undefined&&!isNaN(x)));
+  return{own:run({...S.market,...own}),market:run(S.market),online:run(S.online),bank:run(S.bank)}}
+if(typeof module!=='undefined')module.exports={gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

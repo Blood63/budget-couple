@@ -1,0 +1,17 @@
+const a=require('assert'),F=require('../finance.js'),M=require('../market.json');
+a.equal(F.gradeOf(80),'A');a.equal(F.gradeOf(34),'E');
+const h=F.insQuality({type:'habitation',profile:'locataire',premium:12,premiumFreq:'mois',franchise:'150 €',guarantees:'Dégât des eaux, incendie, vol, responsabilité civile, bris de glace'},M);
+a.ok(h.score>=0&&h.score<=100&&h.grade);a.ok(h.criteria.find(c=>c.k==='garanties').missing.length>0,'garanties manquantes signalées');
+const cheap=F.insQuality({type:'habitation',profile:'locataire',premium:100,premiumFreq:'an'},M),dear=F.insQuality({type:'habitation',profile:'locataire',premium:400,premiumFreq:'an'},M);
+a.ok(cheap.criteria[0].score>dear.criteria[0].score);a.ok(cheap.coverage<100);
+const s=F.insQuality({type:'sante',premium:100,premiumFreq:'mois',persons:2},M,{age:30});a.ok(/par personne/.test(s.criteria[0].value));
+a.equal(F.insQuality({type:'inconnu'},M),null);
+const k=id=>M.contracts.find(c=>c.id===id);
+const on=F.contractQuality(k('linxea-spirit-2'),'av',M),bk=F.contractQuality(k('predissime-9-s2'),'av',M);a.ok(on.score>bk.score);
+a.ok(F.contractQuality(k('pea-bourse-direct'),'pea',M).score>F.contractQuality(k('pea-bnp'),'pea',M).score);
+const e=F.contractQuality({},'av',M);a.ok(!e.grade||e.coverage===0);
+const f=F.feeCost10({entryFee:3,ucFee:0.85,euroFee:0.6},'av',M,{capital:10000,monthly:100,euroShare:0.5});
+a.ok(f.own.gap>f.online.gap&&f.bank.gap>f.online.gap&&f.own.gap>0);
+for(const c of M.contracts)a.ok(c.source&&c.date,'source et date '+c.id);
+for(const [t,r] of Object.entries(M.insurance))a.ok(r.sources.length&&r.sources.every(x=>x.url&&x.date),t);
+console.log('qualité OK',on.score,bk.score,h.score);

@@ -1,6 +1,6 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=9;
+const DATA_VERSION=10;
 const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules'];
 const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
@@ -46,7 +46,10 @@ const MIGRATIONS={
       d.valuations.push({id:'mig-'+p.id,pid:p.id,date,value:v,u:t,c:t});
       p.archivedLines=L.map(x=>{const {u,by,fu,c,...r}=x;return r})});
     if((d.positions||[]).length)d.archive.positions=(d.archive.positions||[]).concat(d.positions);
-    d.positions=[];if(typeof d.reminderDay!=='number')d.reminderDay=1;return d}
+    d.positions=[];if(typeof d.reminderDay!=='number')d.reminderDay=1;return d},
+  /* v10 : fiche contrat (frais) sur les enveloppes, profil/personnes sur les assurances — aucun champ existant modifié */
+  10:d=>{(d.placements||[]).forEach(p=>{if(['av','pea','cto','per'].includes(p.type)&&!('contract' in p))p.contract=null});
+    (d.insurances||[]).forEach(i=>{if(i.type==='sante'&&!(+i.persons>0))i.persons=1;if(i.type==='habitation'&&!i.profile)i.profile=/propri/i.test(i.label+' '+(i.object||''))?'proprietaire':'locataire'});return d}
 };
 function migrateData(raw){
   let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;

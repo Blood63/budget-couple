@@ -1,0 +1,666 @@
+{
+ "updated": "2026-10-14",
+ "notice": "Repères de marché publics, indicatifs. Ce ne sont pas des conseils : vérifiez auprès de votre banque, assureur ou conseiller. Aucun produit n'est recommandé.",
+ "insurance": {
+  "habitation": {
+   "label": "Habitation (MRH)",
+   "profiles": {
+    "locataire": {
+     "label": "Locataire",
+     "avg": 138,
+     "low": 107,
+     "high": 173,
+     "note": "Locataire d'appartement : 107 € (<39 m²), 138 € (40-69 m²), 173 € (>70 m²) par an, comparateur, octobre 2025"
+    },
+    "proprietaire": {
+     "label": "Propriétaire occupant",
+     "avg": 297,
+     "low": 250,
+     "high": 406,
+     "note": "Propriétaire de maison : 297 € (<109 m²), 406 € (>110 m²) par an, comparateur, octobre 2025"
+    },
+    "pno": {
+     "label": "Propriétaire non occupant",
+     "avg": 191,
+     "low": 150,
+     "high": 250,
+     "note": "Prime moyenne HT des contrats non occupants 2025 (France Assureurs)"
+    }
+   },
+   "franchise": {
+    "good": 150,
+    "avg": 250,
+    "kind": "repere_interne"
+   },
+   "key": [
+    [
+     "rc",
+     "Responsabilité civile vie privée",
+     "responsabilit[ée] civile|\\bRC\\b"
+    ],
+    [
+     "eaux",
+     "Dégâts des eaux",
+     "d[ée]g[âa]ts? des eaux"
+    ],
+    [
+     "incendie",
+     "Incendie",
+     "incendie"
+    ],
+    [
+     "vol",
+     "Vol / vandalisme",
+     "\\bvol\\b|vandalisme|cambriolage"
+    ],
+    [
+     "glace",
+     "Bris de glace",
+     "bris de glaces?"
+    ],
+    [
+     "climat",
+     "Tempête, grêle, neige / catastrophes naturelles",
+     "temp[êe]te|gr[êe]le|catastrophes? naturelles|cat ?nat"
+    ]
+   ],
+   "sources": [
+    {
+     "name": "France Assureurs — L'assurance habitation en 2025",
+     "url": "https://www.franceassureurs.fr/wp-content/uploads/lassurance-habitation-en-2025.pdf",
+     "date": "2026",
+     "figure": "Prime moyenne HT 2025 : 323 € (occupants 351 €, non occupants 191 €)"
+    },
+    {
+     "name": "LeComparateurAssurance — baromètre habitation novembre 2025",
+     "url": "https://www.lecomparateurassurance.com/assurance-habitation/actualites/barometre-assurance-habitation-novembre-2025",
+     "date": "2025-11",
+     "figure": "Locataire 40-69 m² : 138 €/an ; propriétaire maison >110 m² : 406 €/an"
+    },
+    {
+     "name": "LeLynx.fr — baromètre habitation 2026",
+     "url": "https://www.lelynx.fr/a-propos/communiques/barometre-habitation-2026/",
+     "date": "2026",
+     "figure": "Prime moyenne nationale 177 € en 2025 (+10 %) ; locataires 114 €, propriétaires >250 €"
+    }
+   ]
+  },
+  "auto": {
+   "label": "Auto",
+   "profiles": {
+    "tousrisques": {
+     "label": "Tous risques",
+     "avg": 621,
+     "low": 500,
+     "high": 809,
+     "note": "Conducteur expérimenté, panel comparateur janvier 2026 : 621 €/an ; tous risques Assurland 2025 : 809 €"
+    },
+    "intermediaire": {
+     "label": "Intermédiaire (tiers +)",
+     "avg": 511,
+     "low": 400,
+     "high": 650,
+     "note": "Prime moyenne HT toutes formules 2025 (France Assureurs) : 511 €"
+    },
+    "tiers": {
+     "label": "Tiers",
+     "avg": 350,
+     "low": 250,
+     "high": 450,
+     "note": "Estimation dérivée de la décomposition France Assureurs 2025 (RC 169 € HT + garanties de base), à prendre avec prudence"
+    }
+   },
+   "franchise": {
+    "good": 300,
+    "avg": 500,
+    "kind": "repere_interne"
+   },
+   "key": [
+    [
+     "rc",
+     "Responsabilité civile (obligatoire)",
+     "responsabilit[ée] civile|\\bRC\\b"
+    ],
+    [
+     "glace",
+     "Bris de glace",
+     "bris de glaces?"
+    ],
+    [
+     "vol",
+     "Vol / incendie",
+     "\\bvol\\b|incendie"
+    ],
+    [
+     "conducteur",
+     "Garantie du conducteur",
+     "garantie (du )?conducteur|protection (du )?conducteur|dommages corporels du conducteur"
+    ],
+    [
+     "assistance",
+     "Assistance (0 km idéalement)",
+     "assistance"
+    ],
+    [
+     "dommages",
+     "Dommages tous accidents",
+     "dommages tous accidents|tous risques|dommages au v[ée]hicule"
+    ]
+   ],
+   "sources": [
+    {
+     "name": "France Assureurs — Le marché de l'assurance automobile des particuliers en 2025",
+     "url": "https://www.franceassureurs.fr/wp-content/uploads/le-marche-de-lassurance-automobile-des-particuliers-2025.pdf",
+     "date": "2026",
+     "figure": "Prime moyenne HT 2025 : 511 € (véhicule 1re catégorie), tous risques 601 € HT, 2 roues 290 € HT"
+    },
+    {
+     "name": "LegiPermis (panel LeComparateurAssurance janvier 2026)",
+     "url": "https://www.legipermis.com/blog/2026/02/09/assurance-auto-2026-pourquoi-prix-augmentation/",
+     "date": "2026-02",
+     "figure": "Conducteur expérimenté : 621 €/an ; jeune conducteur : 2 164 €/an"
+    },
+    {
+     "name": "Assurland.com via 40 millions d'automobilistes — baromètre 2025",
+     "url": "https://www.40millionsdautomobilistes.com/images/PDF/Communiques_de_Presse/20260212barometreassuranceauto.pdf",
+     "date": "2026-02",
+     "figure": "Prix moyen 751 €/an (+8 %) ; tous risques 809 €"
+    }
+   ]
+  },
+  "moto": {
+   "label": "Moto / scooter",
+   "profiles": {
+    "standard": {
+     "label": "Deux-roues",
+     "avg": 290,
+     "low": 200,
+     "high": 412,
+     "note": "Prime moyenne HT 2025 d'un 2 roues : 290 € ; tous risques 412 € (France Assureurs)"
+    }
+   },
+   "franchise": {
+    "good": 300,
+    "avg": 500,
+    "kind": "repere_interne"
+   },
+   "key": [
+    [
+     "rc",
+     "Responsabilité civile (obligatoire)",
+     "responsabilit[ée] civile|\\bRC\\b"
+    ],
+    [
+     "conducteur",
+     "Garantie du conducteur",
+     "garantie (du )?conducteur|protection (du )?conducteur"
+    ],
+    [
+     "vol",
+     "Vol / incendie",
+     "\\bvol\\b|incendie"
+    ],
+    [
+     "equipement",
+     "Équipements (casque, gants)",
+     "[ée]quipements?|casque"
+    ]
+   ],
+   "sources": [
+    {
+     "name": "France Assureurs — automobile des particuliers 2025",
+     "url": "https://www.franceassureurs.fr/wp-content/uploads/le-marche-de-lassurance-automobile-des-particuliers-2025.pdf",
+     "date": "2026",
+     "figure": "2 roues : 290 € HT (globale), 412 € HT (tous risques)"
+    }
+   ]
+  },
+  "sante": {
+   "label": "Complémentaire santé (individuelle)",
+   "perPerson": true,
+   "ages": [
+    [
+     18,
+     39,
+     350
+    ],
+    [
+     40,
+     54,
+     450
+    ],
+    [
+     55,
+     64,
+     750
+    ],
+    [
+     65,
+     74,
+     1150
+    ],
+    [
+     75,
+     120,
+     1250
+    ]
+   ],
+   "profiles": {
+    "standard": {
+     "label": "Individuelle",
+     "avg": 850,
+     "low": 350,
+     "high": 1250,
+     "note": "Cotisation individuelle moyenne 2025 : 850 €/personne (350 € de 18 à 39 ans) — UFC-Que Choisir"
+    }
+   },
+   "franchise": null,
+   "key": [
+    [
+     "hospi",
+     "Hospitalisation",
+     "hospitalisation|chambre particuli[èe]re|forfait hospitalier"
+    ],
+    [
+     "optique",
+     "Optique",
+     "optique|lunettes|verres"
+    ],
+    [
+     "dentaire",
+     "Dentaire",
+     "dentaire|proth[èe]se"
+    ],
+    [
+     "honoraires",
+     "Dépassements d'honoraires",
+     "d[ée]passements? d.honoraires|OPTAM|DPTAM"
+    ],
+    [
+     "auditif",
+     "Aides auditives",
+     "auditi"
+    ]
+   ],
+   "sources": [
+    {
+     "name": "UFC-Que Choisir — Pourquoi est-il si difficile de choisir sa mutuelle santé ?",
+     "url": "https://www.quechoisir.org/breve-pourquoi-est-il-si-difficile-de-choisir-sa-mutuelle-sante-n177326/",
+     "date": "2026-07",
+     "figure": "Cotisation individuelle moyenne 2025 : 850 € ; 18-39 ans 350 €, 40-54 ans 450 €, 55-64 ans 750 €, 65-74 ans 1 150 €, 75 ans+ 1 250 €"
+    },
+    {
+     "name": "UFC-Que Choisir — Gel des cotisations des complémentaires",
+     "url": "https://www.quechoisir.org/conseils-gel-des-cotisations-des-complementaires-nos-reponses-a-vos-questions-n174082/",
+     "date": "2026",
+     "figure": "+7 % en 2025, +10 % en 2024 ; +4,5 % annoncés pour 2026 malgré le gel légal"
+    }
+   ]
+  },
+  "prevoyance": {
+   "label": "Prévoyance individuelle",
+   "profiles": {
+    "standard": {
+     "label": "Prévoyance complète",
+     "avg": 660,
+     "low": 360,
+     "high": 960,
+     "note": "Fourchette courante 30 à 80 €/mois pour une prévoyance complète (arrêt de travail, invalidité, décès), sites spécialisés 2025"
+    }
+   },
+   "franchise": {
+    "good": 30,
+    "avg": 90,
+    "unit": "jours",
+    "kind": "repere_interne"
+   },
+   "key": [
+    [
+     "deces",
+     "Décès",
+     "d[ée]c[èe]s|capital d[ée]c[èe]s"
+    ],
+    [
+     "invalidite",
+     "Invalidité",
+     "invalidit[ée]"
+    ],
+    [
+     "arret",
+     "Arrêt de travail / incapacité",
+     "arr[êe]t de travail|incapacit[ée]|indemnit[ée]s journali[èe]res"
+    ]
+   ],
+   "sources": [
+    {
+     "name": "MetLife / sites spécialisés — tarifs prévoyance individuelle",
+     "url": "https://www.metlife.fr/assurance-prevoyance/tarif-prevoyance-individuelle/",
+     "date": "2025",
+     "figure": "Environ 30 à 80 €/mois selon âge, métier, montants garantis et franchise"
+    }
+   ]
+  },
+  "trottinette": {
+   "label": "Trottinette / EDPM",
+   "profiles": {
+    "standard": {
+     "label": "RC + vol/casse",
+     "avg": 96,
+     "low": 35,
+     "high": 180,
+     "note": "RC seule 35-72 €/an ; RC + vol/casse 72-120 €/an ; tous risques 120-180 €/an (2025-2026)"
+    }
+   },
+   "franchise": {
+    "good": 50,
+    "avg": 150,
+    "kind": "repere_interne"
+   },
+   "key": [
+    [
+     "rc",
+     "Responsabilité civile (obligatoire)",
+     "responsabilit[ée] civile|\\bRC\\b"
+    ],
+    [
+     "vol",
+     "Vol",
+     "\\bvol\\b"
+    ],
+    [
+     "dommages",
+     "Dommages / casse",
+     "dommages|casse|bris"
+    ],
+    [
+     "corporel",
+     "Garantie corporelle du conducteur",
+     "corporel|conducteur"
+    ]
+   ],
+   "sources": [
+    {
+     "name": "Réassurez-moi — Assurance trottinette électrique 2026",
+     "url": "https://reassurez-moi.fr/guide/assurance-loisirs/trottinette",
+     "date": "2026",
+     "figure": "RC + vol/casse 72-120 €/an ; tous risques 120-180 €/an"
+    },
+    {
+     "name": "Macif — assurance trottinette électrique (RC obligatoire)",
+     "url": "https://www.macif.fr/assurance/particuliers/assurance-auto-moto-scooter/nouvelles-mobilites/trottinette-electrique/assurance-trottinette-electrique",
+     "date": "2025",
+     "figure": "Responsabilité civile obligatoire sur la voie publique"
+    }
+   ]
+  }
+ },
+ "savings": {
+  "av": {
+   "label": "Assurance vie",
+   "market": {
+    "entryFee": 0.57,
+    "ucFee": 0.88,
+    "euroFee": 0.67,
+    "arbFee": 1.0,
+    "euroYield": 2.63
+   },
+   "online": {
+    "entryFee": 0,
+    "ucFee": 0.5,
+    "euroFee": 0.6,
+    "arbFee": 0
+   },
+   "bank": {
+    "entryFee": 3.0,
+    "ucFee": 0.85,
+    "euroFee": 0.6,
+    "arbFee": 1.0
+   },
+   "fundTer": 1.6,
+   "sources": [
+    {
+     "name": "CCSF via MoneyVox — Observatoire des produits d'épargne financière (frais moyens 2025)",
+     "url": "https://www.moneyvox.fr/assurance-vie/actualites/109415/votre-contrat-est-il-plus-gourmand-en-frais-que-la-moyenne",
+     "date": "2026",
+     "figure": "Frais sur versement 0,55 % (euros) / 0,57 % (UC) ; frais de gestion 0,67 % (euros) / 0,88 % (UC)"
+    },
+    {
+     "name": "France Assureurs — L'assurance vie en unités de compte 2025",
+     "url": "https://www.franceassureurs.fr/wp-content/uploads/2025_assurance-vie-en-uc.pdf",
+     "date": "2026-05",
+     "figure": "Frais de gestion UC 0,88 % (0,82 % gestion libre, 1,17 % sous mandat) ; frais des fonds 1,60 %"
+    },
+    {
+     "name": "ACPR — Revalorisation 2025 des contrats d'assurance vie",
+     "url": "https://acpr.banque-france.fr/system/files/2026-06/20260630_AS180_revalorisation_2025.pdf",
+     "date": "2026-06",
+     "figure": "Taux moyen servi des fonds en euros 2025 : 2,63 % net de frais de gestion"
+    }
+   ]
+  },
+  "per": {
+   "label": "PER individuel",
+   "market": {
+    "entryFee": 1.5,
+    "ucFee": 0.9,
+    "euroFee": 0.76,
+    "arbFee": 1.0,
+    "euroYield": 2.63
+   },
+   "online": {
+    "entryFee": 0,
+    "ucFee": 0.5,
+    "euroFee": 0.6,
+    "arbFee": 0
+   },
+   "bank": {
+    "entryFee": 3.0,
+    "ucFee": 0.95,
+    "euroFee": 0.8,
+    "arbFee": 1.0
+   },
+   "fundTer": 1.6,
+   "sources": [
+    {
+     "name": "Toutsurmesfinances — frais 2025 (Observatoire CCSF)",
+     "url": "https://www.toutsurmesfinances.com/actualites/a/assurance-vie-pea-per-frais-globalement-stables-et-performances-moindres-en-2025",
+     "date": "2026",
+     "figure": "PER individuel : enveloppe la plus chère, frais de gestion fonds euros 0,76 % ; frais sur versement plus élevés que l'assurance vie"
+    }
+   ]
+  },
+  "pea": {
+   "label": "PEA",
+   "order": 500,
+   "market": {
+    "orderPct": 0.5,
+    "orderMin": 0,
+    "custodyPct": 0.4,
+    "accountFee": 0
+   },
+   "online": {
+    "orderPct": 0.2,
+    "orderMin": 0,
+    "custodyPct": 0,
+    "accountFee": 0
+   },
+   "bank": {
+    "orderPct": 0.5,
+    "orderMin": 0,
+    "custodyPct": 0.3,
+    "accountFee": 0
+   },
+   "caps": "Plafonds légaux PEA : 0,5 % par ordre en ligne, 1,2 % en agence ; droits de garde 0,4 % par an (+ 5 € par ligne max.)",
+   "sources": [
+    {
+     "name": "AMF — Plafonnement des frais pour le PEA",
+     "url": "https://www.amf-france.org/fr/actualites-publications/actualites/plafonnement-des-frais-pour-le-pea-que-faut-il-retenir",
+     "date": "2025",
+     "figure": "0,5 % par ordre en ligne, 1,2 % en agence ; droits de garde plafonnés à 0,4 % par an"
+    },
+    {
+     "name": "Bourse Direct — tarifs",
+     "url": "https://www.boursedirect.fr/fr/bourse/tarifs",
+     "date": "2026",
+     "figure": "0,99 € jusqu'à 500 € ; droits de garde 0 €"
+    },
+    {
+     "name": "Société Générale — PEA",
+     "url": "https://particuliers.sg.fr/epargner-placer-son-argent/nos-offres/pea-plan-epargne-actions",
+     "date": "2026",
+     "figure": "Courtage 0,5 % jusqu'à 2 000 € ; droits de garde 0,30 % + 4,50 €/ligne"
+    }
+   ]
+  },
+  "cto": {
+   "label": "Compte-titres",
+   "order": 500,
+   "market": {
+    "orderPct": 0.5,
+    "orderMin": 0,
+    "custodyPct": 0.4,
+    "accountFee": 0
+   },
+   "online": {
+    "orderPct": 0.2,
+    "orderMin": 0,
+    "custodyPct": 0,
+    "accountFee": 0
+   },
+   "bank": {
+    "orderPct": 0.5,
+    "orderMin": 8,
+    "custodyPct": 0.3,
+    "accountFee": 0
+   },
+   "caps": "Pas de plafond légal sur le compte-titres.",
+   "sources": [
+    {
+     "name": "Moneyvox — comparatif bourse 2026",
+     "url": "https://www.moneyvox.fr/bourse/",
+     "date": "2026",
+     "figure": "Banques traditionnelles : jusqu'à 0,50 % par ordre, plus droits de garde ; courtiers en ligne souvent sans droits de garde"
+    }
+   ]
+  }
+ },
+ "contracts": [
+  {
+   "id": "linxea-spirit-2",
+   "type": "av",
+   "name": "Linxea Spirit 2",
+   "insurer": "Spirica (Crédit Agricole Assurances)",
+   "broker": "Linxea",
+   "channel": "en ligne",
+   "entryFee": 0,
+   "ucFee": 0.5,
+   "euroFeeNote": "frais du fonds euros (2 % max.) déjà déduits du rendement net annoncé",
+   "arbFee": 0,
+   "euroYield": 3.08,
+   "euroYieldYear": 2025,
+   "supports": 1159,
+   "etf": true,
+   "pilot": true,
+   "pilotFee": 0.2,
+   "minInit": 500,
+   "source": "https://www.linxea.com/assurance-vie/linxea-spirit-2/",
+   "date": "2026-10"
+  },
+  {
+   "id": "lucya-cardif",
+   "type": "av",
+   "name": "Lucya Cardif",
+   "insurer": "Cardif (BNP Paribas)",
+   "broker": "Lucya",
+   "channel": "en ligne",
+   "entryFee": 0,
+   "ucFee": 0.5,
+   "euroFee": 0.7,
+   "arbFee": 0,
+   "euroYield": 2.75,
+   "euroYieldYear": 2025,
+   "etf": true,
+   "pilot": true,
+   "source": "https://lucya.com/app/uploads/2026/02/frais-lucya-cardif.pdf",
+   "date": "2026-02"
+  },
+  {
+   "id": "boursobank-vie",
+   "type": "av",
+   "name": "BoursoBank Vie",
+   "insurer": "Generali",
+   "broker": "BoursoBank",
+   "channel": "en ligne",
+   "entryFee": 0,
+   "ucFee": 0.75,
+   "euroFee": 0.75,
+   "arbFee": 0,
+   "euroYield": 3.0,
+   "euroYieldYear": 2025,
+   "etf": true,
+   "pilot": true,
+   "source": "https://www.boursobank.com/epargne/assurance-vie",
+   "date": "2026"
+  },
+  {
+   "id": "predissime-9-s2",
+   "type": "av",
+   "name": "Predissime 9 Série 2",
+   "insurer": "Predica (Crédit Agricole)",
+   "broker": "Crédit Agricole (agence)",
+   "channel": "banque",
+   "entryFee": 3.0,
+   "entryFeeNote": "maximum",
+   "ucFee": 0.85,
+   "euroFee": 0.6,
+   "arbFee": null,
+   "pilot": true,
+   "pilotFee": 0.25,
+   "source": "https://www.predica.com/wp-content/uploads/CQH_202504_A_P9S2_FRAIS_STA_VDEF.pdf",
+   "date": "2025-04"
+  },
+  {
+   "id": "pea-bourse-direct",
+   "type": "pea",
+   "name": "PEA Bourse Direct",
+   "broker": "Bourse Direct",
+   "channel": "en ligne",
+   "orderPct": 0.2,
+   "orderMin": 0.99,
+   "orderNote": "0,99 € jusqu'à 500 €, 0,09 % au-delà de 4 400 €",
+   "custodyPct": 0,
+   "accountFee": 0,
+   "source": "https://www.boursedirect.fr/fr/bourse/tarifs",
+   "date": "2026"
+  },
+  {
+   "id": "pea-societe-generale",
+   "type": "pea",
+   "name": "PEA Société Générale",
+   "broker": "Société Générale",
+   "channel": "banque",
+   "orderPct": 0.5,
+   "orderMin": 0,
+   "orderNote": "0,5 % jusqu'à 2 000 € puis dégressif",
+   "custodyPct": 0.3,
+   "custodyLine": 4.5,
+   "accountFee": 0,
+   "source": "https://particuliers.sg.fr/epargner-placer-son-argent/nos-offres/pea-plan-epargne-actions",
+   "date": "2026"
+  },
+  {
+   "id": "pea-bnp",
+   "type": "pea",
+   "name": "PEA BNP Paribas",
+   "broker": "BNP Paribas",
+   "channel": "banque",
+   "orderPct": 0.5,
+   "orderMin": 0,
+   "custodyPct": 0.4,
+   "custodyLine": 5,
+   "accountFee": 0,
+   "source": "https://www.francetransactions.com/bourse/pea/pea-bnp-paribas.html",
+   "date": "2025"
+  }
+ ]
+}

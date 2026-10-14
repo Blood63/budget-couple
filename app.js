@@ -282,7 +282,7 @@ function vPlacements(){
   ${banks.filter(b=>!bankF||b===bankF).map(b=>{const G=L.filter(p=>(p.bank||'Sans banque')===b);if(!G.length)return'';const sub=G.reduce((t,p)=>t+placValue(p),0);
     return `<h3 class="group row-b"><span>${esc(b)}</span><span>${eur(sub)}</span></h3><div class="list">${G.map(p=>{const ri=rateInfo(p),t=ptype(p.type),env=isEnv(p),g=gain(p),lv=lastVal(p.id),isDue=due.includes(p);
      return `<button class="item" data-edit-plac="${p.id}"><span class="avatar" style="--pc:${COL[p.owner]}">${ic('trend',16)}</span>
-     <span class="grow"><b>${esc(p.name||t[1])}</b><small>${t[1]} · ${esc(N(p.owner))}${p.monthly?` · +${eur(p.monthly)}/mois`:''}</small>
+     <span class="grow"><b>${esc(p.name||t[1])}</b>${typeof ctQ==='function'&&p.contract?' '+qBadge(ctQ(p),1):''}<small>${t[1]} · ${esc(N(p.owner))}${p.monthly?` · +${eur(p.monthly)}/mois`:''}</small>
      <small class="${ri.auto?'acc':''}">${esc(ri.txt)}</small>
      ${env?`<small>${lv?`Valorisé le ${new Date(lv.date+'T12:00').toLocaleDateString('fr-FR')}`:'Aucune valorisation'}${g.inv?` · <span class="${g.d>=0?'pos':'neg'}">${g.d>=0?'+':''}${eur(g.d)} (${g.pc.toFixed(1)} %)</span>`:''}</small>`:''}
      ${isDue?`<small class="warn-c">${ic('alert',12)} Valorisation à mettre à jour</small>`:''}${ri.warn?`<small class="neg">${ic('alert',12)} ${esc(ri.warn)}</small>`:''}</span>
@@ -318,8 +318,8 @@ function placSheet(id,draft){const p=draft||D.placements.find(x=>x.id===id)||{ow
    :`<div class="f2"><label>Capital actuel (€)<input name="capital" inputmode="decimal" value="${p.capital??''}" placeholder="0"></label><label>Versement mensuel (€)<input name="monthly" inputmode="decimal" value="${p.monthly??''}" placeholder="0"></label></div>
      ${LIVRETS_I.includes(p.type)?`<label>Jour du versement programmé<input name="payDay" type="number" min="1" max="28" value="${p.payDay||''}" placeholder="1"></label>`:''}`}
    ${rateBlock}<p class="neg" id="placErr" role="alert"></p>
-   <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="placements|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>${valBlock}${id&&LIVRETS_I.includes(p.type)?livretBlock(D.placements.find(x=>x.id===id)):''}`,()=>{
-   if(id)bindLivretBlock(id);
+   <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="placements|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>${valBlock}${id&&env&&typeof contractBlock==='function'?contractBlock(D.placements.find(x=>x.id===id)||p):''}${id&&LIVRETS_I.includes(p.type)?livretBlock(D.placements.find(x=>x.id===id)):''}`,()=>{
+   if(id)bindLivretBlock(id);if(id&&env&&typeof bindContract==='function')bindContract(id);
    const F=$('#fPlac'),cur=()=>({...p,...fd(F),rateMode:$('#manualRate')?($('#manualRate').checked?'manual':'auto'):p.rateMode});
    $('#ptype').addEventListener('change',()=>{const c=cur(),nt=ptype(c.type);c.rateMode=nt[2]==='auto'?'auto':'manual';if(nt[2]==='floor'&&la&&!num(c.rate))c.rate=la.rate;placSheet(id,c)});
    on('#manualRate','change',e=>{$('#rateL').hidden=!e.target.checked});
