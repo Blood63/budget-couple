@@ -238,4 +238,11 @@ function feeCost10(c,type,M,{capital=10000,monthly=0,euroShare=0.5,years=10,gros
     return{fees:R2(fees),final:R2(v),gap:R2(noFee-v)}};
   const own=Object.fromEntries(Object.entries(c||{}).map(([k,x])=>[k,x===''||x==null?undefined:+x]).filter(([,x])=>x!==undefined&&!isNaN(x)));
   return{own:run({...S.market,...own}),market:run(S.market),online:run(S.online),bank:run(S.bank)}}
-if(typeof module!=='undefined')module.exports={gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+/* Part cible de chaque personne pour un objectif (v11). split null → réglage global (ratio = part de p1 en %). */
+function goalShares(g,ratio){const T=Math.round((+g.target||0)*100)/100,r2=x=>Math.round(x*100)/100;
+  if(g.owner==='p1')return{p1:T,p2:0};if(g.owner==='p2')return{p1:0,p2:T};const s=g.split;
+  if(s&&s.mode==='amount'){const a=r2(Math.max(0,+s.p1||0)),b=r2(Math.max(0,+s.p2||0));if(Math.abs(a+b-T)<0.005)return{p1:a,p2:r2(T-a)};const p=a+b>0?a/(a+b):0.5;const x=r2(T*p);return{p1:x,p2:r2(T-x)}}
+  const pc=s&&s.mode==='pct'?Math.min(100,Math.max(0,+s.p1)):(typeof ratio==='number'?ratio:50),x=r2(T*pc/100);return{p1:x,p2:r2(T-x)}}
+const goalPct=(g,ratio)=>{const S=goalShares(g,ratio),T=S.p1+S.p2;return T>0?S.p1/T*100:(g.split&&g.split.mode==='pct'?+g.split.p1:ratio)};
+
+if(typeof module!=='undefined')module.exports={goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

@@ -15,3 +15,8 @@ a.ok(f.own.gap>f.online.gap&&f.bank.gap>f.online.gap&&f.own.gap>0);
 for(const c of M.contracts)a.ok(c.source&&c.date,'source et date '+c.id);
 for(const [t,r] of Object.entries(M.insurance))a.ok(r.sources.length&&r.sources.every(x=>x.url&&x.date),t);
 console.log('qualité OK',on.score,bk.score,h.score);
+{const gs=F.goalShares;a.deepEqual(gs({owner:'common',target:1000,split:null},60),{p1:600,p2:400});
+ a.deepEqual(gs({owner:'common',target:1000,split:{mode:'pct',p1:70}},50),{p1:700,p2:300});
+ a.deepEqual(gs({owner:'common',target:1000,split:{mode:'amount',p1:250,p2:750}},50),{p1:250,p2:750});
+ a.deepEqual(gs({owner:'common',target:1000,split:{mode:'amount',p1:100,p2:100}},50),{p1:500,p2:500},'montants incohérents → proportion');
+ a.deepEqual(gs({owner:'p2',target:80},50),{p1:0,p2:80});const t=gs({owner:'common',target:100.01,split:{mode:'pct',p1:33}},50);a.equal(Math.round((t.p1+t.p2)*100),10001);console.log('goalShares OK')}

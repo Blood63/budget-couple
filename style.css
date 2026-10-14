@@ -229,3 +229,11 @@ fieldset.feed{border:1px solid rgba(255,255,255,.1);border-radius:var(--r-sm);pa
 .qcrit{list-style:none;margin:8px 0;padding:0;display:grid;gap:10px}
 .qcrit li{display:grid;gap:4px}.qcrit small{color:var(--mut)}.qcrit small.neg{color:var(--bad)}.qcrit small.warn-t{color:var(--warn)}
 .qsrc{margin-top:8px;font-size:.85rem}.qsrc ul{padding-left:18px;margin:6px 0}.qsrc li{margin:4px 0;color:var(--mut)}
+/* v10 : répartition des objectifs */
+.gsplit-f{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:10px 0;display:grid;gap:10px}
+.split-l{color:var(--mut);font-size:.85rem;font-weight:600}#gSplit[hidden]{display:none}
+.smodes{display:flex;flex-wrap:wrap;gap:6px}.gsplit-f [hidden]{display:none!important}.seg-o{display:inline-flex}.seg-o input{position:absolute;opacity:0;pointer-events:none}
+.seg-o span{padding:7px 10px;border:1px solid var(--line);border-radius:999px;font-size:.85rem;cursor:pointer}
+.seg-o input:checked+span{background:var(--acc);color:#0b0f14;border-color:var(--acc);font-weight:600}.seg-o input:focus-visible+span{outline:2px solid var(--acc);outline-offset:2px}
+.gsplit-f input[type=range]{width:100%;accent-color:var(--acc)}
+.gsplit{display:grid;gap:6px;margin-top:6px}.gp{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.82rem;border-left:3px solid var(--pc);padding-left:8px}.gp b{width:100%}

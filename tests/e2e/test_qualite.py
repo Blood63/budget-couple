@@ -19,7 +19,7 @@ try:
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(D))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
   pg=c.new_page();pg.clock.install(time='2026-10-14T10:00:00+02:00');pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text))
   pg.goto('http://localhost:18765/');pg.wait_for_function('RATES!==null&&MARKET!==null');pg.wait_for_timeout(500);pg.add_script_tag(path='/tmp/axe.min.js')
-  d=pg.evaluate('D');assert d['version']==10 and d['placements'][0]['contract'] is None and d['insurances'][0]['profile']=='locataire' and d['insurances'][1]['persons']==1;print('MIGRATION v9→v10 OK')
+  d=pg.evaluate('D');assert d['version']==11 and d['placements'][0]['contract'] is None and d['insurances'][0]['profile']=='locataire' and d['insurances'][1]['persons']==1;print('MIGRATION v9→v10 OK')
   # Assurances
   pg.evaluate("go('assurances')");pg.wait_for_timeout(900)
   assert pg.locator('.item .qbadge').count()==2;pg.screenshot(path=f'{OUT}/v9-assurances-liste.png')

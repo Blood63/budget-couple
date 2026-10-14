@@ -202,6 +202,10 @@ function monthSheet(id,draft){
      else{o.id=uid();D.months.push(o)}closeSheet();save();toast('Enregistré')})})}
 /* ---------- Onglet Objectifs ---------- */
 let goalF='';
+function goalPersons(g,C,cm){const S=gShares(g),T=S.p1+S.p2,sv=Math.min(+g.saved||0,T),s1=T?Math.round(sv*S.p1/T*100)/100:0,init={p1:s1,p2:Math.round((sv-s1)*100)/100},mo=g.date?monthsBetween(cm,g.date):0,late=g.date&&g.date<cm;
+  return ['p1','p2'].map(k=>{const paid=Math.round((init[k]+C.contrib[g.id][k])*100)/100,rest=Math.max(0,Math.round((S[k]-paid)*100)/100);return{k,target:S[k],paid,rest,monthly:rest>0&&mo&&!late?Math.round(rest/mo*100)/100:null}})}
+function personSplit(g,C,cm){const P=goalPersons(g,C,cm),pc=Math.round(goalPct(g,D.ratio));
+  return `<span class="gsplit"><small class="mut">Répartition ${g.split?g.split.mode==='amount'?'en montants fixes':'personnalisée':'des réglages'} · ${pc}/${100-pc}</small>${P.map(p=>`<span class="gp" style="--pc:var(--${p.k})"><b>${esc(N(p.k))}</b><span>part ${eur(p.target)}</span><span>versé ${eur(p.paid)}</span><span>reste ${eur(p.rest)}</span>${p.monthly!=null?`<span>${eur(p.monthly)}/mois</span>`:''}</span>`).join('')}</span>`}
 function vObjectifs(){
   const C=compute(),cm=curMonth();
   return `${sec('Objectifs',addBtn('addGoal'))}${D.goals.length>2?chips('goalWho',[['','Tous'],['common','Communs'],['p1',D.names.p1],['p2',D.names.p2]],goalF,'Filtrer les objectifs'):''}`+['common','p1','p2'].filter(g=>!goalF||g===goalF).map(g=>{const L=D.goals.filter(x=>x.owner===g);if(!L.length)return'';
@@ -210,17 +214,38 @@ function vObjectifs(){
     return `<button class="card goal" data-edit-goal="${x.id}" style="--pc:${COL[g]}"><span class="row-b"><b>${esc(x.name)}</b><span class="pct">${p.toFixed(0)} %</span></span>
      ${bar(p,p>=100?'done':'')}<span class="row-b"><span>${money(sv)} <small class="mut">/ ${eur(x.target)}</small></span><small class="mut">reste ${eur(rest)}</small></span>
      ${x.date&&x.date<cm&&rest>0?`<small class="neg">${ic('alert',13)} Échéance dépassée (${monthLabel(x.date)})</small>`:mo&&rest>0?`<small class="mut">${ic('calendar',13)} ${eur(rest/mo)}/mois pendant ${mo} mois (${monthLabel(x.date)})</small>`:p>=100?`<small class="pos">Objectif atteint 🎉</small>`:''}
-     <span class="contrib"><span style="color:var(--p1)">${esc(D.names.p1)} ${eur(c.p1)}</span><span style="color:var(--p2)">${esc(D.names.p2)} ${eur(c.p2)}</span>${x.saved?`<span class="mut">initial ${eur(x.saved)}</span>`:''}</span></button>`}).join('')}).join('')+
-  (D.goals.length?`<p class="mut note">L’épargne de chaque mois est répartie automatiquement entre les objectifs perso et communs, au prorata du besoin mensuel (reste ÷ mois restants ; pour les objectifs communs, part de chacun selon les réglages).</p>`:empty('target','Aucun objectif pour l’instant (ex. voyage, apport, voiture).'));
+     ${g==='common'?personSplit(x,C,cm):`<span class="contrib"><span style="color:var(--p1)">${esc(D.names.p1)} ${eur(c.p1)}</span><span style="color:var(--p2)">${esc(D.names.p2)} ${eur(c.p2)}</span>${x.saved?`<span class="mut">initial ${eur(x.saved)}</span>`:''}</span>`}</button>`}).join('')}).join('')+
+  (D.goals.length?`<p class="mut note">L’épargne de chaque mois est répartie automatiquement entre les objectifs perso et communs, au prorata du besoin mensuel (reste ÷ mois restants ; pour les objectifs communs, chacun finance sa part cible : réglages ou répartition propre à l’objectif).</p>`:empty('target','Aucun objectif pour l’instant (ex. voyage, apport, voiture).'));
 }
-function goalSheet(id){const g=D.goals.find(x=>x.id===id)||{owner:'common'};
-  openSheet(id?'Modifier l’objectif':'Nouvel objectif',`<form id="fGoal">
+function splitBlock(g){const sp=g.split,mode=sp?sp.mode:'auto',S=gShares(g),pc=Math.round(goalPct(g,D.ratio));
+  return `<div class="gsplit-f" id="gSplit" role="group" aria-labelledby="gSplitL" ${g.owner==='common'?'':'hidden'}><b class="split-l" id="gSplitL">Répartition de la cible</b>
+   <div class="smodes" role="radiogroup" aria-label="Mode de répartition">${[['auto',`Réglages (${D.ratio}/${100-D.ratio})`],['pct','En %'],['amount','Montants fixes']].map(([k,l])=>`<label class="seg-o"><input type="radio" name="smode" value="${k}" ${mode===k?'checked':''}><span>${l}</span></label>`).join('')}</div>
+   <div id="sPct" ${mode==='pct'?'':'hidden'}><label><span>Part de ${esc(D.names.p1)} : <b id="sPctV">${pc} %</b> · ${esc(D.names.p2)} : <b id="sPctV2">${100-pc} %</b></span><input type="range" name="spct" min="0" max="100" step="1" value="${pc}"></label>
+    <div class="presets">${[50,60,70,80,40,30].map(v=>`<button type="button" data-spreset="${v}">${v}/${100-v}</button>`).join('')}</div></div>
+   <div id="sAmt" ${mode==='amount'?'':'hidden'} class="f2"><label>${esc(D.names.p1)} (€)<input name="sa1" inputmode="decimal" value="${mode==='amount'?S.p1:''}"></label><label>${esc(D.names.p2)} (€)<input name="sa2" inputmode="decimal" value="${mode==='amount'?S.p2:''}"></label></div>
+   <p class="mut" id="sSum" role="status"></p></div>`}
+function goalSheet(id){const g=D.goals.find(x=>x.id===id)||{owner:'common',split:null};
+  openSheet(id?'Modifier l’objectif':'Nouvel objectif',`<form id="fGoal" novalidate>
    <label>Nom<input name="name" value="${esc(g.name||'')}" placeholder="ex. Voyage" required></label>
    <div class="f2"><label>Pour<select name="owner">${ownerOpts(g.owner)}</select></label><label>Date cible<input type="month" name="date" value="${g.date||''}"></label></div>
    <div class="f2"><label>Montant cible (€)<input name="target" inputmode="decimal" value="${g.target??''}" required></label><label>Déjà économisé avant (€)<input name="saved" inputmode="decimal" value="${g.saved||''}" placeholder="0"></label></div>
-   <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="goals|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>
-   $('#fGoal').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target),o={id:id||uid(),name:f.name,owner:f.owner,date:f.date,target:num(f.target),saved:num(f.saved)};
-    if(id)Object.assign(g,o);else D.goals.push(o);closeSheet();save();toast('Enregistré')}))}
+   ${splitBlock(g)}<p class="neg" id="goalErr" role="alert"></p>
+   <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="goals|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>{
+   const F=$('#fGoal'),E=F.elements,mode=()=>F.querySelector('[name=smode]:checked')?.value||'auto';
+   const upd=()=>{const m=mode(),T=num(E.target.value);$('#gSplit').hidden=E.owner.value!=='common';$('#sPct').hidden=m!=='pct';$('#sAmt').hidden=m!=='amount';
+     const p=+E.spct.value;$('#sPctV').textContent=p+' %';$('#sPctV2').textContent=(100-p)+' %';
+     let a,b;if(m==='amount'){a=num(E.sa1.value);b=num(E.sa2.value)}else{const S=goalShares({owner:'common',target:T,split:m==='pct'?{mode:'pct',p1:p}:null},D.ratio);a=S.p1;b=S.p2}
+     const ok=m!=='amount'||Math.abs(a+b-T)<0.005;$('#sSum').className=ok?'mut':'neg';
+     $('#sSum').textContent=`${D.names.p1} : ${eur(a)} · ${D.names.p2} : ${eur(b)}${m==='amount'?` · total ${eur(a+b)} / cible ${eur(T)}${ok?' ✓':' : la somme doit égaler la cible'}`:''}`};
+   F.addEventListener('input',upd);F.addEventListener('change',upd);
+   F.querySelectorAll('[data-spreset]').forEach(b=>b.addEventListener('click',()=>{E.spct.value=b.dataset.spreset;upd()}));
+   F.querySelectorAll('[name=smode]').forEach(r=>r.addEventListener('change',()=>{if(mode()==='amount'&&!E.sa1.value&&!E.sa2.value){const S=goalShares({owner:'common',target:num(E.target.value),split:null},D.ratio);E.sa1.value=String(S.p1).replace('.',',');E.sa2.value=String(S.p2).replace('.',',')}upd()}));upd();
+   F.addEventListener('submit',e=>{e.preventDefault();const f=fd(F),err=t=>{$('#goalErr').textContent=t};
+    if(!f.name.trim())return err('Indiquez un nom.');const T=num(f.target);if(!(T>0))return err('Le montant cible doit être positif.');if(num(f.saved)<0)return err('Le montant déjà économisé ne peut pas être négatif.');
+    let split=null;if(f.owner==='common'){const m=mode();if(m==='pct')split={mode:'pct',p1:Math.min(100,Math.max(0,parseInt(f.spct)||0))};
+      else if(m==='amount'){const a=num(f.sa1),b=num(f.sa2);if(a<0||b<0)return err('Les montants par personne doivent être positifs.');if(Math.abs(a+b-T)>=0.005)return err(`La somme des parts (${eur(a+b)}) doit être égale à la cible (${eur(T)}).`);split={mode:'amount',p1:Math.round(a*100)/100,p2:Math.round(b*100)/100}}}
+    const o={id:id||uid(),name:f.name.trim(),owner:f.owner,date:f.date,target:T,saved:num(f.saved),split};
+    if(id)Object.assign(g,o);else D.goals.push(o);closeSheet();save();toast('Enregistré')})})}
 /* ---------- Onglet Placements ---------- */
 function chart(s){
   const W=340,H=180,P=8,max=Math.max(1,...s.map(x=>x.total)),X=i=>P+i*(W-2*P)/48,Y=v=>H-24-v/max*(H-44);
@@ -374,33 +399,36 @@ function vReglages(){
 /* ---------- Répartition automatique ---------- */
 // mois entre un mois "YYYY-MM" et une date cible "YYYY-MM" (min 1) ; sans date : 12 mois
 function monthsBetween(from,to){if(!to)return 12;const [y1,m1]=from.split('-').map(Number),[y2,m2]=to.split('-').map(Number);return Math.max(1,(y2-y1)*12+m2-m1)}
-const shareOf=(k,g)=>g.owner==='common'?(k==='p1'?D.ratio:100-D.ratio)/100:1;
-// Répartit "amount" de la personne k pour le mois "month" ; rem = reste courant par objectif (modifié)
+// Part cible / part déjà économisée (initial) de chaque personne
+const gShares=g=>goalShares(g,D.ratio);
+function initRem(){const rem={};D.goals.forEach(g=>{const S=gShares(g),T=S.p1+S.p2,sv=Math.min(+g.saved||0,T),r2=x=>Math.round(x*100)/100;
+  const s1=T?r2(sv*S.p1/T):0;rem[g.id]={p1:r2(Math.max(0,S.p1-s1)),p2:r2(Math.max(0,S.p2-(sv-s1)))}});return rem}
+// Répartit "amount" de la personne k pour le mois "month" ; rem[gid][k] = reste de SA part (modifié)
 function allocate(k,amount,month,rem){
-  const out={},el=D.goals.filter(g=>(g.owner===k||g.owner==='common')&&rem[g.id]>0.004);
-  let left=amount,open=[...el];
-  while(left>0.004&&open.length){
-    const w=open.map(g=>shareOf(k,g)*rem[g.id]/monthsBetween(month,g.date)),W=w.reduce((a,b)=>a+b,0);
+  const out={},el=D.goals.filter(g=>(g.owner===k||g.owner==='common')&&rem[g.id]&&rem[g.id][k]>0.004);
+  let left=amount,open=[...el],guard=0;
+  while(left>0.004&&open.length&&guard++<200){
+    const w=open.map(g=>rem[g.id][k]/monthsBetween(month,g.date)),W=w.reduce((a,b)=>a+b,0);
     if(W<=0)break;let capped=false;
     const part=open.map((g,i)=>left*w[i]/W);
-    open.forEach((g,i)=>{if(part[i]>=rem[g.id]){capped=true}});
-    if(capped){ // on remplit d'abord les objectifs plafonnés puis on redistribue
-      open=open.filter((g,i)=>{if(part[i]>=rem[g.id]){const v=Math.round(rem[g.id]*100)/100;out[g.id]=(out[g.id]||0)+v;left-=v;rem[g.id]=0;return false}return true});
-    }else{open.forEach((g,i)=>{const v=Math.round(part[i]*100)/100;out[g.id]=(out[g.id]||0)+v;rem[g.id]=Math.round((rem[g.id]-v)*100)/100;left-=v});left=Math.round(left*100)/100;if(left<0.01)left=0}
+    open.forEach((g,i)=>{if(part[i]>=rem[g.id][k]){capped=true}});
+    if(capped){open=open.filter((g,i)=>{if(part[i]>=rem[g.id][k]){const v=Math.round(rem[g.id][k]*100)/100;out[g.id]=(out[g.id]||0)+v;left-=v;rem[g.id][k]=0;return false}return true})}
+    else{let moved=0;open.forEach((g,i)=>{const v=Math.min(rem[g.id][k],Math.round(part[i]*100)/100);out[g.id]=(out[g.id]||0)+v;rem[g.id][k]=Math.round((rem[g.id][k]-v)*100)/100;left-=v;moved+=v});left=Math.round(left*100)/100;if(left<0.01)left=0;
+      if(left>0&&moved<0.01){/* centimes résiduels : au plus gros besoin, sans boucle infinie */const j=w.indexOf(Math.max(...w)),g=open[j],v=Math.min(left,rem[g.id][k]);out[g.id]=(out[g.id]||0)+v;rem[g.id][k]=Math.round((rem[g.id][k]-v)*100)/100;left=Math.round((left-v)*100)/100;if(rem[g.id][k]<=0.004)open.splice(j,1)}}
   }
   const r2=x=>Math.round(x*100)/100;Object.keys(out).forEach(i=>out[i]=r2(out[i]));
   return{alloc:out,unassigned:r2(Math.max(0,left))};
 }
 // Rejoue tout l'historique chronologiquement → affectations par mois + contributions par objectif
 let _cmp=null,_cmpKey=null;
-function compute(extra){if(!extra){const k=D.updated+':'+D.months.length+':'+D.goals.length+':'+D.ratio;if(_cmpKey===k&&_cmp)return _cmp;_cmpKey=k;return _cmp=computeRaw()}return computeRaw(extra)}
+function compute(extra){if(!extra){const k=D.updated+':'+D.months.length+':'+D.goals.length+':'+D.ratio+':'+JSON.stringify(D.goals.map(g=>[g.target,g.saved,g.split]));if(_cmpKey===k&&_cmp)return _cmp;_cmpKey=k;return _cmp=computeRaw()}return computeRaw(extra)}
 function computeRaw(extra){
-  const rem={},contrib={};D.goals.forEach(g=>{rem[g.id]=Math.round(Math.max(0,g.target-(g.saved||0))*100)/100;contrib[g.id]={p1:0,p2:0}});
+  const rem=initRem(),contrib={};D.goals.forEach(g=>{contrib[g.id]={p1:0,p2:0}});
   const res={},list=[...D.months].filter(m=>!extra||m.id!==extra.id);if(extra)list.push(extra);
   list.sort((a,b)=>a.month.localeCompare(b.month)).forEach(m=>{
     res[m.id]={};[['p1','a'],['p2','b']].forEach(([k,f])=>{
       let r;if(m.manual&&m.manual[k]){const al={};let s=0;
-        Object.entries(m.manual[k]).forEach(([gid,v])=>{if(rem[gid]!==undefined&&v>0){const x=Math.min(v,rem[gid]);al[gid]=x;rem[gid]=Math.round((rem[gid]-x)*100)/100;s+=x}});
+        Object.entries(m.manual[k]).forEach(([gid,v])=>{const R=rem[gid];if(R&&v>0){const o=k==='p1'?'p2':'p1',x=Math.min(v,R[k]+R[o]),own=Math.min(x,R[k]);al[gid]=Math.round(x*100)/100;R[k]=Math.round((R[k]-own)*100)/100;R[o]=Math.round((R[o]-(x-own))*100)/100;s+=x}});
         r={alloc:al,unassigned:Math.round((m[f]-s)*100)/100,manual:true}}
       else r=allocate(k,m[f]||0,m.month,rem);
       Object.entries(r.alloc).forEach(([gid,v])=>contrib[gid][k]+=v);res[m.id][k]=r})});
