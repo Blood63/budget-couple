@@ -9,7 +9,7 @@ D={"version":11,"names":{"p1":"Paul","p2":"Lucie"},"ratio":50,"accounts":[],"inc
  "fixed":[{"id":"f1","label":"Loyer","amount":800,"day":5,"split":50,"paidBy":"p1","category":"logement"}],
  "misc":[{"id":"m1","date":"2026-10-03","label":"Courses","amount":60,"paidBy":"p2","for":"common","payer":"common"}],"settlements":[],"updated":1000}
 AX="axe.run(document,{runOnly:['wcag2a','wcag2aa']}).then(r=>r.violations.map(v=>v.id+':'+v.nodes.length))"
-errs=[];F=Fake();F.row={'data':D,'updated_at':F.ts()}
+errs=[];F=Fake();URLS=[];F.row={'data':D,'updated_at':F.ts()}
 def debts(pg):return pg.evaluate("D.debts.map(x=>({...x}))")
 try:
  with sync_playwright() as p:
@@ -17,7 +17,7 @@ try:
   def dev(name,who,w=390):
     c=b.new_context(viewport={'width':w,'height':844},locale='fr-FR',timezone_id='Europe/Paris')
     c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-cfg',{json.dumps(json.dumps(CFG))});localStorage.setItem('budget-couple-me','{who}');sessionStorage.s=1}}")
-    c.route('**/*',lambda r:F.handle(r,name) if 'supabase.co' in r.request.url else (r.continue_() if r.request.url.startswith('http://localhost:18765') else r.abort()))
+    c.route('**/*',lambda r:(URLS.append(r.request.method+' '+r.request.url),F.handle(r,name))[1] if 'supabase.co' in r.request.url else (r.continue_() if r.request.url.startswith('http://localhost:18765') else r.abort()))
     pg=c.new_page();pg.clock.install(time='2026-10-15T17:00:00+02:00');pg.on('pageerror',lambda e:errs.append(name+': '+str(e)))
     pg.on('console',lambda m:m.type=='error' and 'Failed to fetch' not in m.text and errs.append(name+' '+m.text))
     pg.goto('http://localhost:18765/');pg.wait_for_function("document.querySelector('#syncState').textContent.includes('✓')");pg.wait_for_timeout(900);pg.add_script_tag(path='/tmp/axe.min.js');return pg
@@ -57,6 +57,10 @@ try:
   A.click('#debtRepayAll');A.wait_for_timeout(200);A.click('.debt-arch summary');assert 'Remboursées (4)' in A.inner_text('.debt-arch');v=A.evaluate(AX);assert not v,v
   A.evaluate("D.debts.forEach(x=>{if(x.id!=='"+cid+"')x.repaid=null});save()")
   A.evaluate("document.querySelector('.debt-arch').open=true");A.click(f'[data-debt-unrepay="{cid}"]');A.wait_for_timeout(200);assert not any(x['repaid'] for x in debts(A))
+  # synchro au repos : seulement updated_at (pas de re-téléchargement du document)
+  A.wait_for_timeout(1500);A.evaluate("pullRemote()");A.wait_for_timeout(800);URLS.clear()
+  for _ in range(3):A.evaluate("pullRemote()");A.wait_for_timeout(500)
+  full=[u for u in URLS if 'select=data' in u];light=[u for u in URLS if 'select=updated_at' in u];print('requêtes au repos',len(light),'légères,',len(full),'complètes');assert light and not full,URLS
   hist=A.evaluate("D.history.filter(h=>h.kind==='debts').length");assert hist>0
   for w in (320,768):
     A.set_viewport_size({'width':w,'height':800});A.wait_for_timeout(200);assert A.evaluate("document.documentElement.scrollWidth<=innerWidth+1"),w

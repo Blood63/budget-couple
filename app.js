@@ -462,7 +462,9 @@ function setSync(t,on){const b=$('#syncState');b.querySelector('span').textConte
 /* Synchro sans perte : lecture → fusion par élément → écriture conditionnelle (updated_at inchangé), sinon on recommence */
 let syncing=null,again=false;
 const restUrl=q=>`${cfg.url}/rest/v1/budget_spaces?code=eq.${encodeURIComponent(cfg.space)}${q||''}`;
+let _syncTs=null,_syncCanon=null; // dernier état synchronisé : évite de retélécharger tout le document toutes les 15 s (quota d'egress Supabase)
 async function syncOnce(){
+  if(_syncTs&&_syncCanon===canon(D)){const h=await fetch(restUrl('&select=updated_at'),{headers:sbH(),cache:'no-store'});if(!h.ok)throw{sb:await sbErr(h)};const [hr]=await h.json();if(hr&&hr.updated_at===_syncTs)return}
   for(let attempt=0;attempt<6;attempt++){
     const r=await fetch(restUrl('&select=data,updated_at'),{headers:sbH(),cache:'no-store'});if(!r.ok)throw{sb:await sbErr(r)};
     const [row]=await r.json(),stampNow=new Date().toISOString();
@@ -470,9 +472,9 @@ async function syncOnce(){
       if(w.status===409)continue;if(!w.ok)throw{sb:await sbErr(w)};return}
     const remote=migrate(row.data),merged=mergeData(D,remote),changedLocal=canon(merged)!==canon(D);
     if(changedLocal){adopt(merged);animate=false;if(!document.querySelector('#sheet.open'))render()}
-    if(canon(merged)===canon(mergeData(remote,remote)))return;
+    if(canon(merged)===canon(mergeData(remote,remote))){_syncTs=row.updated_at;_syncCanon=canon(D);return}
     const w=await fetch(restUrl('&updated_at=eq.'+encodeURIComponent(row.updated_at)),{method:'PATCH',headers:{...sbH(),Prefer:'return=representation'},body:JSON.stringify({data:D,updated_at:stampNow})});
-    if(!w.ok)throw{sb:await sbErr(w)};const rows=await w.json();if(rows.length)return; // sinon quelqu'un a écrit entre-temps → on refusionne
+    if(!w.ok)throw{sb:await sbErr(w)};const rows=await w.json();if(rows.length){_syncTs=rows[0].updated_at||null;_syncCanon=canon(D);return} // sinon quelqu'un a écrit entre-temps → on refusionne
   }
   throw{sb:'Conflit de synchronisation persistant, réessayez.'};
 }
