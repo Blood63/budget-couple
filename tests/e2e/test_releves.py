@@ -20,7 +20,7 @@ try:
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(D))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
   pg=c.new_page();pg.clock.install(time='2026-10-03T10:00:00+02:00');pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text))
   pg.goto('http://localhost:18766/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(500);pg.add_script_tag(path='/tmp/axe.min.js')
-  assert pg.evaluate('D.version')==11
+  assert pg.evaluate('D.version')==12
   def open_import(f):
     pg.evaluate("budgetSeg='diverses';go('budget')");pg.wait_for_timeout(200);pg.click('#impStmt');pg.select_option('#impAcc','acc-joint');pg.set_input_files('#impFile',os.path.join(FX,f))
     pg.wait_for_selector('#rvList',timeout=20000)

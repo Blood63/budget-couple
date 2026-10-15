@@ -1,12 +1,12 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=11;
-const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules'];
+const DATA_VERSION=12;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules','debts'];
 const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
 const BIRTHS={p1:'2000-06-22',p2:'2002-03-10'},TAX0={mode:'separe',children:0,childOf:'p1'};
-const blankData=()=>({imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
+const blankData=()=>({debts:[],imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
@@ -51,7 +51,9 @@ const MIGRATIONS={
   10:d=>{(d.placements||[]).forEach(p=>{if(['av','pea','cto','per'].includes(p.type)&&!('contract' in p))p.contract=null});
     (d.insurances||[]).forEach(i=>{if(i.type==='sante'&&!(+i.persons>0))i.persons=1;if(i.type==='habitation'&&!i.profile)i.profile=/propri/i.test(i.label+' '+(i.object||''))?'proprietaire':'locataire'});return d},
   /* v11 : répartition de la cible par objectif commun (null = réglages) — additif */
-  11:d=>{(d.goals||[]).forEach(g=>{if(!('split' in g))g.split=null});return d}
+  11:d=>{(d.goals||[]).forEach(g=>{if(!('split' in g))g.split=null});return d},
+  /* v12 : dettes entre nous — nouvelle liste vide, rien d'existant n'est modifié */
+  12:d=>{if(!Array.isArray(d.debts))d.debts=[];return d}
 };
 function migrateData(raw){
   let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;

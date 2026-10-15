@@ -23,7 +23,7 @@ with sync_playwright() as p:
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V6))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
   pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
   pg.goto('http://localhost:18766/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(300);pg.evaluate('render()')
-  d=pg.evaluate('D');assert d['version']==11 and d['births']=={'p1':'2000-06-22','p2':'2002-03-10'} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
+  d=pg.evaluate('D');assert d['version']==12 and d['births']=={'p1':'2000-06-22','p2':'2002-03-10'} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
   assert pg.evaluate("[ageOf('p1'),ageOf('p2')]")==[26,24];print('MIGRATION v6→v7 OK, âges 26 / 24')
   T=pg.evaluate('tips()');K={t['key']:t for t in T};print(len(T),'conseils :',sorted(K))
   need=['precaution-high','ceil-full-la','ceil-near-ld','ceil-near-lj','lep-p1','lep-p2','order-ce-lj','pel10-pe','rate-2026-10','goal-slow-g1','misc-up-2026-10','lj-end-p2','per-p1','pea-date-p1','av-date-p2','idle-2026-10']

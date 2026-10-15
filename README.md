@@ -116,3 +116,10 @@ manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + 
 - La répartition automatique de l'épargne finance la **part cible de chaque personne** (besoin = reste de sa part ÷ mois restants) ; l'historique est recalculé à chaque changement. Les répartitions manuelles d'un mois sont conservées (au-delà de sa part, elles complètent la part de l'autre).
 - Affichage par personne : part cible, déjà versé (dont part de l'initial), reste, €/mois nécessaire.
 - Migration v11 additive (`split: null` = réglages). Tests : `tests/e2e/test_objectif_repartition.py`, check-up global `tests/e2e/test_checkup.py` (données vides, anciennes, volumineuses ; 320/390/768 px ; réseau externe bloqué).
+
+## v11 — Dettes entre nous, espace utilisé
+- Carte **Dettes entre nous** sur l'Accueil : petites sommes avancées (qui doit à qui, montant, libellé, date), ajout rapide, modification / suppression avec « Annuler », remboursement d'une ligne ou de tout (archivées, consultables, réouvrables), total dû par chacun et solde net.
+- Présentation cohérente avec l'**Équilibre du mois** : les dettes sont suivies à part (jamais ajoutées aux charges/dépenses du mois), la carte Équilibre affiche une note « Hors dettes entre nous… Total tout compris : … ». Pas de double comptage.
+- Synchronisation par élément (liste `debts`, fusion et suppressions comme le reste). Migration de données v12 purement additive (`debts: []`).
+- **Espace utilisé** (Réglages) : taille du document partagé vs 500 Mo de base Supabase, documents vs 1 Go de Storage, stockage local vs ≈ 5 M caractères. Si localStorage est plein, la sauvegarde bascule sur IndexedDB (aucune perte) et revient automatiquement.
+- Mise en page : libellés longs et montants à 7 chiffres sans troncature ni chevauchement de 320 à 430 px (check-up automatisé `tests/e2e/test_checkup.py`).

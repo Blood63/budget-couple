@@ -15,10 +15,10 @@ V5={"version":5,"updated":50,"ratio":50,
 with sync_playwright() as p:
   b=p.chromium.launch();c=b.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True,locale='fr-FR')
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V5))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
-  pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
+  pg=c.new_page();pg.clock.install(time='2026-10-10T10:00:00+02:00');pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
   pg.goto('http://localhost:18765/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(300)
   d=pg.evaluate('D');av=[x for x in d['placements'] if x['id']=='av'][0]
-  assert d['version']==11 and d['positions']==[] and len(d['archive']['positions'])==3 and av['capital']==14820 and av['invested']==13800 and av['monthly']==270 and len(av['archivedLines'])==3
+  assert d['version']==12 and d['positions']==[] and len(d['archive']['positions'])==3 and av['capital']==14820 and av['invested']==13800 and av['monthly']==270 and len(av['archivedLines'])==3
   assert pg.evaluate("placValue(D.placements.find(p=>p.id==='av'))")==14820;print('MIGRATION v5→v6 OK : 14 820 € conservés, détail archivé')
   # rappel : AV (valorisée le 20/09) et PEA (jamais) sont dus au 1er octobre
   due=pg.evaluate("dueValuations().map(p=>p.id)");assert sorted(due)==['av','pea'],due

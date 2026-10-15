@@ -237,3 +237,17 @@ fieldset.feed{border:1px solid rgba(255,255,255,.1);border-radius:var(--r-sm);pa
 .seg-o input:checked+span{background:var(--acc);color:#0b0f14;border-color:var(--acc);font-weight:600}.seg-o input:focus-visible+span{outline:2px solid var(--acc);outline-offset:2px}
 .gsplit-f input[type=range]{width:100%;accent-color:var(--acc)}
 .gsplit{display:grid;gap:6px;margin-top:6px}.gp{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.82rem;border-left:3px solid var(--pc);padding-left:8px}.gp b{width:100%}
+/* v11 : dettes entre nous */
+.f3{display:grid;grid-template-columns:1fr 1fr;gap:10px}.f3>label:last-child{grid-column:1/-1}
+@media(min-width:600px){.f3{grid-template-columns:1.2fr .8fr 1.4fr}.f3>label:last-child{grid-column:auto}}
+.debt-l{list-style:none;padding:0;margin:10px 0}.debt-l .item{gap:6px}.debt-arch{margin-top:10px}.debt-arch li{flex-wrap:wrap}.debt-note{margin-top:6px}
+.debts .hero-grid{margin:8px 0 14px}.debts #debtErr:empty{display:none}
+.space-row{display:grid;gap:4px;margin:10px 0}
+/* v11 : place pour libellés longs et gros montants (320-430 px) */
+.item{flex-wrap:wrap}.item .grow{flex:1 1 150px}.item b{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.item>.r,.item>.num,.item>b.num,.item>.money{flex:0 0 auto;margin-left:auto;white-space:nowrap}
+.hero-n{font-size:clamp(24px,8.5vw,36px);overflow-wrap:anywhere}.hero-grid>div{min-width:0;overflow-wrap:anywhere}
+.yr{min-width:0}.yr b{font-size:clamp(14px,4.6vw,18px);overflow-wrap:anywhere}.yr small{overflow-wrap:anywhere}
+.hero-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr))}.hero-grid .num{font-size:clamp(13px,4.4vw,17px)}
+.two-k{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.two-k>div{min-width:0;overflow-wrap:anywhere;font-size:clamp(14px,4.6vw,18px)}
+.debt-end{display:flex;align-items:center;gap:4px;margin-left:auto;flex:0 0 auto}.debt-end .num{white-space:nowrap;margin-right:4px}

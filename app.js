@@ -17,7 +17,8 @@ const monthLabel=m=>new Date(m+'-01T12:00').toLocaleDateString('fr-FR',{month:'l
 const num=v=>parseFloat(String(v??'').replace(/\s/g,'').replace(',','.'))||0;
 const fd=f=>Object.fromEntries(new FormData(f));
 const r2=x=>Math.round(x*100)/100;
-function persist(){localStorage.setItem(KEY,JSON.stringify(D))}
+function persist(){const j=JSON.stringify(D);if(typeof persistSafe==='function')persistSafe(j);else localStorage.setItem(KEY,j)}
+function adoptLocal(d){D=d;SNAP=snapshot(D);render()}
 function save(push=true){stamp(D,SNAP,Date.now(),me);SNAP=snapshot(D);persist();animate=false;render();if(push)pushRemote()}
 function adopt(d){const ui=D.miscMonth;D=d;if(ui)D.miscMonth=ui;SNAP=snapshot(D);persist()}
 function del(list,id){const val=list==='valuations'&&D.valuations.find(x=>x.id===id);if(list==='insurances'&&typeof insDocDelete==='function')insDocDelete(id);D[list]=D[list].filter(x=>x.id!==id);if(list==='placements'){D.valuations=D.valuations.filter(x=>x.pid!==id);D.movements=D.movements.filter(x=>x.pid!==id)}if(list==='accounts'){D.fixed.forEach(f=>{if(f.account===id)f.account=null});D.incomes.forEach(i=>{if(i.account===id)i.account=null});['fromAccount','toAccount'].forEach(k=>{if(D.transfer[k]===id)D.transfer={...D.transfer,[k]:null}})}save();if(val)placSheet(val.pid);else closeSheet();toast('Supprimé')}
@@ -371,7 +372,7 @@ function remindCard(){const due=dueValuations();if(!due.length)return'';
      <input name="value" inputmode="decimal" placeholder="${lv?String(lv.value).replace('.',','):'0'}" aria-label="Nouvelle valorisation de ${esc(p.name||ptype(p.type)[1])} en euros" required></label><button class="btn small">OK</button></form>`}).join('')}</div>`}
 /* ---------- Réglages ---------- */
 function vReglages(){
-  return `<div class="card"><h2>Prénoms & répartition</h2><form id="fNames">
+  return `${typeof spaceCard==='function'?spaceCard():''}<div class="card"><h2>Prénoms & répartition</h2><form id="fNames">
    <div class="f2"><label>Personne 1<input name="p1" value="${esc(D.names.p1)}"></label><label>Personne 2<input name="p2" value="${esc(D.names.p2)}"></label></div>
    <label>Part de ${esc(D.names.p1)} dans les dépenses communes (%)<input name="ratio" type="number" min="0" max="100" value="${D.ratio}"></label>
    <p class="mut">Sert de valeur par défaut pour les nouvelles charges, les dépenses diverses communes et les objectifs communs.</p>
@@ -538,7 +539,8 @@ function balance(m){const lines=[];let net=0;
 }
 function balanceCard(m){const b=balance(m),abs=Math.abs(b.net),from=b.net>0?'p2':'p1',to=b.net>0?'p1':'p2';
   return `<div class="card bal" aria-live="polite"><div class="row-b"><h2>${ic('swap',18)} Équilibre · ${monthLabel(m)}</h2></div>
-   ${abs<0.01?`<p class="ok-t">Vous êtes à l’équilibre ce mois-ci.</p>`:`<p class="bal-t"><b style="color:${COL[from]}">${esc(N(from))}</b> doit <b class="num" data-v="${abs}">${eur(abs)}</b> à <b style="color:${COL[to]}">${esc(N(to))}</b></p>
+   ${abs<0.01?`<p class="ok-t">Vous êtes à l’équilibre ce mois-ci.</p>${typeof debtTotals==='function'&&Math.abs(debtTotals().net)>=0.005?`<p class="mut debt-note">Hors « Dettes entre nous » : ${esc(debtSentence(debtTotals().net))}.</p>`:''}`:`<p class="bal-t"><b style="color:${COL[from]}">${esc(N(from))}</b> doit <b class="num" data-v="${abs}">${eur(abs)}</b> à <b style="color:${COL[to]}">${esc(N(to))}</b></p>
+   ${typeof debtTotals==='function'&&Math.abs(debtTotals().net)>=0.005?`<p class="mut debt-note">Hors « Dettes entre nous » (${esc(debtSentence(debtTotals().net))}), réglées à part. Total tout compris : ${esc(debtSentence(r2(b.net+debtTotals().net)))}.</p>`:''}
    <button class="btn ghost" id="settle" data-month="${m}" data-from="${from}" data-to="${to}" data-amount="${abs}">Marquer comme réglé</button>`}
    ${b.lines.length?`<details><summary>Détail du calcul</summary><ul class="bal-l">${b.lines.map(l=>`<li><span>${esc(l.label)}</span><small>${l.pay?'payé':'part due'} ${esc(N(l.from))} → ${esc(N(l.to))}</small><b>${eur(l.v)}</b></li>`).join('')}</ul></details>`:'<p class="mut">Indique « Payé par » sur les charges et dépenses pour calculer l’équilibre.</p>'}</div>`}
 /* ---------- Tableau de bord ---------- */
@@ -558,6 +560,7 @@ function vAccueil(){
   <button class="btn wide" id="quickAdd">${ic('plus',18)} Ajouter une dépense</button>
   ${reportCard()}${remindCard()}${interestCard()}${insRemindCard()}${accountAlertCard()}${onboarding()}${tipsCard()}
   ${D.fixed.length||D.misc.length||D.settlements.length||D.transfer.amount?balanceCard(m):''}
+  ${typeof debtCard==='function'?debtCard():''}
   ${sec('Prochains prélèvements',`<button class="link" data-goto="budget" data-seg-to="fixes">Tout voir</button>`)}
   <div class="list">${nc.map(f=>`<div class="item"><span class="day" aria-hidden="true">${f.day}</span><span class="grow"><b>${esc(f.label)}</b><small>${f.inDays===0?'Aujourd’hui':f.inDays===1?'Demain':`Dans ${f.inDays} jours`} · ${esc(paidName(f.paidBy))}</small></span>${money(f.amount)}</div>`).join('')||empty('calendar','Ajoute des charges avec un jour de prélèvement.')}</div>
   ${sec('Objectifs',`<button class="link" data-goto="objectifs">Tout voir</button>`)}
@@ -567,7 +570,7 @@ function vAccueil(){
   <div class="list">${D.history.slice(0,4).map(histItem).join('')||empty('repeat','Les modifications apparaîtront ici.')}</div>`;
 }
 /* ---------- Historique ---------- */
-const KIND={months:'Épargne',goals:'Objectif',fixed:'Charge',misc:'Dépense',placements:'Placement',accounts:'Compte',insurances:'Assurance',interests:'Intérêts',movements:'Mouvement',imports:'Relevé',reports:'Bilan',dismissed:'Conseil masqué',valuations:'Valorisation',incomes:'Revenu',settlements:'Règlement',names:'Prénoms',births:'Dates de naissance',tax:'Situation fiscale',ratio:'Répartition',transfer:'Virement',budget:'Budget'};
+const KIND={months:'Épargne',goals:'Objectif',fixed:'Charge',misc:'Dépense',placements:'Placement',accounts:'Compte',insurances:'Assurance',interests:'Intérêts',movements:'Mouvement',debts:'Dette',imports:'Relevé',reports:'Bilan',dismissed:'Conseil masqué',valuations:'Valorisation',incomes:'Revenu',settlements:'Règlement',names:'Prénoms',births:'Dates de naissance',tax:'Situation fiscale',ratio:'Répartition',transfer:'Virement',budget:'Budget'};
 const OP={add:'a ajouté',edit:'a modifié',del:'a supprimé'};
 function ago(t){const s=(Date.now()-t)/1000;if(s<60)return'à l’instant';if(s<3600)return`il y a ${Math.floor(s/60)} min`;if(s<86400)return`il y a ${Math.floor(s/3600)} h`;return new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 function histItem(h){const lab=h.kind==='budget'?monthLabel(h.label):['names','ratio','transfer'].includes(h.kind)?'':h.kind==='months'?monthLabel(h.label):h.label;
@@ -810,3 +813,4 @@ function installCard(){if(standalone())return'';
 document.addEventListener('click',async e=>{if(!e.target.closest('#installBtn')||!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch{}installEvt=null;render()});
 // rafraîchissement régulier tant que l'appli est visible (récupère les modifications de l'autre téléphone)
 setInterval(()=>{if(document.visibilityState==='visible'&&!document.querySelector('#sheet.open'))pullRemote()},15000);
+if(typeof restoreFromIdb==='function')restoreFromIdb().then(()=>{if(document.visibilityState==='visible')render()});
