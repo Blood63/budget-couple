@@ -140,7 +140,7 @@ function miscFiltered(all){const q=miscF.q.trim().toLowerCase();
 function vDiverses(){
   const m=D.miscMonth||curMonth(),b=D.budget[m]||0,all=D.misc.filter(x=>x.date.startsWith(m)),L=miscFiltered(all);
   const spent=all.reduce((s,x)=>s+x.amount,0),fsum=L.reduce((s,x)=>s+x.amount,0),cats=catBreakdown('misc',all).sort((a,c)=>c.v-a.v),top=cats[0];
-  const [yy,mm]=m.split('-').map(Number),dimM=new Date(yy,mm,0).getDate(),isCur=m===curMonth(),elapsed=isCur?new Date().getDate():dimM,avgDay=elapsed?spent/elapsed:0,pacing=avgDay*dimM;
+  const [yy,mm]=m.split('-').map(Number),dimM=new Date(yy,mm,0).getDate(),isCur=m===curMonth(),elapsed=isCur?new Date().getDate():dimM,avgDay=elapsed?spent/elapsed:0,pacing=safeToSpend({budget:b,spent,day:elapsed,daysInMonth:dimM}).projection;
   const active=miscF.q||miscF.cat||miscF.who||miscF.source||miscF.sort!=='date',byDay={};L.forEach(x=>{(byDay[x.date]??=[]).push(x)});
   const catChips=[...new Set(all.map(x=>x.category||'autre'))].map(k=>({k,n:catName('misc',k),v:all.filter(x=>(x.category||'autre')===k).reduce((s,x)=>s+x.amount,0),n2:all.filter(x=>(x.category||'autre')===k).length})).sort((a,c)=>c.v-a.v);
   return `<div class="monthbar"><input type="month" id="miscMonth" value="${m}" aria-label="Mois affiché"></div>
@@ -568,6 +568,13 @@ function balanceCard(m){const b=balance(m),abs=Math.abs(b.net),from=b.net>0?'p2'
    ${typeof debtTotals==='function'&&Math.abs(debtTotals().net)>=0.005?`<p class="mut debt-note">Hors « Dettes entre nous » (${esc(debtSentence(debtTotals().net))}), réglées à part. Total tout compris : ${esc(debtSentence(r2(b.net+debtTotals().net)))}.</p>`:''}
    <button class="btn ghost" id="settle" data-month="${m}" data-from="${from}" data-to="${to}" data-amount="${abs}">Marquer comme réglé</button>`}
    ${b.lines.length?`<details><summary>Détail du calcul</summary><ul class="bal-l">${b.lines.map(l=>`<li><span>${esc(l.label)}</span><small>${l.pay?'payé':'part due'} ${esc(N(l.from))} → ${esc(N(l.to))}</small><b>${eur(l.v)}</b></li>`).join('')}</ul></details>`:'<p class="mut">Indique « Payé par » sur les charges et dépenses pour calculer l’équilibre.</p>'}</div>`}
+function safeSpendCard(){const m=curMonth(),bud=D.budget[m]||0,spent=D.misc.filter(x=>x.date.startsWith(m)).reduce((s,x)=>s+x.amount,0),now=new Date(),ss=safeToSpend({budget:bud,spent,day:now.getDate(),daysInMonth:new Date(now.getFullYear(),now.getMonth()+1,0).getDate()});
+  const head=`<div class="row-b"><h2 id="safeSpendH">${ic('wallet',18)} Reste à dépenser par jour</h2><button type="button" class="link" data-goto="budget" data-seg-to="diverses">Dépenses</button></div>`;
+  if(ss.status==='no-budget')return `<section class="card safe-spend" aria-labelledby="safeSpendH">${head}<p class="mut">Définissez un budget de dépenses diverses du mois pour connaître votre reste à dépenser par jour.</p></section>`;
+  if(ss.status==='over')return `<section class="card safe-spend over" aria-labelledby="safeSpendH">${head}<div class="ss-n neg">Budget dépassé de ${eur(ss.over)}</div><p class="neg" role="alert">${ic('alert',14)} Budget de ${eur(ss.budget)} déjà dépassé : ${eur(ss.spent)} dépensés. Projection de fin de mois au rythme actuel : ${eur(ss.projection)}.</p></section>`;
+  return `<section class="card safe-spend" aria-labelledby="safeSpendH">${head}<div class="ss-n">${eur(ss.perDay)}<small> / jour</small></div>
+   <p class="mut">Reste ${eur(ss.remaining)} à répartir sur ${ss.daysLeft} jour${ss.daysLeft>1?'s':''}, aujourd’hui inclus (${eur(ss.spent)} dépensés sur ${eur(ss.budget)}).</p>
+   ${ss.status==='risk'?`<p class="warn-t">${ic('alert',14)} Au rythme actuel, projection de fin de mois : ${eur(ss.projection)}, au-dessus du budget de ${eur(ss.budget)}.</p>`:`<p class="mut">Projection de fin de mois au rythme actuel : ${eur(ss.projection)}.</p>`}</section>`}
 /* ---------- Tableau de bord ---------- */
 function nextCharges(n=5){const t=new Date(),today=t.getDate(),dim=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
   return D.fixed.filter(f=>f.day).map(f=>{const d=f.day>=today?f.day-today:dim-today+f.day;return{...f,inDays:d}}).sort((a,b)=>a.inDays-b.inDays).slice(0,n)}
@@ -582,6 +589,7 @@ function vAccueil(){
    <div class="hero-grid"><div><small>Revenus</small>${money(rev)}</div><div><small>Épargné ce mois</small>${money(ep)}</div>
    <div><small>Dépenses diverses</small>${money(spent)}${bud?`<small> / ${eur(bud)}</small>`:''}</div><div><small>Taux d’épargne</small><span class="num">${rev?(ep/rev*100).toFixed(0):0} %</span></div></div>
    ${bud?bar(spent/bud*100,spent>bud?'over':''):''}</div>
+  ${safeSpendCard()}
   <button class="btn wide" id="quickAdd">${ic('plus',18)} Ajouter une dépense</button>
   ${reportCard()}${remindCard()}${interestCard()}${insRemindCard()}${accountAlertCard()}${onboarding()}${tipsCard()}
   ${D.fixed.length||D.misc.length||D.settlements.length||D.transfer.amount?balanceCard(m):''}

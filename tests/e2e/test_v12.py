@@ -24,6 +24,9 @@ try:
   c.route('**/*',lambda r:r.continue_() if r.request.url.startswith('http://localhost:18767') else r.abort())
   pg=c.new_page();pg.clock.install(time='2026-10-17T13:00:00+02:00');pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text))
   pg.goto('http://localhost:18767/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(700);pg.add_script_tag(path='/tmp/axe.min.js')
+  # Safe to spend (Accueil) : budget 500, dépensé 212,80 au 17/10 -> 287,20 / 15 jours
+  ss=pg.locator('.safe-spend');ss.scroll_into_view_if_needed();st=ss.inner_text();print(st.replace('\n',' | '));assert 'Reste à dépenser par jour' in st and '19,15' in st.replace('\u202f',' ') and '15 jours' in st and '388,05' in st.replace('\u202f',' '),st
+  v=pg.evaluate(AX);print('AXE safe to spend',v);assert not v;ss.screenshot(path=f'{OUT}/v12-safe-to-spend.png')
   # Épargne par personne
   pg.evaluate("go('epargne')");pg.wait_for_timeout(900)
   A=pg.evaluate("(()=>{const a=personSavings('p1',compute()),b=personSavings('p2',compute());return[a.total,b.total,a.goalsPaid,b.goalsPaid,a.directTotal,b.directTotal]})()");print('personnes',A)

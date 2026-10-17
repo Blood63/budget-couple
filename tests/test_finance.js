@@ -86,3 +86,8 @@ console.log('OK finance');
  a.equal(p.realistic.series[2].placements,1000);a.equal(p.realistic.series[2].cash,90);
  // Dates locales : à 00:30 à Paris le 1er novembre, UTC est encore le 31 octobre
  const d=new Date('2026-07-31T22:30:00Z');a.equal(F.localIso(d),'2026-08-01');a.equal(F.localMonth(d),'2026-08');console.log('OK plafonds/poche libre + dates locales')}
+{const a=require('assert'),F=require('../finance.js');
+ const s=F.safeToSpend({budget:500,spent:212.8,day:17,daysInMonth:31});a.equal(s.remaining,287.2);a.equal(s.daysLeft,15);a.equal(s.perDay,19.15);a.equal(s.projection,388.05);a.equal(s.status,'ok');
+ const r=F.safeToSpend({budget:300,spent:290,day:28,daysInMonth:31});a.equal(r.status,'risk');a.ok(r.projection>300);
+ const o=F.safeToSpend({budget:300,spent:350,day:10,daysInMonth:31});a.equal(o.status,'over');a.equal(o.over,50);a.equal(o.perDay,0);
+ a.equal(F.safeToSpend({budget:0,spent:10,day:10,daysInMonth:31}).status,'no-budget');console.log('OK safe to spend')}

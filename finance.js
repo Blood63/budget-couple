@@ -41,6 +41,13 @@ function accountForecast(D,acc,month,today){const [y,m]=month.split('-').map(Num
   return{inn,out,net:R2(inn-out),start:R2(start),startDay,end:R2(bal),min:R2(min),minDay,hasBalance:has,risk:has?min<0:min<0&&inn<out,needed:has?0:R2(Math.max(0,-min)),
     upcoming:E.filter(e=>e.day>tday&&e.amount<0).slice(0,5),events:E}}
 
+/* ---------- Safe to spend : budget diverses restant par jour (mois courant) ----------
+   remaining = budget - dépensé ; perDay = remaining / jours restants (aujourd'hui inclus) ;
+   projection de fin de mois au rythme constaté (dépensé / jours écoulés x jours du mois), comme l'écran Dépenses. */
+function safeToSpend(o={}){const budget=+o.budget||0,spent=+o.spent||0,daysInMonth=Math.max(1,+o.daysInMonth||30),day=Math.max(1,Math.min(daysInMonth,+o.day||1));
+  const remaining=R2(budget-spent),daysLeft=Math.max(1,daysInMonth-day+1),elapsed=Math.max(1,day),projection=R2(spent/elapsed*daysInMonth);
+  return{budget,spent,remaining,daysLeft,elapsed,daysInMonth,projection,perDay:remaining>0?R2(remaining/daysLeft):0,over:remaining<0?R2(-remaining):0,
+    status:!budget?'no-budget':remaining<0?'over':projection>budget?'risk':'ok'}}
 /* ---------- Intérêts des livrets (règle des quinzaines) ----------
    Dépôt : valeur le 16 si fait du 1er au 15, le 1er du mois suivant si fait du 16 à la fin du mois.
    Retrait : cesse de rapporter dès le 1er (retrait du 1er au 15) ou le 16 (retrait du 16 à la fin).
@@ -289,4 +296,4 @@ function fiveYearProjection(streams,opts={}){const months=opts.months||60,base=(
     return{flow:R2(eff),requested:R2(flow||0),series,end:series[series.length-1]}};
   const sc=savingsScenarios(opts.monthsData||[]);
   return{initial,programmed,scenarios:sc,cashRate,prudent:run(opts.prudent!=null?opts.prudent:sc.prudent),realistic:run(opts.realistic!=null?opts.realistic:sc.realistic)}}
-if(typeof module!=='undefined')module.exports={localIso,localMonth,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+if(typeof module!=='undefined')module.exports={localIso,localMonth,safeToSpend,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

@@ -30,7 +30,7 @@ try:
   A.fill('#fDebtQ [name=amount]','8');A.fill('#fDebtQ [name=label]','Pain');A.click('#fDebtQ button');A.wait_for_timeout(200)
   A.select_option('#fDebtQ [name=from]','p1');A.fill('#fDebtQ [name=amount]','5');A.fill('#fDebtQ [name=label]','Café');A.click('#fDebtQ button');A.wait_for_timeout(200)
   A.fill('#fDebtQ [name=amount]','-3');A.click('#fDebtQ button');assert 'positif' in A.inner_text('#debtErr');assert len(debts(A))==3
-  t=A.inner_text('#debtNet');assert 'Lucie doit 15,50' in t.replace('\u202f',' ').replace('\xa0',' '),t
+  assert 'Virement unique pour tout solder' in A.inner_text('.debts') and 'hors équilibre du mois' in A.inner_text('.debts');t=A.inner_text('#debtNet');assert 'Lucie doit 15,50' in t.replace('\u202f',' ').replace('\xa0',' '),t
   assert A.evaluate("debtTotals().owes")=={'p1':5,'p2':20.5}
   # pas de double comptage : l'équilibre du mois est inchangé, la note explique le total tout compris
   assert A.evaluate("balance(curMonth()).net")==bal0;nt=A.inner_text('.bal').replace('\u202f',' ').replace('\xa0',' ');assert 'Hors « Dettes entre nous »' in nt and 'Total tout compris' in nt,nt
