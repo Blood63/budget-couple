@@ -56,3 +56,17 @@ console.log('OK finance');
    {items:[{str:'04/09/2026',x:10},{str:'VIR RECU',x:60},{str:'1 000,00',x:478,w:35}]},{items:[{str:'suite du libellé',x:60}]}];
  const P=F.parseStatementLines(L);a.deepEqual(P.map(o=>o.amount),[-54.2,1000]);a.equal(P[1].label,'VIR RECU suite du libellé');
  console.log('OK relevés (CSV ×3, OFX, QIF, PDF, rapprochement)')}
+{const a=require('assert'),F=require('../finance.js');const M=Array.from({length:12},(_,i)=>({month:`2025-${String(i+1).padStart(2,'0')}`,a:100+i*10,b:50}));
+ const s=F.savingsScenarios(M);a.equal(s.avg.m3.value,250);a.equal(s.avg.m12.value,205);a.equal(s.prudent,184.5);a.equal(s.realistic,220);
+ const p=F.fiveYearProjection([{capital:10000,monthly:100,rate:1.7},{capital:5000,monthly:50,rate:5}],{monthsData:M,cashRate:1.7});
+ a.equal(p.initial,15000);a.equal(p.programmed,150);a.equal(p.realistic.series.length,61);a.ok(p.realistic.end.total>p.prudent.end.total);a.equal(p.realistic.end.contributions,p.realistic.flow*60);
+ a.ok(Math.abs(p.realistic.end.total-p.realistic.end.placements-p.realistic.end.cash)<0.02);console.log('OK scénarios + projection 5 ans')}
+{const a=require('assert'),F=require('../finance.js'),fs=require('fs'),path=require('path'),fx=n=>path.join(__dirname,'fixtures',n),dec=b=>new TextDecoder('windows-1252').decode(b);
+ const v1=F.parseStatementText('x.csv',fs.readFileSync(fx('releve-variante-virgules.csv'),'utf8')).ops;a.equal(v1.length,3);a.ok(v1[1].label.includes('PARIS 15'));a.ok(v1[2].label.includes('special'));
+ const v0=F.parseStatementText('x.csv',fs.readFileSync(fx('releve-variante-preambule.csv'),'utf8')).ops;a.deepEqual(v0.map(o=>o.amount),[900,-54.2]);
+ const v2=F.parseStatementText('x.csv',fs.readFileSync(fx('releve-variante-sans-entete.csv'),'utf8')).ops;a.deepEqual(v2.map(o=>o.amount),[900,-54.2,-129]);
+ const v3=F.parseStatementText('x.csv',dec(fs.readFileSync(fx('releve-variante-debit-credit.csv')))).ops;a.deepEqual(v3.map(o=>[o.date,o.amount]),[['2026-09-01',900],['2026-09-03',-54.2],['2026-09-04',-129]]);
+ const v4=F.parseStatementText('x.ofx',fs.readFileSync(fx('releve-variante.ofx'),'utf8')).ops;a.equal(v4.length,2);a.equal(v4[0].label,'VIR PAUL & CIE EXEMPLE');a.equal(v4[1].amount,-54.2);
+ const v5=F.parseStatementText('x.qif',fs.readFileSync(fx('releve-variante.qif'),'utf8')).ops;a.deepEqual(v5.map(o=>o.amount),[-1234.56,2500]);
+ const L=[{items:[{str:'Date',x:10},{str:'Libellé',x:60},{str:'Montant',x:400,w:40}]},{items:[{str:'03/09/2026',x:10},{str:'CB TEST',x:60},{str:'-54,20',x:405,w:30}]},{items:[{str:'ligne suite',x:60}]},{items:[{str:'04/09/2026',x:10},{str:'CB IKEA',x:60},{str:'(129,00)',x:405,w:35}]}];
+ const P=F.parseStatementLines(L);a.equal(P[0].label,'CB TEST ligne suite');a.equal(P[1].amount,-129);console.log('OK variantes relevés fictives')}

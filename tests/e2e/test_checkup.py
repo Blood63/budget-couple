@@ -45,7 +45,7 @@ OVL='''(()=>{const out=[],R=e=>e.getBoundingClientRect(),vis=e=>{const r=R(e);re
  const scope=document.querySelector('#sheet.open')||document.querySelector('#view');
  scope.querySelectorAll('*').forEach(e=>{if(!vis(e)||!e.childElementCount&&!e.textContent.trim())return;const cs=getComputedStyle(e);
    if((cs.textOverflow==='ellipsis'||(cs.overflow.includes('hidden')&&[...e.querySelectorAll('*')].some(c=>vis(c)&&R(c).right>R(e).right+2)))&&e.scrollWidth>e.clientWidth+2&&e.textContent.trim()&&!e.matches('.bar,.bar *,.split,.split *,svg,svg *,input,select,textarea'))out.push('tronqué: '+e.tagName+'.'+e.className+' «'+e.textContent.trim().slice(0,30)+'»');
-   const r=R(e);if(r.right>innerWidth+1&&!e.closest('.hscroll,.chips,.tabs,nav,.chart-scroll'))out.push('déborde: '+e.tagName+'.'+e.className);});
+   const r=R(e);if(r.right>innerWidth+1&&!e.closest('.hscroll,.chips,.tabs,nav,.chart-scroll,.ichart-scroll'))out.push('déborde: '+e.tagName+'.'+e.className);});
  scope.querySelectorAll('.item,.row-b,.hero-grid,.f2,.f3,.gp,.contrib').forEach(p=>{const k=[...p.children].filter(vis);for(let i=0;i<k.length;i++)for(let j=i+1;j<k.length;j++){const a=R(k[i]),b=R(k[j]);
    const ox=Math.min(a.right,b.right)-Math.max(a.left,b.left),oy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);if(ox>2&&oy>2)out.push('chevauchement: '+p.className+' › '+k[i].tagName+'.'+k[i].className+' / '+k[j].tagName+'.'+k[j].className)}});
  return [...new Set(out)].slice(0,6)})()'''
@@ -75,7 +75,7 @@ try:
       t1=time.time();pg.evaluate(f"go('{t}')");pg.wait_for_timeout(250);dt=time.time()-t1
       if dt>2:found.append(f'{name} {w} {t}: rendu lent {dt:.1f}s')
       if not pg.evaluate("document.documentElement.scrollWidth<=innerWidth+1"):
-        wide=pg.evaluate("[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1&&!e.closest('[hidden],.chart-scroll,.hscroll')).slice(0,3).map(e=>e.tagName+'.'+e.className)")
+        wide=pg.evaluate("[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1&&!e.closest('[hidden],.chart-scroll,.ichart-scroll,.hscroll')).slice(0,3).map(e=>e.tagName+'.'+e.className)")
         found.append(f'{name} {w} {t}: débordement horizontal {wide}')
       if w==390:
         v=pg.evaluate(AX)

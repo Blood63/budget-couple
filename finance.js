@@ -116,24 +116,35 @@ function anyDate(s,year){s=String(s||'').trim();let m=s.match(/^(\d{4})-(\d{2})-
   m=s.match(/^(\d{4})(\d{2})(\d{2})/);if(m&&+m[2]>=1&&+m[2]<=12)return `${m[1]}-${m[2]}-${m[3]}`;
   m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?/);if(!m)return'';let y=m[3]?+m[3]:year;if(!y)return'';if(y<100)y+=2000;const mo=+m[2],d=+m[1];if(mo<1||mo>12||d<1||d>31)return'';return ymd(y,mo,d)}
 function splitCsvLine(l,sep){const o=[];let cur='',q=false;for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='"'){if(l[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else if(c==='"')q=true;else if(c===sep){o.push(cur);cur=''}else cur+=c}o.push(cur);return o.map(x=>x.trim())}
-function parseCSV(text){const lines=String(text).replace(/^\ufeff/,'').split(/\r?\n/).filter(l=>l.trim());if(!lines.length)return[];
-  const sep=[';','\t',','].map(c=>[c,lines.slice(0,8).reduce((n,l)=>n+splitCsvLine(l,c).length-1,0)]).sort((a,b)=>b[1]-a[1])[0][0];
-  const rows=lines.map(l=>splitCsvLine(l,sep));let h=-1,col={};
-  for(let i=0;i<Math.min(rows.length,15)&&h<0;i++){const r=rows[i].map(c=>stripAcc(c).toLowerCase());const f=re=>r.findIndex(c=>re.test(c));
-    const d=f(/date ?(d.)?op|^date$|dateop|date comptable|^date/),lab=[f(/libelle (de l.)?operation|libelle complet|^libelle$|label|description|intitule|detail|nature/),f(/libelle/)].find(x=>x>=0),am=f(/^montant|amount|montant/),db=f(/debit/),cr=f(/credit/);
-    if(d>=0&&lab!==undefined&&(am>=0||db>=0||cr>=0)){h=i;col={d,lab,am,db,cr}}}
-  if(h<0)return[];const out=[];
-  rows.slice(h+1).forEach(r=>{const date=anyDate(r[col.d]);if(!date)return;let a=col.am>=0?frAmount(r[col.am]):NaN;
-    if(isNaN(a)){const db=col.db>=0?frAmount(r[col.db]):NaN,cr=col.cr>=0?frAmount(r[col.cr]):NaN;a=!isNaN(db)&&db!==0?-Math.abs(db):!isNaN(cr)&&cr!==0?Math.abs(cr):NaN}
-    if(isNaN(a)||!a)return;out.push({date,label:(r[col.lab]||'').replace(/\s+/g,' ').trim(),amount:a})});return out}
-function parseOFX(text){const out=[];const T=String(text).split(/<STMTTRN>/i).slice(1);const g=(b,k)=>{const m=b.match(new RegExp('<'+k+'>([^<\\r\\n]*)','i'));return m?m[1].trim():''};
-  T.forEach(b=>{const date=anyDate(g(b,'DTPOSTED')),a=frAmount(g(b,'TRNAMT').replace(',','.')),nm=g(b,'NAME'),me=g(b,'MEMO'),label=!me?nm:!nm?me:me.startsWith(nm)?me:nm.includes(me)?nm:nm+' '+me;
-    if(date&&!isNaN(a)&&a)out.push({date,label:label.replace(/&amp;/g,'&'),amount:a,fitid:g(b,'FITID')})});return out}
+function csvRecords(text,sep){const rows=[];let row=[],cur='',q=false;const t=String(text).replace(/^\ufeff/,'');
+  for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+    else if(c==='"')q=true;else if(c===sep){row.push(cur.trim());cur=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(cur.trim());cur='';if(row.some(x=>x!==''))rows.push(row);row=[]}else cur+=c}
+  row.push(cur.trim());if(row.some(x=>x!==''))rows.push(row);return rows}
+function parseCSV(text){const raw=String(text).replace(/^\ufeff/,'');if(!raw.trim())return[];
+  const firstLines=raw.split(/\r?\n/).slice(0,12);const sep=[';','\t',','].map(c=>[c,firstLines.reduce((n,l)=>n+Math.max(0,splitCsvLine(l,c).length-1),0)]).sort((a,b)=>b[1]-a[1])[0][0];
+  const rows=csvRecords(raw,sep);let h=-1,col={};
+  for(let i=0;i<Math.min(rows.length,20)&&h<0;i++){const r=rows[i].map(c=>stripAcc(c).toLowerCase());const findAll=re=>r.map((c,j)=>re.test(c)?j:-1).filter(x=>x>=0);
+    const dates=findAll(/date/),labPref=findAll(/libelle (de l.)?operation|libelle complet|description detaillee|intitule|nature de l.operation/),labAny=findAll(/libelle|label|description|detail|nature/),am=findAll(/^montant|amount|montant operation/),db=findAll(/debit/),cr=findAll(/credit/);
+    const date=dates.sort((a,b)=>{const score=x=>/operation|op\b|comptable/.test(r[x])?5:/^date$/.test(r[x])?4:/valeur/.test(r[x])?1:3;return score(b)-score(a)})[0];
+    const lab=labPref[0]??labAny[0];
+    if(date!==undefined&&lab!==undefined&&(am.length||db.length||cr.length)){h=i;col={d:date,lab,am:am[0]??-1,db:db[0]??-1,cr:cr[0]??-1}}}
+  if(h>=0){const out=[];rows.slice(h+1).forEach(r=>{const date=anyDate(r[col.d]);if(!date)return;let a=col.am>=0?frAmount(r[col.am]):NaN;
+      if(isNaN(a)){const db=col.db>=0?frAmount(r[col.db]):NaN,cr=col.cr>=0?frAmount(r[col.cr]):NaN;a=!isNaN(db)&&db!==0?-Math.abs(db):!isNaN(cr)&&cr!==0?Math.abs(cr):NaN}
+      if(isNaN(a)||!a)return;out.push({date,label:(r[col.lab]||'Opération').replace(/\s+/g,' ').trim(),amount:a})});return out}
+  const usable=rows.filter(r=>r.length>=3);if(usable.length<2)return[];
+  const stats=usable[0].map((_,j)=>{const cells=usable.map(r=>r[j]||'');return{date:cells.filter(x=>anyDate(x)).length/usable.length,num:cells.filter(x=>!isNaN(frAmount(x))&&frAmount(x)!==0).length/usable.length,len:cells.reduce((s,x)=>s+String(x).length,0)/usable.length}});
+  const dc=stats.findIndex(x=>x.date>=.6),ac=stats.findIndex((x,j)=>j!==dc&&x.num>=.6);if(dc<0||ac<0)return[];
+  const lc=stats.map((x,j)=>j).filter(j=>j!==dc&&j!==ac).sort((a,b)=>stats[b].len-stats[a].len)[0];
+  return usable.map(r=>({date:anyDate(r[dc]),label:String(r[lc]||'Opération').replace(/\s+/g,' ').trim(),amount:frAmount(r[ac])})).filter(o=>o.date&&o.amount)}
+const xmlText=s=>String(s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n)).replace(/&amp;/g,'&').trim();
+function parseOFX(text){const out=[];const T=String(text).split(/<STMTTRN>/i).slice(1);const g=(b,k)=>{const m=b.match(new RegExp('<'+k+'>([\\s\\S]*?)(?=<[A-Z/]|$)','i'));return m?xmlText(m[1]):''};
+  T.forEach(b=>{const date=anyDate(g(b,'DTPOSTED')),a=frAmount(g(b,'TRNAMT')),nm=g(b,'NAME'),me=g(b,'MEMO'),label=!me?nm:!nm?me:me.startsWith(nm)?me:nm.includes(me)?nm:nm+' '+me;
+    if(date&&!isNaN(a)&&a)out.push({date,label:xmlText(label),amount:a,fitid:g(b,'FITID')})});return out}
 function parseQIF(text){const out=[];let c={};String(text).split(/\r?\n/).forEach(l=>{const k=l[0],v=l.slice(1).trim();
-  if(k==='D'){let s=v.replace(/'/g,'/').replace(/\s/g,'');const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);c.date=m?anyDate(s):anyDate(s)}else if(k==='T'||k==='U')c.amount=frAmount(v.replace(/,(?=\d{3}\b)/g,''));else if(k==='P')c.payee=v;else if(k==='M')c.memo=v;
+  if(k==='D'){let s=v.replace(/'/g,'/').replace(/\s/g,'');const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);c.date=m?anyDate(s):anyDate(s)}else if(k==='T'||k==='U')c.amount=frAmount(v);else if(k==='P')c.payee=v;else if(k==='M')c.memo=v;
   else if(k==='^'){if(c.date&&c.amount)out.push({date:c.date,label:[c.payee,c.memo].filter(Boolean).join(' '),amount:c.amount});c={}}});return out}
 /* Lignes d'un relevé PDF : [{y, items:[{str,x}]}] (positions pdf.js). Les colonnes Débit / Crédit sont repérées dans l'en-tête. */
-const AMT_ONLY=/^[+\-−]?\s?\d{1,3}(?:[ .\u00a0\u202f]\d{3})*,\d{2}\s?(?:€|EUR)?$|^[+\-−]?\d+[.,]\d{2}\s?(?:€|EUR)?$/;
+const AMT_ONLY=/^\(?[+\-−]?\s?\d{1,3}(?:[ .\u00a0\u202f]\d{3})*,\d{2}\s?(?:€|EUR)?\)?$|^\(?[+\-−]?\d+[.,]\d{2}\s?(?:€|EUR)?\)?$/;
 function parseStatementLines(lines){const text=lines.map(l=>l.items.map(i=>i.str).join(' ')).join('\n');
   const per=stripAcc(text).match(/du\s+(\d{1,2}[\/.]\d{1,2}[\/.](\d{2,4}))\s+au\s+(\d{1,2}[\/.]\d{1,2}[\/.](\d{2,4}))/i),anyY=text.match(/\b\d{1,2}[\/.]\d{1,2}[\/.](20\d{2})\b/)||text.match(/\b(20\d{2})\b/);
   let year=per?(+per[4]<100?2000+ +per[4]:+per[4]):anyY?+anyY[1]:new Date().getFullYear();const endMonth=per?+per[3].split(/[\/.]/)[1]:null;
@@ -146,15 +157,15 @@ function parseStatementLines(lines){const text=lines.map(l=>l.items.map(i=>i.str
     if(colD!=null&&colC!=null){const near=amts.filter(i=>Math.min(Math.abs(cx(i)-colD),Math.abs(cx(i)-colC))<70);if(near.length||amts.every(dateLike))amts=near}
     else if(amts.length>1&&amts.some(i=>!dateLike(i)))amts=amts.filter(i=>!dateLike(i));
     if(dm&&amts.length){let y=dm[3]?+dm[3]:year;if(!dm[3]&&endMonth&&+dm[2]>endMonth)y=year-1;const date=anyDate(`${dm[1]}/${dm[2]}/${y}`);if(!date){last=null;return}
-      const amIt=colD!=null&&colC!=null?amts[0]:amts[amts.length-1];
+      const amIt=colD!=null&&colC!=null?amts[0]:colM!=null?amts.reduce((best,i)=>!best||Math.abs(cx(i)-colM)<Math.abs(cx(best)-colM)?i:best,null):amts[amts.length-1];
       // libellé : éléments textuels hors dates de valeur et montants
       const lab=its.slice(1).filter(i=>!amts.includes(i)&&!(AMT_ONLY.test(i.str.trim())&&!dateLike(i))&&!/^\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?$/.test(i.str.trim())).map(i=>i.str.trim()).join(' ');
       let a=frAmount(amIt.str);const raw=amIt.str.trim();
-      if(colD!=null&&colC!=null&&!/^[+\-−]/.test(raw)){const cx=amIt.x+(amIt.w||0)/2;a=Math.abs(cx-colC)<Math.abs(cx-colD)?Math.abs(a):-Math.abs(a)}
+      if(colD!=null&&colC!=null){const cx=amIt.x+(amIt.w||0)/2;a=Math.abs(cx-colC)<Math.abs(cx-colD)?Math.abs(a):-Math.abs(a)}
       else if(!/^[+\-−]/.test(raw)&&colM==null)a=/\b(vir(ement)?\s+(sepa\s+)?(recu|de)|salaire|remise|remboursement|avoir|interets)\b/i.test(stripAcc(lab))?Math.abs(a):-Math.abs(a);
       if(/^(solde|total|ancien solde|nouveau solde)/i.test(stripAcc(lab))){last=null;return}
       last={date,label:lab.replace(/\s+/g,' '),amount:a};out.push(last);return}
-    if(last&&!dm&&!amts.length&&its.length<=3&&!/^(solde|total|page|date)/i.test(stripAcc(first))&&last.label.length<90)last.label+=' '+its.map(i=>i.str.trim()).join(' ');else last=null});
+    if(last&&!dm&&!amts.length&&its.length<=8&&!/^(solde|total|page|date|releve|extrait|compte|iban|bic)/i.test(stripAcc(first))&&last.label.length<160)last.label+=' '+its.map(i=>i.str.trim()).join(' ');else last=null});
   return out}
 function parseStatementText(name,text){const n=String(name||'').toLowerCase(),t=String(text);
   if(/\.ofx$|\.qfx$/.test(n)||/<OFX>|<STMTTRN>/i.test(t))return{format:'OFX',ops:parseOFX(t)};
@@ -245,4 +256,23 @@ function goalShares(g,ratio){const T=Math.round((+g.target||0)*100)/100,r2=x=>Ma
   const pc=s&&s.mode==='pct'?Math.min(100,Math.max(0,+s.p1)):(typeof ratio==='number'?ratio:50),x=r2(T*pc/100);return{p1:x,p2:r2(T-x)}}
 const goalPct=(g,ratio)=>{const S=goalShares(g,ratio),T=S.p1+S.p2;return T>0?S.p1/T*100:(g.split&&g.split.mode==='pct'?+g.split.p1:ratio)};
 
-if(typeof module!=='undefined')module.exports={goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+
+/* Épargne mensuelle : moyennes récentes et scénarios (historique saisi, mois enregistrés uniquement) */
+function savingsScenarios(months){const L=[...(months||[])].filter(m=>m&&(isFinite(m.a)||isFinite(m.b))).sort((a,b)=>String(a.month).localeCompare(String(b.month)));
+  const avg=n=>{const S=L.slice(-n);return S.length?{value:R2(S.reduce((t,m)=>t+(+m.a||0)+(+m.b||0),0)/S.length),count:S.length}:null};
+  const a3=avg(3),a6=avg(6),a12=avg(12),vals=[a3,a6,a12].filter(Boolean);
+  if(!vals.length)return{months:L,avg:{m3:a3,m6:a6,m12:a12},prudent:null,realistic:null};
+  const prudent=R2(Math.min(...vals.map(x=>x.value))*.9);
+  const realistic=a6&&a12?R2((a6.value+a12.value)/2):a6?a6.value:a3?a3.value:a12.value;
+  return{months:L,avg:{m3:a3,m6:a6,m12:a12},prudent,realistic}}
+/* Projection 5 ans : placements projetés par produit + flux mensuel historique.
+   Les versements permanents des placements sont inclus dans le flux ; seul l'excédent est ajouté séparément (pas de double comptage). */
+function fiveYearProjection(streams,opts={}){const months=opts.months||60,base=(streams||[]).map(p=>({capital:+p.capital||0,monthly:+p.monthly||0,rate:+p.rate||0}));
+  const programmed=R2(base.reduce((s,p)=>s+p.monthly,0)),initial=R2(base.reduce((s,p)=>s+p.capital,0)),cashRate=+opts.cashRate||0;
+  const run=flow=>{let vals=base.map(p=>p.capital),cash=0;const eff=Math.max(flow||0,programmed),resid=eff-programmed;const series=[{month:0,total:initial,placements:initial,cash:0,contributions:0,gains:0}];
+    for(let m=1;m<=months;m++){vals=vals.map((v,i)=>v*(1+base[i].rate/100/12)+base[i].monthly);cash=cash*(1+cashRate/100/12)+resid;const total=vals.reduce((a,b)=>a+b,0)+cash,contrib=eff*m;
+      series.push({month:m,total:R2(total),placements:R2(vals.reduce((a,b)=>a+b,0)),cash:R2(cash),contributions:R2(contrib),gains:R2(total-initial-contrib)})}
+    return{flow:R2(eff),requested:R2(flow||0),series,end:series[series.length-1]}};
+  const sc=savingsScenarios(opts.monthsData||[]);
+  return{initial,programmed,scenarios:sc,cashRate,prudent:run(opts.prudent!=null?opts.prudent:sc.prudent),realistic:run(opts.realistic!=null?opts.realistic:sc.realistic)}}
+if(typeof module!=='undefined')module.exports={savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

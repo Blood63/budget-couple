@@ -40,7 +40,7 @@ with sync_playwright() as p:
   pg.fill('#fVal [name=value]','15 020');pg.click('#fVal .btn');pg.wait_for_timeout(300)
   assert pg.evaluate("placValue(D.placements.find(p=>p.id==='av'))")==15020 and pg.evaluate("valsOf('av').length")==5
   g=pg.evaluate("gain(D.placements.find(p=>p.id==='av'))");assert abs(g['d']-1220)<.01;print('ENVELOPPE : valorisation 15 020 €, plus-value',g['d'])
-  assert pg.locator('#sheetBody svg[aria-label^="Évolution"]').count()==1 and pg.locator('#sheetBody details').count()==1
+  assert pg.locator('#sheetBody [data-chart]').count()==1 and pg.locator('#sheetBody details.ichart-data').count()==1
   pg.screenshot(path=f'{OUT}/v4-3-enveloppe.png');pg.evaluate("document.querySelector('#sheetBody .valform').scrollIntoView({block:'start'})");pg.wait_for_timeout(200);pg.screenshot(path=f'{OUT}/v4-3b-enveloppe-historique.png')
   # validation du formulaire de placement
   pg.evaluate("document.querySelector('#fPlac').scrollIntoView()");pg.fill('#fPlac [name=invested]','-5');pg.click('#fPlac .btn:not(.danger)');pg.wait_for_timeout(200)
