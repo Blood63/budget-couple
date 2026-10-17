@@ -37,6 +37,11 @@ try:
   v=pg.evaluate(AX);print('AXE épargne personne',v);assert not v
   pg.locator('.person-savings').screenshot(path=f'{OUT}/v12-epargne-personne.png')
   pg.click('[data-person-sav="p2"]');pg.wait_for_timeout(500);assert 'Lucie — détail' in pg.inner_text('.person-savings')
+  ps=pg.evaluate("(()=>{const a=placementSummary('p1'),b=placementSummary('p2');return[a.directTotal,a.invested,a.gains,a.commonShare,a.indicativeTotal,a.indicativePct,b.directTotal,b.invested,b.gains,b.commonShare,b.indicativeTotal,b.indicativePct,b.grandTotal]})()");print('placements/personne',ps)
+  assert ps[0]==8000 and ps[1]==0 and ps[2]==180 and abs(ps[3]-7200)<.01 and ps[4]==15200 and ps[6]==6100 and ps[7]==5500 and ps[8]==600 and abs(ps[9]-4800)<.01 and ps[10]==10900 and ps[12]==26100,ps
+  banner=pg.locator('.plac-total-banner');banner.scroll_into_view_if_needed();bt=banner.inner_text();assert 'Total placements de Lucie' in bt and '6 100' in bt.replace('\u202f',' ') and 'Ouvrir Placements' in bt,bt
+  banner.click();pg.wait_for_timeout(600);assert pg.locator('.placement-people').count()==1 and 'Placements par personne' in pg.inner_text('.placement-people')
+  pg.evaluate("go('epargne')");pg.wait_for_timeout(400)
   # Projection 5 ans
   proj=pg.locator('.projection5');proj.scroll_into_view_if_needed();proj.get_by_text('Hypothèses et calcul').click();pg.wait_for_timeout(100);t=proj.inner_text();print(t.replace('\n',' | ')[:500]);assert 'Épargne totale dans 5 ans' in t and 'Hypothèses et calcul' in t and '90 %' in t and 'jamais ajoutés une deuxième fois' in t
   vals=pg.evaluate("(()=>{const p=projection5Data();return[p.initial,p.programmed,p.prudent.end.total,p.realistic.end.total,p.realistic.flow,p.scenarios.avg.m3.value]})()");assert vals[0]==26100 and vals[1]==300 and vals[3]>vals[2]>26000,vals
@@ -46,6 +51,11 @@ try:
   pg.locator('#sec-interets').scroll_into_view_if_needed();assert pg.locator('#sec-interets [data-chart]').count()>=1
   # Placements : projection + valorisation interactives
   pg.evaluate("go('placements')");pg.wait_for_timeout(700);assert pg.locator('[data-chart]').count()>=1
+  pp=pg.locator('.placement-people');pp.scroll_into_view_if_needed();pt=pp.inner_text();print(pt.replace('\n',' | ')[:700]);assert 'Placements par personne' in pt and 'Total des placements communs (séparé)' in pt and 'ne modifie' in pt and '8 000' in pt.replace('\u202f',' ') and '6 100' in pt.replace('\u202f',' ') and '12 000' in pt.replace('\u202f',' ')
+  v=pg.evaluate(AX);print('AXE placements par personne',v);assert not v;pg.evaluate("document.querySelector('#tabs').style.display='none'");pp.screenshot(path=f'{OUT}/v12-placements-par-personne.png');pg.evaluate("document.querySelector('#tabs').style.display=''")
+  for w in (320,768):
+   pg.set_viewport_size({'width':w,'height':800});pg.wait_for_timeout(200);assert pg.evaluate("document.documentElement.scrollWidth<=innerWidth+1"),w
+  pg.set_viewport_size({'width':390,'height':844})
   pg.click('[data-edit-plac="pea"]');pg.wait_for_selector('#sheet [data-chart]');v=pg.evaluate(AX);print('AXE valorisation',v);assert not v;pg.evaluate("closeSheet()")
   # Dépenses refondues
   pg.evaluate("budgetSeg='diverses';go('budget')");pg.wait_for_timeout(700);t=pg.inner_text('body');assert 'Où part l’argent ?' in t and 'Rythme' in t and 'Liste des dépenses' in t

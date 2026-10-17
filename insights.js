@@ -9,16 +9,40 @@ function personSavings(k,C){
   const direct=D.placements.filter(p=>p.owner===k),common=D.placements.filter(p=>p.owner==='common');
   const directTotal=direct.reduce((s,p)=>s+placValue(p),0),shareRatio=k==='p1'?D.ratio/100:1-D.ratio/100;
   const commonTotal=common.reduce((s,p)=>s+placValue(p),0),commonShare=commonTotal*shareRatio;
-  return{k,monthly,total,last,lastTotal,avg12:last.length?lastTotal/last.length:0,goals,direct,directTotal,common,commonTotal,commonShare,shareRatio,
+  const placements=placementSummary(k);
+  return{k,monthly,total,last,lastTotal,avg12:last.length?lastTotal/last.length:0,goals,direct,directTotal,common,commonTotal,commonShare,shareRatio,placements,
     goalsPaid:goals.reduce((s,x)=>s+x.paid,0),goalsTarget:goals.reduce((s,x)=>s+x.target,0)}}
+/* ---------- Placements par personne : valorisations + livrets, communs séparés ---------- */
+function placementSummary(k){const direct=D.placements.filter(p=>p.owner===k),common=D.placements.filter(p=>p.owner==='common');
+  const val=p=>placValue(p),directTotal=direct.reduce((s,p)=>s+val(p),0),commonTotal=common.reduce((s,p)=>s+val(p),0),grandTotal=D.placements.reduce((s,p)=>s+val(p),0);
+  const shareRatio=k==='p1'?D.ratio/100:1-D.ratio/100,commonShare=commonTotal*shareRatio,indicativeTotal=directTotal+commonShare;
+  const known=list=>{let invested=0,investedCount=0,gains=0,gainsKnown=false;list.forEach(p=>{if(isEnv(p)&&+p.invested>0){invested+=+p.invested;investedCount++;const g=gain(p);gains+=g.d;gainsKnown=true}else{const ints=(D.interests||[]).filter(i=>i.pid===p.id&&!i.skipped);if(ints.length){gains+=ints.reduce((s,i)=>s+(+i.amount||0),0);gainsKnown=true}}});return{invested,investedCount,gains,gainsKnown}};
+  const kd=known(direct),kc=known(common);
+  return{k,direct,common,directTotal,commonTotal,commonShare,indicativeTotal,grandTotal,shareRatio,
+    directPct:grandTotal?directTotal/grandTotal*100:0,indicativePct:grandTotal?indicativeTotal/grandTotal*100:0,
+    invested:kd.invested,investedCount:kd.investedCount,gains:kd.gains,gainsKnown:kd.gainsKnown,monthly:direct.reduce((s,p)=>s+(+p.monthly||0),0),
+    commonInvested:kc.invested,commonInvestedCount:kc.investedCount,commonGains:kc.gains,commonGainsKnown:kc.gainsKnown,commonMonthly:common.reduce((s,p)=>s+(+p.monthly||0),0)}}
+function placementsByPersonHtml(){if(!D.placements.length)return'';const A=placementSummary('p1'),B=placementSummary('p2'),C=A;
+  const pct1=x=>`${x.toFixed(1).replace('.',',')} %`;
+  const card=x=>`<article class="pp-card" style="--pc:${COL[x.k]}" aria-label="Placements de ${esc(N(x.k))}"><span class="pname"><span class="dot"></span>${esc(N(x.k))}</span>
+    <small>Placements personnels (valorisations + livrets)</small><span class="pp-total">${eur(x.directTotal)}</span>
+    <span class="pp-indic">Avec part indicative des communs : <b>${eur(x.indicativeTotal)}</b> · ${pct1(x.indicativePct)} de l’ensemble</span>
+    <div class="pp-grid"><div><small>Total versé connu</small><b>${x.investedCount?eur(x.invested):'—'}</b></div><div><small>Intérêts / plus-values connus</small><b>${x.gainsKnown?eur(x.gains):'—'}</b></div><div><small>Versements mensuels</small><b>${eur(x.monthly)}/mois</b></div><div><small>Part des placements personnels</small><b>${pct1(x.directPct)}</b></div></div>
+    <small>${x.direct.length} placement${x.direct.length>1?'s':''} personnel${x.direct.length>1?'s':''}${x.investedCount?` · total versé connu pour ${x.investedCount} enveloppe${x.investedCount>1?'s':''}`:' · total versé des livrets non suivi'}</small></article>`;
+  return `<section class="card placement-people" aria-labelledby="placPeopleH"><div class="sec"><h2 id="placPeopleH">${ic('chart',18)} Placements par personne</h2></div>
+   <div class="two person-cards plac-person-cards">${card(A)}${card(B)}</div>
+   <div class="common-plac"><span>Total des placements communs (séparé)</span><b>${eur(C.commonTotal)}</b>
+    <small>Répartition indicative selon les réglages ${D.ratio}/${100-D.ratio} : ${esc(N('p1'))} ${eur(A.commonShare)} · ${esc(N('p2'))} ${eur(B.commonShare)}${C.commonInvestedCount?` · total versé connu ${eur(C.commonInvested)}`:''}${C.commonGainsKnown?` · intérêts / plus-values connus ${eur(C.commonGains)}`:''} · versements ${eur(C.commonMonthly)}/mois.</small></div>
+   <p class="mut">Règle : le total personnel additionne les dernières valorisations des enveloppes et les soldes des livrets de la personne. Les placements communs restent séparés ; leur répartition ${D.ratio}/${100-D.ratio} est uniquement indicative et ne modifie ni leur propriété ni leur titulaire. « Total versé connu » = total versé saisi pour les enveloppes (les versements cumulés des livrets ne sont pas suivis) ; « intérêts / plus-values connus » = plus-values d’enveloppes calculées et intérêts de livrets déjà enregistrés.</p></section>`}
 function personSavingsSection(){const C=compute(),A=personSavings('p1',C),B=personSavings('p2',C),P=savingsPerson==='p2'?B:A,other=P.k==='p1'?B:A;
   let run=0;const allPts=P.monthly.map(m=>{run+=m.value;return{label:monthLabel(m.month),short:new Date(m.month+'-01T12:00').toLocaleDateString('fr-FR',{month:'short'}),values:{month:m.value,cum:run},detail:`Part du couple ce mois : ${m.total?(m.value/m.total*100).toFixed(0):0} % · total du couple ${eur(m.total)}`}});
   const pts=allPts.slice(-24);
   return `<section class="person-savings" aria-labelledby="personSavH"><div class="sec"><h2 id="personSavH">${ic('chart',18)} Épargne par personne</h2></div>
    <div class="two person-cards">${[A,B].map(x=>`<button type="button" class="card pcard person-card ${x.k===P.k?'sel':''}" data-person-sav="${x.k}" style="--pc:${COL[x.k]}" aria-pressed="${x.k===P.k}"><span class="pname"><span class="dot"></span>${esc(N(x.k))}</span>
-     <span class="person-total">${eur(x.total)}</span><small>épargne mensuelle cumulée · ${x.monthly.length} mois</small><small>12 derniers mois : ${eur(x.lastTotal)} (${eur(x.avg12)}/mois)</small><small>Objectifs financés : ${eur(x.goalsPaid)} / ${eur(x.goalsTarget)}</small><small>Placements directs : ${eur(x.directTotal)}</small></button>`).join('')}</div>
+     <span class="person-total">${eur(x.total)}</span><small>épargne mensuelle cumulée · ${x.monthly.length} mois</small><small>12 derniers mois : ${eur(x.lastTotal)} (${eur(x.avg12)}/mois)</small><small>Objectifs financés : ${eur(x.goalsPaid)} / ${eur(x.goalsTarget)}</small><span class="person-plac-line">Placements personnels <b>${eur(x.directTotal)}</b></span></button>`).join('')}</div>
    <div class="card"><div class="row-b"><h3>${esc(N(P.k))} — détail</h3><span class="pct" style="--pc:${COL[P.k]}">${eur(P.total)}</span></div>
     <div class="hero-grid"><div><small>Total mensuel cumulé</small><b>${eur(P.total)}</b></div><div><small>Moyenne 12 derniers mois</small><b>${eur(P.avg12)}/mois</b></div><div><small>Objectifs : déjà financé</small><b>${eur(P.goalsPaid)}</b></div><div><small>Placements directs</small><b>${eur(P.directTotal)}</b></div></div>
+    <button type="button" class="plac-total-banner" data-goto="placements" aria-label="Ouvrir l’onglet Placements, total des placements de ${esc(N(P.k))} : ${eur(P.directTotal)}"><span>Total placements de ${esc(N(P.k))}</span><strong>${eur(P.directTotal)}</strong><small>Valorisations + livrets personnels · ${P.placements.directPct.toFixed(1).replace('.',',')} % de l’ensemble · avec part indicative des communs (${Math.round(P.shareRatio*100)} %) : ${eur(P.placements.indicativeTotal)} · Ouvrir Placements ›</small></button>
     <h3 class="group">Par mois</h3>${pts.length?interactiveChart({title:`Épargne mensuelle et cumul de ${N(P.k)}`,type:'bars',series:[{key:'month',name:'Épargne du mois',color:P.k==='p1'?'#4ea8ff':'#ff7ab6'}],lineSeries:[{key:'cum',name:'Cumul',color:'#3ecf8e'}],points:pts}):'<p class="mut">Aucun mois d’épargne saisi.</p>'}
     <div class="month-mini">${[...P.monthly].slice(-6).reverse().map(m=>`<div><span>${monthLabel(m.month)}</span><b>${eur(m.value)}</b><small>${m.total?(m.value/m.total*100).toFixed(0):0} % du couple</small></div>`).join('')}</div>
     <h3 class="group">Par objectif</h3><div class="list">${P.goals.map(x=>`<div class="item col"><span class="row-b"><b>${esc(x.g.name)}</b><span>${eur(x.paid)} / ${eur(x.target)}</span></span>${bar(x.target?x.paid/x.target*100:0)}<small>Reste ${eur(x.rest)}${x.monthly!=null?` · besoin ${eur(x.monthly)}/mois`:''} · ${esc(x.g.owner==='common'?'objectif commun':N(x.g.owner))}</small></div>`).join('')||'<p class="mut">Aucun objectif attribué.</p>'}</div>

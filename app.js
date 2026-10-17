@@ -309,7 +309,7 @@ function vPlacements(){
   const total=D.placements.reduce((t,p)=>t+placValue(p),0),due=dueValuations();
   const L=D.placements.filter(p=>!bankF||(p.bank||'Sans banque')===bankF);
   const reg=['livretA','ldds','lep','cel'].map(k=>[k,currentRate(k)]).filter(x=>x[1]);
-  return `${D.placements.length?`<div class="card hero"><small>Encours actuel ${money(total)} · valeur projetée dans 4 ans</small><div class="hero-n">${money(end.total)}</div>
+  return `${typeof placementsByPersonHtml==='function'?placementsByPersonHtml():''}${D.placements.length?`<div class="card hero"><small>Encours actuel ${money(total)} · valeur projetée dans 4 ans</small><div class="hero-n">${money(end.total)}</div>
     <div class="hero-grid"><div><small>Encours + versements</small>${money(end.inv)}</div><div><small>Intérêts / gains estimés</small>${money(end.total-end.inv,'pos')}</div></div>${chart(s)}</div>
    <div class="years">${[1,2,3,4].map(y=>{const x=s[y*12];return `<div class="card yr"><small>Fin d’année ${y}</small><b>${eur(x.total)}</b><small class="pos">+${eur(x.total-x.inv)}</small></div>`}).join('')}</div>`:''}
   ${due.length?`<div class="card remind" role="status">${ic('alert',16)} ${due.length} valorisation${due.length>1?'s':''} à mettre à jour (rappel du ${D.reminderDay||1} de chaque mois). <button class="link" data-goto="accueil">Mettre à jour</button></div>`:''}
