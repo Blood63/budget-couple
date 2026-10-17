@@ -26,14 +26,16 @@ with sync_playwright() as p:
   d=pg.evaluate('D');assert d['version']==12 and d['births']=={'p1':'2000-06-22','p2':'2002-03-10'} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
   assert pg.evaluate("[ageOf('p1'),ageOf('p2')]")==[26,24];print('MIGRATION v6→v7 OK, âges 26 / 24')
   T=pg.evaluate('tips()');K={t['key']:t for t in T};print(len(T),'conseils :',sorted(K))
-  need=['precaution-high','ceil-full-la','ceil-near-ld','ceil-near-lj','lep-p1','lep-p2','order-ce-lj','pel10-pe','rate-2026-10','goal-slow-g1','misc-up-2026-10','lj-end-p2','per-p1','pea-date-p1','av-date-p2','idle-2026-10']
+  need=['precaution-high','ceil-full-la','ceil-near-ld','ceil-near-lj','lep-p2','order-ce-lj','pel10-pe','rate-2026-10','goal-slow-g1','misc-up-2026-10','lj-end-p2','per-p1','pea-date-p1','av-date-p2','idle-2026-10']
   miss=[k for k in need if k not in K];assert not miss,miss
   assert not any(k.startswith('per-p2') for k in K),'pas de PER à TMI 11 %'
+  assert 'lep-p1' not in K,'pas de conseil LEP si RFR estimé nettement au-dessus du plafond'
+  assert 'année précédente' in K['per-p1']['why'] and 'avis d’impôt' in K['per-p1']['why'],'plafond PER réel = avis (revenus N-1)'
   assert 'fixed-up-f3' in K and 'rest-2026-10' not in K and 'lj-elig-p1' not in K
   assert '31/12/2027' in K['lj-end-p2']['title'] and 'TMI 30' in K['per-p1']['title'] and 'bloqué' in K['per-p1']['text'] and '30 %' in K['per-p1']['text']
   for t in T:
     assert t['why'] and t['text'] and not BAD.search(t['text']+t['why']),t['key']
-  assert 'service-public' in K['lep-p1']['link'] and '23 028' in K['lep-p1']['why'].replace('\u202f',' ').replace('\xa0',' ')
+  assert 'service-public' in K['lep-p2']['link'] and '23 028' in K['lep-p2']['why'].replace('\u202f',' ').replace('\xa0',' ')
   print('RÈGLES OK, aucune recommandation de produit')
   # Accueil : carte Conseils (2 premiers + disclaimer)
   pg.wait_for_timeout(800);card=pg.locator('.tips-card');assert card.count()==1 and card.locator('.tip').count()==2 and 'pas des conseils en investissement' in card.inner_text()

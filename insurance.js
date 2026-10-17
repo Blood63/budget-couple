@@ -53,7 +53,7 @@ async function extractFromFile(file,{allowOcr=false,progress}={}){const isPdf=fi
 /* --- vues --- */
 const INS_FIELDS=[['type','Type'],['label','Nom'],['insurer','Assureur'],['contract','N° de contrat'],['insured','Assuré(s)'],['object','Bien / véhicule assuré'],['premium','Cotisation (€)'],['premiumFreq','Fréquence'],
   ['start','Date d’effet'],['end','Échéance'],['renewal','Renouvellement'],['franchise','Franchises'],['guarantees','Garanties principales'],['ceilings','Plafonds'],['exclusions','Exclusions notables'],['phone','Assistance / sinistre'],['notes','Notes']];
-function insDueList(days=60){const t=todayIso(),lim=new Date();lim.setDate(lim.getDate()+days);const L=lim.toISOString().slice(0,10);
+function insDueList(days=60){const t=todayIso(),lim=new Date();lim.setDate(lim.getDate()+days);const L=localIso(lim);
   return D.insurances.map(i=>({i,d:nextDue(i,t)})).filter(x=>x.d&&x.d>=t&&x.d<=L).sort((a,b)=>a.d.localeCompare(b.d))}
 function insRemindCard(){const L=insDueList(45).filter(x=>!(x.i.remindDone||[]).includes(x.d));if(!L.length)return'';
   return `<div class="card remind-card"><h2>${ic('shield',18)} Échéance d’assurance</h2>${L.map(({i,d})=>{const ci=cancelInfo(i);return `<div class="ins-due"><b>${esc(i.label||insType(i.type)[1])}</b> · ${esc(i.insurer||'')}<small>Échéance le ${isoFr(d)} · ${eur(yearly(i))}/an${ci?` · ${esc(ci.txt)}`:''}</small>

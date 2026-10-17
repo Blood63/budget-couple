@@ -6,7 +6,7 @@ const accName=id=>{const a=D.accounts.find(x=>x.id===id);return a?a.label:'—'}
 const accOpts=sel=>D.accounts.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.label)}${a.bank?' · '+esc(a.bank):''}</option>`).join('');
 const accPaidBy=id=>{const a=D.accounts.find(x=>x.id===id);return a?(a.owner==='p1'||a.owner==='p2'?a.owner:'joint'):'joint'};
 const transferAcc=()=>transferAccounts(D);
-const todayIso=()=>new Date().toISOString().slice(0,10);
+const todayIso=(d=new Date())=>localIso(d);
 let accMonth=null;
 function vComptes(){const m=accMonth||curMonth(),t=todayIso();
   const F=D.accounts.map(a=>({a,f:accountForecast(D,a,m,t)}));

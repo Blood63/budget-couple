@@ -18,6 +18,10 @@ const D={accounts:[{id:'acc-p1',owner:'p1',balance:200,balanceDate:'2026-10-02'}
 let f=F.accountForecast(D,D.accounts[0],'2026-10','2026-10-02');a.equal(f.inn,2000);a.equal(f.out,880);a.equal(f.min,-630);a.equal(f.minDay,10);a.ok(f.risk);a.equal(f.end,1370);
 f=F.accountForecast(D,D.accounts[0],'2026-11','2026-10-02');a.equal(f.start,1370);a.equal(f.end,1370+2000-850);
 const D2={...D,accounts:[{id:'acc-p1',owner:'p1'}]};f=F.accountForecast(D2,D2.accounts[0],'2026-10');a.ok(!f.hasBalance);a.equal(f.needed,880);
+{const D3={names:{p1:'Paul',p2:'Lucie'},accounts:[{id:'acc-p1',owner:'p1'},{id:'acc-joint',owner:'joint'}],incomes:[],fixed:[],misc:[],months:[],transfer:{},placements:[{id:'pl1',type:'livretA',name:'Livret Paul',owner:'p1',monthly:100,payDay:5},{id:'pl2',type:'av',name:'AV commune',owner:'common',monthly:150}]};
+ const fp=F.accountForecast(D3,D3.accounts[0],'2027-02');a.equal(fp.out,100);a.ok(fp.events.some(e=>e.kind==='saving-planned'&&e.day===5));
+ const fj=F.accountForecast(D3,D3.accounts[1],'2027-02');a.equal(fj.out,150);
+ const D4={...D3,months:[{id:'m',month:'2027-02',a:500,b:0}]};const fs=F.accountForecast(D4,D4.accounts[0],'2027-02');a.equal(fs.out,500);a.ok(!fs.events.some(e=>e.kind==='saving-planned'));console.log('OK versements programmés en prévision future (sans double comptage)')}
 // Assurances : extraction
 const T=`MAIF - Assurance habitation Raqvam\nN° de contrat : 1234567 H\nSociétaire : Emilien Exemple et Julie Exemple\nAdresse du risque : 12 rue des Exemples, 63000 Clermont-Ferrand\nDate d'effet : 01/03/2025\nÉchéance principale : 01/03\nCotisation annuelle TTC : 312,48 €\nContrat renouvelé par tacite reconduction.\nGaranties\n- Responsabilité civile vie privée\n- Dégâts des eaux\n- Incendie\n- Vol et vandalisme\nFranchises\nFranchise générale : 150 €\nPlafonds\nMobilier assuré dans la limite de 25 000 €\nExclusions\n- Dommages intentionnels\nAssistance 24h/24 : 05 49 77 47 78\n`;
 const o=F.insuranceExtract(T);a.equal(o.insurer,'MAIF');a.equal(o.contract,'1234567 H');a.equal(o.type,'habitation');a.equal(o.premium,312.48);a.equal(o.premiumFreq,'an');a.equal(o.start,'2025-03-01');a.equal(o.end,'--03-01');
@@ -70,3 +74,15 @@ console.log('OK finance');
  const v5=F.parseStatementText('x.qif',fs.readFileSync(fx('releve-variante.qif'),'utf8')).ops;a.deepEqual(v5.map(o=>o.amount),[-1234.56,2500]);
  const L=[{items:[{str:'Date',x:10},{str:'Libellé',x:60},{str:'Montant',x:400,w:40}]},{items:[{str:'03/09/2026',x:10},{str:'CB TEST',x:60},{str:'-54,20',x:405,w:30}]},{items:[{str:'ligne suite',x:60}]},{items:[{str:'04/09/2026',x:10},{str:'CB IKEA',x:60},{str:'(129,00)',x:405,w:35}]}];
  const P=F.parseStatementLines(L);a.equal(P[0].label,'CB TEST ligne suite');a.equal(P[1].amount,-129);console.log('OK variantes relevés fictives')}
+{const a=require('assert'),F=require('../finance.js');
+ // Plafond de versement : livret presque plein (solde pris comme base), excédent en poche libre, gains non inventés
+ let p=F.fiveYearProjection([{capital:22900,monthly:100,rate:0,cap:22950,depBase:22900}],{months:3,monthsData:[],realistic:100,prudent:100,asOf:'2026-10-17'});
+ a.equal(p.realistic.series[1].placements,22950);a.equal(p.realistic.series[1].cash,50);a.equal(p.realistic.series[3].cash,250);a.equal(p.realistic.series[3].total,23200);a.equal(p.realistic.series[3].gains,0);
+ // PEA : plafond sur les versements (150 000), pas sur la valorisation
+ p=F.fiveYearProjection([{capital:160000,monthly:100,rate:0,cap:150000,depBase:149950}],{months:2,monthsData:[],realistic:100,prudent:100,asOf:'2026-10-17'});
+ a.equal(p.realistic.series[2].placements,160050);a.equal(p.realistic.series[2].cash,150);
+ // PEL ouvert depuis mars 2011 : plus de versement après 10 ans, excédent en poche libre
+ p=F.fiveYearProjection([{capital:1000,monthly:45,rate:0,cap:61200,depBase:1000,depositUntil:'2025-05-01'}],{months:2,monthsData:[],realistic:45,prudent:45,asOf:'2026-10-17'});
+ a.equal(p.realistic.series[2].placements,1000);a.equal(p.realistic.series[2].cash,90);
+ // Dates locales : à 00:30 à Paris le 1er novembre, UTC est encore le 31 octobre
+ const d=new Date('2026-07-31T22:30:00Z');a.equal(F.localIso(d),'2026-08-01');a.equal(F.localMonth(d),'2026-08');console.log('OK plafonds/poche libre + dates locales')}

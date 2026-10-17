@@ -12,7 +12,7 @@ const eur=n=>(+n||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const N=k=>k==='p1'?D.names.p1:k==='p2'?D.names.p2:'Commun';
 const COL={p1:'var(--p1)',p2:'var(--p2)',common:'var(--com)'};
-const curMonth=()=>new Date().toISOString().slice(0,7);
+const curMonth=(d=new Date())=>localMonth(d);
 const monthLabel=m=>new Date(m+'-01T12:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
 const num=v=>parseFloat(String(v??'').replace(/\s/g,'').replace(',','.'))||0;
 const fd=f=>Object.fromEntries(new FormData(f));
@@ -173,12 +173,12 @@ function miscSheet(id){const m=D.miscMonth||curMonth(),ex=id&&D.misc.find(x=>x.i
    ${chips('category',CAT_MISC.map(([k,n])=>[k,n,catColor('misc',k)]),last.category||'courses','Catégorie')}
    ${chips('paidBy',paidOpts(),ex?ex.paidBy:(me||'joint'),'Payé par')}
    ${chips('for',forOpts(),ex?(ex.for||'common'):'common','Pour')}
-   <div class="f2"><label>Libellé (optionnel)<input name="label" placeholder="ex. Marché" value="${ex?esc(ex.label||''):''}"></label><label>Date<input type="date" name="date" value="${ex?ex.date:m===curMonth()?new Date().toISOString().slice(0,10):m+'-01'}" required></label></div>
+   <div class="f2"><label>Libellé (optionnel)<input name="label" placeholder="ex. Marché" value="${ex?esc(ex.label||''):''}"></label><label>Date<input type="date" name="date" value="${ex?ex.date:m===curMonth()?todayIso():m+'-01'}" required></label></div>
    ${ex&&ex.source==='import'?`<p class="mut">Importée depuis un relevé (${esc(accName(ex.account))}).</p>`:''}${ex?`<button type="button" class="btn ghost" id="dupMisc">Dupliquer (date du jour)</button>`:''}<button class="btn">${ex?'Enregistrer':'Ajouter'}</button>${ex?`<button type="button" class="btn danger" data-del-misc="${ex.id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>{setTimeout(()=>$('#fMisc .amount-in')?.focus(),50);
    $('#fMisc').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target),a=num(f.amount);if(!a){$('#fMisc .amount-in').focus();return}
     const o={date:f.date,label:f.label.trim(),amount:a,category:f.category,paidBy:f.paidBy,for:f.for,payer:f.for==='common'?'common':f.for};if(ex){Object.assign(ex,o);closeSheet();save();return toast('Dépense modifiée')}D.misc.push({id:uid(),...o});
     if(!D.miscMonth||!f.date.startsWith(D.miscMonth))D.miscMonth=f.date.slice(0,7);closeSheet();save();toast(`Dépense de ${eur(a)} ajoutée`)})});
-   on('#dupMisc','click',()=>{if(!ex)return;const o={...ex,id:uid(),date:new Date().toISOString().slice(0,10)};delete o.hash;delete o.importId;o.source='manuel';D.misc.push(o);closeSheet();save();toastUndo('Dépense dupliquée',()=>{D.misc=D.misc.filter(x=>x.id!==o.id);save()})})}
+   on('#dupMisc','click',()=>{if(!ex)return;const o={...ex,id:uid(),date:todayIso()};delete o.hash;delete o.importId;o.source='manuel';D.misc.push(o);closeSheet();save();toastUndo('Dépense dupliquée',()=>{D.misc=D.misc.filter(x=>x.id!==o.id);save()})})}
  /* ---------- Onglet Épargne ---------- */
 const gName=id=>(D.goals.find(g=>g.id===id)||{name:'?'}).name;
 function allocHtml(r,k){if(!r)return'';const e=Object.entries(r.alloc).filter(([,v])=>v>0);
@@ -276,7 +276,7 @@ const PTYPES=[['livretA','Livret A','auto'],['ldds','LDDS','auto'],['lep','LEP',
 const ptype=k=>PTYPES.find(t=>t[0]===k)||PTYPES[PTYPES.length-1];
 const frDate=s=>s?new Date(s+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}).replace(/^1 /,'1er '):'';
 const pct=v=>(+v||0).toLocaleString('fr-FR',{maximumFractionDigits:2})+' %';
-function currentRate(key,at){const P=RATES?.products?.[key];if(!P)return null;const d=at||new Date().toISOString().slice(0,10);return P.history.find(h=>h.from<=d)||null}
+function currentRate(key,at){const P=RATES?.products?.[key];if(!P)return null;const d=at||todayIso();return P.history.find(h=>h.from<=d)||null}
 function pelRate(open){if(!RATES?.pel||!open)return null;return RATES.pel.byOpening.find(h=>h.from<=open)||null}
 // taux réellement utilisé + explication affichée
 function rateInfo(p){const t=ptype(p.type);
@@ -293,9 +293,13 @@ const isEnv=p=>ptype(p.type)[2]==='env';
 const valsOf=pid=>D.valuations.filter(v=>v.pid===pid).sort((a,b)=>a.date.localeCompare(b.date)||(a.c??0)-(b.c??0));
 const lastVal=pid=>{const L=valsOf(pid);return L[L.length-1]||null};
 const placValue=p=>{if(isEnv(p)){const v=lastVal(p.id);if(v)return +v.value||0}return +p.capital||0};
-function streams(){return D.placements.map(p=>({pid:p.id,capital:placValue(p),monthly:+p.monthly||0,rate:rateInfo(p).rate}))}
+const addYearsIso=(iso,n)=>{if(!iso)return null;const d=new Date(iso+'T12:00');d.setFullYear(d.getFullYear()+n);return localIso(d)};
+function streams(){return D.placements.map(p=>{const cap=RATES?.ceilings?.[p.type]?.amount||null;
+  return{pid:p.id,type:p.type,capital:placValue(p),monthly:+p.monthly||0,rate:rateInfo(p).rate,cap,
+    depBase:p.type==='pea'?(+p.invested>0?+p.invested:null):placValue(p),
+    depositUntil:p.type==='pel'&&p.openDate&&p.openDate>='2011-03-01'?addYearsIso(p.openDate,10):null}})}
 /* Rappel mensuel de valorisation */
-function lastReminderDate(today=new Date()){const day=Math.min(28,Math.max(1,D.reminderDay||1));let d=new Date(today.getFullYear(),today.getMonth(),day);if(d>today)d=new Date(today.getFullYear(),today.getMonth()-1,day);return d.toISOString().slice(0,10)}
+function lastReminderDate(today=new Date()){const day=Math.min(28,Math.max(1,D.reminderDay||1));let d=new Date(today.getFullYear(),today.getMonth(),day);if(d>today)d=new Date(today.getFullYear(),today.getMonth()-1,day);return localIso(d)}
 const dueValuations=()=>{const th=lastReminderDate();return D.placements.filter(p=>isEnv(p)&&(!lastVal(p.id)||lastVal(p.id).date<th))};
 function valChart(L){if(L.length<2)return'';
   return interactiveChart({title:'Évolution des valorisations',type:'line',series:[{key:'value',name:'Valorisation',color:'#6d8bff'}],points:L.map((v,i)=>({label:frDate(v.date),short:new Date(v.date+'T12:00').toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}),values:{value:+v.value||0},detail:i===0?'Premier point enregistré':`Variation : ${eur(v.value-L[i-1].value)}`}))});
@@ -326,7 +330,7 @@ function vPlacements(){
   ${tipsSection()}
   <div class="card"><h2>${ic('calendar',18)} Taux réglementés en vigueur</h2>${reg.length?`<ul class="bal-l">${reg.map(([k,r])=>`<li><span>${RATES.products[k].name}</span><small>depuis le ${frDate(r.from)} · <a href="${RATES.products[k].source}" target="_blank" rel="noopener">${RATES.products[k].sourceName}</a></small><b>${pct(r.rate)}</b></li>`).join('')}</ul>
    <p class="mut">Mis à jour automatiquement (rates.json, vérifié le ${frDate(RATES.checked)}). PEL : taux figé à l’ouverture. Livret Jeune : taux libre de la banque, au moins égal au Livret A.</p>`:'<p class="mut">Chargement des taux…</p>'}</div>
-  <p class="mut note">Projection : intérêts composés mensuellement (taux annuel ÷ 12), versements permanents en fin de mois, au taux en vigueur aujourd’hui. Rendements des assurances vie, PEA, comptes-titres et PER : estimations saisies, non garanties.</p>`;
+  <p class="mut note">Projection : intérêts composés mensuellement (taux annuel ÷ 12), versements permanents en fin de mois, au taux en vigueur aujourd’hui. Les versements s’arrêtent au plafond réglementaire (PEA : total versé saisi ; livrets/PEL : solde actuel, intérêts inclus, faute d’historique des versements — approximation prudente) et, pour un PEL ouvert depuis mars 2011, après 10 ans ; l’excédent va dans une poche libre à 0 %. Rendements des assurances vie, PEA, comptes-titres et PER : estimations saisies, non garanties.</p>`;
 }
 function placSheet(id,draft){const p=draft||D.placements.find(x=>x.id===id)||{owner:'common',type:'livretA',rateMode:'auto',bank:''},t=ptype(p.type);
   const banks=[...new Set(D.placements.map(x=>x.bank).filter(Boolean))],env=t[2]==='env',la=currentRate('livretA'),V=id?valsOf(id):[],g=id?gain(D.placements.find(x=>x.id===id)||p):null;
@@ -334,7 +338,7 @@ function placSheet(id,draft){const p=draft||D.placements.find(x=>x.id===id)||{ow
      ${RATES?.products?.[p.type]?`<small>Source : <a href="${RATES.products[p.type].source}" target="_blank" rel="noopener">${RATES.products[p.type].sourceName}</a> · mis à jour automatiquement</small>`:''}</div>
      <label class="switch"><input type="checkbox" id="manualRate" ${p.rateMode==='manual'?'checked':''}><span></span>Utiliser un taux manuel</label>
      <label id="rateL" ${p.rateMode==='manual'?'':'hidden'}>Taux annuel manuel (%)<input name="rate" inputmode="decimal" value="${p.rate??''}"></label>`
-   :t[2]==='opening'?`<label>Date d’ouverture du PEL<input type="date" name="openDate" id="pelDate" value="${p.openDate||''}" required max="${new Date().toISOString().slice(0,10)}"></label>
+   :t[2]==='opening'?`<label>Date d’ouverture du PEL<input type="date" name="openDate" id="pelDate" value="${p.openDate||''}" required max="${todayIso()}"></label>
      <label>Taux (figé pour toute la durée du plan) (%)<input name="rate" id="pelRate" inputmode="decimal" value="${p.rate??''}"></label><p class="mut" id="pelHint">${p.openDate&&pelRate(p.openDate)?`Taux officiel pour un PEL ouvert à cette date : ${pct(pelRate(p.openDate).rate)} (hors prime). Il ne sera jamais modifié.`:'Le taux officiel correspondant sera proposé selon la date d’ouverture.'}</p>`
    :t[2]==='floor'?`<label>Taux de votre banque (%)<input name="rate" inputmode="decimal" value="${p.rate??(la?la.rate:'')}"></label><p class="mut">Taux libre fixé par la banque, au moins égal au Livret A${la?` (${pct(la.rate)} actuellement)`:''}. Pas de mise à jour automatique.</p>`
    :env?`<label>Rendement annuel estimé (%)<input name="rate" inputmode="decimal" value="${p.rate??''}" placeholder="ex. 3 (fonds euros) ou 5 (UC)"></label><p class="mut">Sert uniquement à la projection. Pour un fonds euros, indiquez son taux annuel.</p>`
@@ -342,7 +346,7 @@ function placSheet(id,draft){const p=draft||D.placements.find(x=>x.id===id)||{ow
   const valBlock=env&&id?`<div class="sec"><h2>Valorisations</h2></div>
     ${g&&g.inv?`<div class="hero-grid"><div><small>Valorisation</small><b>${eur(g.v)}</b></div><div><small>Plus-value globale</small><b class="${g.d>=0?'pos':'neg'}">${g.d>=0?'+':''}${eur(g.d)} (${g.pc.toFixed(1)} %)</b></div></div>`:''}
     ${valChart(V)}
-    <form id="fVal" class="valform"><div class="f2"><label>Date<input type="date" name="date" value="${new Date().toISOString().slice(0,10)}" required max="${new Date().toISOString().slice(0,10)}"></label><label>Valorisation (€)<input name="value" inputmode="decimal" required placeholder="0"></label></div><button class="btn ghost">${ic('plus',16)} Ajouter la valorisation</button></form>
+    <form id="fVal" class="valform"><div class="f2"><label>Date<input type="date" name="date" value="${todayIso()}" required max="${todayIso()}"></label><label>Valorisation (€)<input name="value" inputmode="decimal" required placeholder="0"></label></div><button class="btn ghost">${ic('plus',16)} Ajouter la valorisation</button></form>
     <div class="list">${[...V].reverse().map(v=>`<div class="item"><span class="grow"><b>${eur(v.value)}</b><small>${frDate(v.date)}</small></span><button type="button" class="icon-btn" data-del="valuations|${v.id}" aria-label="Supprimer la valorisation du ${frDate(v.date)}">${ic('trash',16)}</button></div>`).join('')||'<p class="mut">Aucune valorisation : ajoutez le montant affiché par votre banque ou assureur.</p>'}</div>
     ${p.archivedLines?.length?`<details><summary>Ancien détail par ligne (archivé)</summary><ul class="bal-l">${p.archivedLines.map(x=>`<li><span>${esc(x.name||x.isin||'Ligne')}</span><small>${esc(x.isin||'')}</small><b>${eur(x.kind==='euro'?x.value:(x.qty||0)*(x.price||0))}</b></li>`).join('')}</ul></details>`:''}`:'';
   openSheet(id?'Modifier le placement':'Nouveau placement',`<form id="fPlac" novalidate>
@@ -371,7 +375,7 @@ function placSheet(id,draft){const p=draft||D.placements.find(x=>x.id===id)||{ow
      if('capital' in f)o.capital=num(f.capital);
      if('rate' in f)o.rate=num(f.rate);else if(nt[2]==='auto'){const r=currentRate(f.type);o.rate=r?r.rate:(p.rate||0)}
      if(nt[2]==='opening'){o.openDate=f.openDate;if(!f.rate){const r=pelRate(f.openDate);o.rate=r?r.rate:0}}
-     const ex=D.placements.find(x=>x.id===id);if(ex)Object.assign(ex,o);else{D.placements.push(o);if(nt[2]==='env'&&o.capital)D.valuations.push({id:uid(),pid:o.id,date:new Date().toISOString().slice(0,10),value:o.capital})}
+     const ex=D.placements.find(x=>x.id===id);if(ex)Object.assign(ex,o);else{D.placements.push(o);if(nt[2]==='env'&&o.capital)D.valuations.push({id:uid(),pid:o.id,date:todayIso(),value:o.capital})}
      save();if(nt[2]==='env'&&!id){placSheet(o.id);toast('Enveloppe créée')}else{closeSheet();toast('Placement enregistré')}});
    on('#fVal','submit',e=>{e.preventDefault();const f=fd(e.target),v=num(f.value);if(!f.value||v<0){e.target.value.focus();return}
      D.valuations.push({id:uid(),pid:id,date:f.date,value:v});save();placSheet(id);toast('Valorisation ajoutée')})})}
@@ -446,11 +450,18 @@ function computeRaw(extra){
   return{res,contrib,saved:Object.fromEntries(D.goals.map(g=>[g.id,Math.round(((g.saved||0)+contrib[g.id].p1+contrib[g.id].p2)*100)/100]))};
 }
 /* ---------- Placements : projection 48 mois ---------- */
-function project(list,months=48){ // intérêts composés mensuels, versement en fin de mois
-  const series=[];let vals=list.map(p=>p.capital),inv=list.map(p=>p.capital);
-  series.push({total:vals.reduce((a,b)=>a+b,0),inv:inv.reduce((a,b)=>a+b,0)});
-  for(let m=1;m<=months;m++){vals=vals.map((v,i)=>v*(1+list[i].rate/100/12)+list[i].monthly);inv=inv.map((v,i)=>v+list[i].monthly);
-    series.push({total:vals.reduce((a,b)=>a+b,0),inv:inv.reduce((a,b)=>a+b,0),vals:[...vals]})}
+function project(list,months=48){ // intérêts composés mensuels, versement en fin de mois ; plafonds de versement et fin de période PEL respectés
+  const series=[];let vals=list.map(p=>p.capital),inv=list.map(p=>p.capital),deps=list.map(p=>p.depBase!=null?+p.depBase:+p.capital||0),cash=0;
+  const startMonth=localMonth();
+  const monthAt=m=>{const d=new Date(+startMonth.slice(0,4),+startMonth.slice(5,7)-1+m,15);return localMonth(d)};
+  series.push({total:vals.reduce((a,b)=>a+b,0),inv:inv.reduce((a,b)=>a+b,0),cash:0});
+  for(let m=1;m<=months;m++){let excess=0;
+    vals=vals.map((v,i)=>{const p=list[i];let dep=+p.monthly||0;
+      if(p.depositUntil&&monthAt(m)>=p.depositUntil.slice(0,7))dep=0;
+      if(dep>0&&p.cap&&p.depBase!=null){dep=Math.min(dep,Math.max(0,p.cap-deps[i]));deps[i]+=dep}
+      excess+= (+p.monthly||0)-dep;inv[i]+= (+p.monthly||0);return v*(1+p.rate/100/12)+dep});
+    cash+=excess; // poche libre non rémunérée : l'excédent n'est pas inventé en rendement
+    series.push({total:vals.reduce((a,b)=>a+b,0)+cash,inv:inv.reduce((a,b)=>a+b,0),vals:[...vals],cash})}
   return series;
 }
 /* ---------- Supabase (REST, sans SDK) ---------- */
@@ -506,9 +517,9 @@ function showInvite(){const P=$('#invitePanel');if(!sbOn()){P.innerHTML='<p clas
   P.innerHTML=`<div class="invite"><b>Inviter dans l’espace « ${esc(cfg.space)} »</b>
    <p class="warn-t" style="margin:0">${ic('alert',14)} Ce lien donne accès à toutes vos données (lecture et modification). Ne l’envoyez qu’à votre partenaire, par un canal privé.</p>
    <div style="background:#fff;padding:10px;border-radius:10px;justify-self:center">${qr.createSvgTag({cellSize:4,margin:0,scalable:true}).replace('<svg ','<svg style="width:220px;height:220px;display:block" ')}</div>
-   <input id="inviteLink" readonly value="${esc(L)}">
+   <input id="inviteLink" type="password" readonly autocomplete="off" value="${esc(L)}" aria-label="Lien d’invitation (masqué)">
    <div class="f2"><button type="button" class="btn" id="copyInv">${ic('copy',16)} Copier</button>${navigator.share?`<button type="button" class="btn ghost" id="shareInv">${ic('share',16)} Partager</button>`:''}</div></div>`;
-  on('#copyInv','click',async()=>{try{await navigator.clipboard.writeText(L)}catch{$('#inviteLink').select();document.execCommand('copy')}$('#copyInv').textContent='Copié ✓'});
+  on('#copyInv','click',async()=>{try{await navigator.clipboard.writeText(L)}catch{const i=$('#inviteLink');i.type='text';i.select();document.execCommand('copy');i.type='password'}$('#copyInv').textContent='Copié ✓'});
   on('#shareInv','click',()=>navigator.share({title:'Budget Couple',text:'Rejoins notre espace Budget Couple :',url:L}).catch(()=>{}));
 }
 async function handleInvite(){const m=location.hash.match(/^#invite=([A-Za-z0-9_-]+)/);if(!m)return;
@@ -638,9 +649,9 @@ function ageTips(add){const AR=RATES?.ageRules,y=new Date().getFullYear();if(!AR
     const PR=RATES.per;if(t&&PR){const tmi=t.tmi[k],inc=t.inc[k],netPro=Math.max(0,inc.sal-proDeduct(inc.sal,RATES.incomeTax)),plaf=Math.round(Math.min(PR.max,Math.max(PR.min,netPro*PR.rate/100))),per=D.placements.find(p=>p.type==='per'&&p.owner===k),
       v=per&&per.monthly?Math.min(plaf,per.monthly*12):Math.min(plaf,1200),eco=Math.round(v*tmi/100),yrs=Math.max(0,AR.retirementAge-age);
       if(tmi>=30)add('per-'+k,'info',`PER : avantage fiscal pour ${nm} (TMI ${tmi} %)`,`Les versements sur un PER sont déductibles du revenu imposable dans la limite d’un plafond ; l’économie d’impôt est d’environ versement × TMI. En contrepartie, l’argent est bloqué jusqu’à la retraite (sauf cas de déblocage anticipé, comme l’achat de la résidence principale) et il est imposé à la sortie. C’est surtout intéressant à partir d’une TMI de 30 %. Le choix du contrat et des supports se fait avec votre banque ou un conseiller.`,
-        `TMI estimée ${tmi} %. Pour ${eur(v)} versés sur l’année, économie d’impôt estimée ≈ ${eur(eco)}. Plafond de déduction approximatif : ${eur(plaf)} (10 % des revenus d’activité nets, entre ${eur(PR.min)} et ${eur(PR.max)}). À ${age} ans, l’épargne serait bloquée environ ${yrs} ans.`,PR.source);
+        `TMI estimée ${tmi} %. Pour ${eur(v)} versés sur l’année, économie d’impôt estimée ≈ ${eur(eco)}. Plafond estimé à partir de vos revenus actuels : ${eur(plaf)} (10 % des revenus d’activité nets saisis, entre ${eur(PR.min)} et ${eur(PR.max)}). Le plafond fiscal réel est calculé sur les revenus d’activité de l’année précédente, figure sur votre avis d’impôt et peut inclure les reliquats des 3 années précédentes${t.mode==='commune'?' ; en imposition commune, les plafonds non utilisés peuvent être mutualisés entre conjoints (à vérifier sur l’avis)':''}. À ${age} ans, l’épargne serait bloquée environ ${yrs} ans.`,PR.source);
       else if(per&&per.monthly)add('per-low-'+k,'info',`PER de ${nm} : avantage fiscal limité à TMI ${tmi} %`,`À une TMI de ${tmi} %, la déduction des versements fait économiser peu d’impôt, alors que l’argent reste bloqué jusqu’à la retraite et qu’il est imposé à la sortie. Faites le point avec votre banque ou un conseiller.`,
-        `${eur(per.monthly*12)} versés par an : économie estimée ≈ ${eur(Math.round(Math.min(plaf,per.monthly*12)*tmi/100))}. À ${age} ans, blocage environ ${yrs} ans.`,PR.source);
+        `${eur(per.monthly*12)} versés par an : économie estimée ≈ ${eur(Math.round(Math.min(plaf,per.monthly*12)*tmi/100))} (plafond estimé sur vos revenus actuels ; le plafond réel, sur l’avis d’impôt, dépend des revenus de l’année précédente). À ${age} ans, blocage environ ${yrs} ans.`,PR.source);
       // Horizon long terme
       if(yrs>=25&&age>=18&&!['av','pea','per','cto'].some(own))add('horizon-'+k,'info',`Horizon long terme pour ${nm}`,'Plus l’horizon est long, plus une épargne de long terme a le temps de traverser les variations des marchés. Les livrets restent adaptés à l’épargne de précaution et aux projets proches. Pour définir une répartition adaptée à votre situation et à votre tolérance au risque, parlez-en à votre banque ou à un conseiller.',`${nm} a ${age} ans, soit environ ${yrs} ans avant l’âge légal de départ en retraite (${AR.retirementAge} ans) ; toute son épargne enregistrée est sur des livrets.`)}})}
 /* ---------- Conseils pédagogiques (génériques, jamais de conseil en investissement personnalisé) ---------- */
@@ -648,7 +659,7 @@ const SP='https://www.service-public.gouv.fr/particuliers/vosdroits/';
 const LIVRETS=['livretA','ldds','lep','livretJeune','cel'];
 const TIP_DISCLAIMER='Informations pédagogiques générales calculées à partir de vos saisies. Ce ne sont pas des conseils en investissement : pour choisir un placement (fonds, actions, ETF, répartition…), adressez-vous à votre banque ou à un conseiller financier.';
 const yearsSince=d=>{const a=new Date(d+'T12:00'),n=new Date();return (n-a)/(365.25*864e5)};
-function avgMisc(n=3){const m=curMonth(),[y,mo]=m.split('-').map(Number),L=[];for(let i=1;i<=n;i++){const d=new Date(y,mo-1-i,15),k=d.toISOString().slice(0,7);L.push(D.misc.filter(x=>x.date.startsWith(k)).reduce((s,x)=>s+x.amount,0))}
+function avgMisc(n=3){const m=curMonth(),[y,mo]=m.split('-').map(Number),L=[];for(let i=1;i<=n;i++){const d=new Date(y,mo-1-i,15),k=localMonth(d);L.push(D.misc.filter(x=>x.date.startsWith(k)).reduce((s,x)=>s+x.amount,0))}
   const used=L.filter(v=>v>0);return{avg:used.length?used.reduce((a,b)=>a+b,0)/used.length:0,months:used.length}}
 function tips(){const T=[],m=curMonth(),a=summary('p1',m),b=summary('p2',m),rev=a.rev+b.rev,ep=a.ep+b.ep,rest=a.rest+b.rest,
   fixed=D.fixed.reduce((s,f)=>s+f.amount,0),spent=D.misc.filter(x=>x.date.startsWith(m)).reduce((s,x)=>s+x.amount,0),am=avgMisc(),monthly=fixed+am.avg,CE=RATES?.ceilings||{};
@@ -662,18 +673,31 @@ function tips(){const T=[],m=curMonth(),a=summary('p1',m),b=summary('p2',m),rev=
     else add('precaution-high','info','Réserve de précaution au-delà de 6 mois','Au-delà de 6 mois de dépenses, une partie de cette épargne pourrait servir vos projets à plus long terme. Pour savoir comment, parlez-en à votre banque ou à un conseiller.',
       `${eur(precau)} sur vos livrets, soit ${mo.toFixed(1).replace('.',',')} mois de dépenses (${eur(monthly)}/mois) ; 6 mois représentent ${eur(monthly*6)}.`)}
   // 2-3. Plafonds réglementaires
-  D.placements.forEach(p=>{const c=CE[p.type];if(!c)return;const v=placValue(p),nm=p.name||ptype(p.type)[1],who=N(p.owner);
-    if(v>=c.amount)add('ceil-full-'+p.id,'warn',`${nm} : plafond atteint`,`Le plafond réglementaire de versement est de ${eur(c.amount)}. Les intérêts continuent de s’ajouter, mais aucun nouveau versement n’est possible${p.monthly?' : votre versement mensuel ne pourra pas être effectué':''}. L’argent en trop resterait alors sur le compte courant, sans rémunération.`,
-      `${eur(v)} sur ce livret (${esc(who)})${p.monthly?`, versement prévu ${eur(p.monthly)}/mois`:''}.`,c.source);
-    else if(v>=c.amount*0.9||(p.monthly>0&&(c.amount-v)/p.monthly<=6))add('ceil-near-'+p.id,'info',`${nm} : plafond bientôt atteint`,`Le plafond de versement est de ${eur(c.amount)}. Pensez à prévoir où iront vos versements ensuite.`,
-      `${eur(v)} aujourd’hui, reste ${eur(c.amount-v)}${p.monthly>0?` : environ ${Math.max(1,Math.ceil((c.amount-v)/p.monthly))} mois au rythme de ${eur(p.monthly)}/mois`:''}.`,c.source)});
+  D.placements.forEach(p=>{const c=CE[p.type];if(!c||p.type==='pea')return;const v=placValue(p),nm=p.name||ptype(p.type)[1],who=N(p.owner);
+    if(v>=c.amount)add('ceil-full-'+p.id,'warn',`${nm} : solde au plafond de versement`,`Le plafond réglementaire de ${eur(c.amount)} s’apprécie sur les versements, hors intérêts capitalisés : votre solde peut donc le dépasser grâce aux intérêts, sans que cela bloque leur versement. En revanche, un nouveau versement qui ferait dépasser le plafond des dépôts sera refusé par la banque${p.monthly?' : votre versement mensuel risque de ne plus passer':''}. L’application compare le solde (intérêts inclus) à ce plafond, faute d’historique complet des versements : considérez cette alerte comme un signal à vérifier auprès de la banque.`,
+      `Solde ${eur(v)} sur ce placement (${esc(who)})${p.monthly?`, versement prévu ${eur(p.monthly)}/mois`:''}.`,c.source);
+    else if(v>=c.amount*0.9||(p.monthly>0&&(c.amount-v)/p.monthly<=6))add('ceil-near-'+p.id,'info',`${nm} : plafond de versement bientôt atteint`,`Le plafond de versement est de ${eur(c.amount)} (hors intérêts capitalisés, qui peuvent le dépasser). Pensez à prévoir où iront vos versements ensuite.`,
+      `Solde ${eur(v)} aujourd’hui (intérêts inclus), soit ${eur(c.amount-v)} sous le plafond${p.monthly>0?` : environ ${Math.max(1,Math.ceil((c.amount-v)/p.monthly))} mois au rythme de ${eur(p.monthly)}/mois`:''}.`,c.source)});
+  // PEA : plafond de 150 000 € sur les versements (pas sur la valorisation, qui peut le dépasser avec les gains)
+  D.placements.filter(p=>p.type==='pea').forEach(p=>{const c=CE.pea;if(!c)return;const inv=+p.invested||0;if(!(inv>0))return;const nm=p.name||ptype(p.type)[1],who=N(p.owner);
+    if(inv>=c.amount)add('ceil-full-'+p.id,'warn',`${nm} : plafond de versements PEA atteint`,`Les versements en espèces sur un PEA sont plafonnés à ${eur(c.amount)} au total (les gains peuvent faire dépasser cette somme en valorisation, ce n’est pas un dépassement). Aucun nouveau versement en espèces n’est possible.`,
+      `Total versé saisi : ${eur(inv)} (${esc(who)}), valorisation ${eur(placValue(p))}.`,c.source);
+    else if(inv>=c.amount*0.9||(p.monthly>0&&(c.amount-inv)/p.monthly<=6))add('ceil-near-'+p.id,'info',`${nm} : plafond de versements PEA bientôt atteint`,`Les versements en espèces sur un PEA sont plafonnés à ${eur(c.amount)} au total ; la valorisation peut dépasser ce montant avec les gains.`,
+      `Total versé saisi : ${eur(inv)}, reste ${eur(c.amount-inv)} de versements possibles${p.monthly>0?` : environ ${Math.max(1,Math.ceil((c.amount-inv)/p.monthly))} mois à ${eur(p.monthly)}/mois`:''}.`,c.source)});
   // Compte courant : argent non affecté chaque mois
   if(rev>0){const left=rest-spent;if(left>rev*0.25&&left>300)add('idle-'+m,'info','De l’argent reste sur le compte courant','Un compte courant ne rapporte rien. Si ce surplus se répète chaque mois, vous pouvez l’affecter à un objectif ou à un livret disponible.',
     `Ce mois-ci : ${eur(rev)} de revenus, ${eur(fixed)} de charges, ${eur(ep)} épargnés et ${eur(spent)} de dépenses diverses : il reste ${eur(left)} non affectés (${Math.round(left/rev*100)} % des revenus).`)}
   // 4. LEP sous conditions de revenus
-  const LI=RATES?.lepIncome;['p1','p2'].forEach(k=>{if(D.placements.some(p=>p.type==='lep'&&p.owner===k))return;const inc=incomeOf(k,m);if(!inc)return;
-    add('lep-'+k,'info',`LEP : ${N(k)} y a peut-être droit`,`Le Livret d’épargne populaire est réservé aux revenus modestes. Son taux (${currentRate('lep')?pct(currentRate('lep').rate):'—'}) est fixé par l’État et il est plafonné à ${eur(CE.lep?.amount||10000)}. L’éligibilité dépend du revenu fiscal de référence du foyer, indiqué sur l’avis d’imposition : c’est la banque qui la vérifie.`,
-      `${N(k)} n’a pas de LEP enregistré. Plafond ${LI?.year||''} en métropole : ${LI?eur(LI.rfr1part):'—'} de revenu fiscal de référence pour 1 part, ${LI?eur(LI.rfr2parts):'—'} pour 2 parts.`,LI?.source||SP+'F2367')});
+  const LI=RATES?.lepIncome,txL=LI&&typeof taxNow==='function'?taxNow():null;
+  ['p1','p2'].forEach(k=>{if(D.placements.some(p=>p.type==='lep'&&p.owner===k))return;const inc=incomeOf(k,m);if(!inc)return;
+    // Éligibilité estimée : RFR du foyer approché à partir des revenus saisis. On n'affiche le conseil que s'il est proche ou sous le plafond.
+    let est=null,ceil=null;
+    if(txL&&RATES?.incomeTax){const R=x=>Math.max(0,x.sal-proDeduct(x.sal,RATES.incomeTax))+x.other;
+      if(txL.mode==='commune'){est=R(txL.inc.p1)+R(txL.inc.p2);ceil=txL.com.parts<=1.5?LI.rfr1part:LI.rfr2parts}
+      else{est=R(txL.inc[k]);ceil=txL.sep[k].parts<=1.5?LI.rfr1part:LI.rfr2parts}}
+    if(est!=null&&ceil&&est>ceil*1.1)return; // revenu estimé nettement au-dessus du plafond : pas de conseil LEP
+    add('lep-'+k,'info',`LEP : ${N(k)} y a peut-être droit`,`Le Livret d’épargne populaire est réservé aux revenus modestes. Son taux (${currentRate('lep')?pct(currentRate('lep').rate):'—'}) est fixé par l’État et il est plafonné à ${eur(CE.lep?.amount||10000)}. L’éligibilité dépend du revenu fiscal de référence du foyer (avis d’imposition, revenus N-2 ou N-1) : c’est la banque qui la vérifie.`,
+      `${N(k)} n’a pas de LEP enregistré.${est!=null&&ceil?` Revenu fiscal estimé à partir de vos revenus saisis : environ ${eur(est)}, proche ou sous le plafond ${LI.year} de ${eur(ceil)} utilisé ici (${LI.rfr1part===ceil?'1 part':'2 parts'} ; le plafond exact dépend de vos parts et figure sur l’avis).`:''} Plafonds ${LI?.year||''} en métropole : ${LI?eur(LI.rfr1part):'—'} de revenu fiscal de référence pour 1 part, ${LI?eur(LI.rfr2parts):'—'} pour 2 parts.`,LI?.source||SP+'F2367')});
   // 5. Ordre de remplissage des livrets par taux
   ['p1','p2'].forEach(k=>{const mine=D.placements.filter(p=>p.owner===k&&LIVRETS.includes(p.type)).map(p=>({p,r:rateInfo(p).rate||0,room:CE[p.type]?CE[p.type].amount-placValue(p):Infinity}));
     mine.filter(x=>x.p.monthly>0).forEach(lo=>{const hi=mine.filter(x=>x.r>lo.r+0.001&&x.room>0).sort((a,b)=>b.r-a.r)[0];if(!hi)return;
@@ -719,7 +743,7 @@ function tipsSection(){if(!RATES)return'';const V=visibleTips(),h=tips().length-
   return `<section id="tips" aria-labelledby="tipsH">${sec(`<span id="tipsH">${ic('bulb',18)} Conseils</span>`)}${disclaimer()}
   ${V.length?`<ul class="tips">${V.map(tipHtml).join('')}</ul>`:'<p class="mut">Aucun conseil pour le moment.</p>'}
   ${h?`<button class="link" id="showTips">Réafficher ${h} conseil${h>1?'s':''} masqué${h>1?'s':''}</button>`:''}</section>`}
-document.addEventListener('click',e=>{const h=e.target.closest('[data-hide-tip]');if(h){const k=h.dataset.hideTip,t=tips().find(x=>x.key===k);D.dismissed.push({id:k,title:t?t.title:'Conseil',date:new Date().toISOString().slice(0,10)});save();toast('Conseil masqué');return}
+document.addEventListener('click',e=>{const h=e.target.closest('[data-hide-tip]');if(h){const k=h.dataset.hideTip,t=tips().find(x=>x.key===k);D.dismissed.push({id:k,title:t?t.title:'Conseil',date:todayIso()});save();toast('Conseil masqué');return}
   if(e.target.closest('#showTips')){D.dismissed=[];save();toast('Conseils réaffichés');return}
   const s=e.target.closest('[data-scroll]');if(s)setTimeout(()=>{const el=document.getElementById(s.dataset.scroll);if(el)el.scrollIntoView({block:'start'})},50)});
 const TABS=[['accueil','Accueil','grid',vAccueil],['budget','Budget','wallet',vBudget],['epargne','Épargne','piggy',vEpargne],['objectifs','Objectifs','target',vObjectifs],['placements','Placements','trend',vPlacements]];
@@ -762,7 +786,7 @@ document.addEventListener('click',e=>{
   if(t.id==='expMisc'){const L=miscFiltered(D.misc.filter(x=>x.date.startsWith(D.miscMonth||curMonth()))),q=v=>'"'+String(v??'').replace(/"/g,'""')+'"',csv='\ufeff'+[['date','libellé','catégorie','montant','payé par','pour'].join(';'),...L.map(x=>[x.date,x.label||catName('misc',x.category),catName('misc',x.category),String(x.amount).replace('.',','),paidName(x.paidBy),N(x.for||'common')].map(q).join(';'))].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='depenses.csv';a.click();return}
   if(d.goto){if(d.segTo)budgetSeg=d.segTo;closeSheet();go(d.goto);if(d.scroll)setTimeout(()=>{const el=document.getElementById(d.scroll);if(el){el.scrollIntoView({block:'start'});el.querySelector('h2,h3')?.focus?.()}},60);return}
   if(d.me){me=d.me;localStorage.setItem(ME,me);closeSheet();render();return toast(`Appareil associé à ${N(me)}`)}
-  if(t.id==='settle'){const v=+d.amount;if(confirm(`Enregistrer un règlement de ${eur(v)} de ${N(d.from)} à ${N(d.to)} ?`)){D.settlements.push({id:uid(),month:d.month,from:d.from,to:d.to,amount:r2(v),date:new Date().toISOString().slice(0,10)});save();toast('Règlement enregistré')}return}
+  if(t.id==='settle'){const v=+d.amount;if(confirm(`Enregistrer un règlement de ${eur(v)} de ${N(d.from)} à ${N(d.to)} ?`)){D.settlements.push({id:uid(),month:d.month,from:d.from,to:d.to,amount:r2(v),date:todayIso()});save();toast('Règlement enregistré')}return}
   if(t.id==='gear'||t.closest('#syncState'))return go('reglages');
   if(d.del){const [l,id]=d.del.split('|'),it=(D[l]||[]).find(x=>x.id===id),nm=it?(it.label||it.name||(it.month?monthLabel(it.month):'')||(it.date?frDate(it.date):'')):'';if(confirm(`Supprimer ${nm?'« '+nm+' »':'cet élément'} ?${l==='placements'?' Son historique de valorisations sera aussi supprimé.':''}${l==='accounts'&&t.dataset.used?` ${t.dataset.used} charge(s) ou revenu(s) n’auront plus de compte associé.`:''}`))del(l,id);return}
   if(d.seg){budgetSeg=d.seg;animate=true;return render()}
@@ -781,7 +805,13 @@ document.addEventListener('click',e=>{
 });
 $('#sheetBackdrop').addEventListener('click',()=>closeSheet());
 addEventListener('popstate',()=>closeSheet(true));
-document.addEventListener('input',e=>{const t=e.target;if(t.id==='fixQ'){fixF.q=t.value;render()}if(t.id==='miscQ'){miscF.q=t.value;render()}if(t.id==='histQ'){histF.q=t.value;render()}});
+let _searchTimers={};
+document.addEventListener('input',e=>{const t=e.target;
+  const searches={fixQ:v=>fixF.q=v,miscQ:v=>miscF.q=v,histQ:v=>histF.q=v};
+  if(searches[t.id]){searches[t.id](t.value); // ne pas recréer le DOM à chaque frappe : debounce ~120 ms puis focus restauré
+    clearTimeout(_searchTimers[t.id]);const id=t.id;
+    _searchTimers[id]=setTimeout(()=>{const pos=document.getElementById(id)?.selectionStart;render();const n=document.getElementById(id);if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch{}}},120);return}
+});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&e.target.id==='budgetIn')e.target.blur();
   if(e.key==='Tab'&&!$('#sheet').hidden){const f=[...$('#sheet').querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x=>!x.disabled&&x.offsetParent);if(!f.length)return;
     const first=f[0],last=f[f.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
@@ -800,8 +830,8 @@ document.addEventListener('submit',e=>{const bad=[...e.target.querySelectorAll('
   if(bad){e.preventDefault();e.stopImmediatePropagation();bad.setCustomValidity('Saisissez un nombre positif (ex. 12,50)');bad.reportValidity();bad.addEventListener('input',()=>bad.setCustomValidity(''),{once:true})}},true);
 document.addEventListener('submit',async e=>{const f=e.target;
   if(f.classList.contains('qval')){e.preventDefault();const v=num(f.value.value);if(!f.value.value.trim()||v<0)return f.value.focus();
-    D.valuations.push({id:uid(),pid:f.dataset.pid,date:new Date().toISOString().slice(0,10),value:v});save();toast('Valorisation enregistrée');return}
-  if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));D.reminderDay=Math.min(28,Math.max(1,parseInt(v.reminderDay)||1));const okd=x=>/^\d{4}-\d{2}-\d{2}$/.test(x||'')&&x<=new Date().toISOString().slice(0,10);D.births={p1:okd(v.b1)?v.b1:'',p2:okd(v.b2)?v.b2:''};save();toast('Réglages enregistrés')}
+    D.valuations.push({id:uid(),pid:f.dataset.pid,date:todayIso(),value:v});save();toast('Valorisation enregistrée');return}
+  if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));D.reminderDay=Math.min(28,Math.max(1,parseInt(v.reminderDay)||1));const okd=x=>/^\d{4}-\d{2}-\d{2}$/.test(x||'')&&x<=todayIso();D.births={p1:okd(v.b1)?v.b1:'',p2:okd(v.b2)?v.b2:''};save();toast('Réglages enregistrés')}
   if(f.id==='fSync'){e.preventDefault();const v=fd(f);cfg=normCfg(v);if(cfg.space&&cfg.space.length<8){$('#syncMsg').textContent='Code d’espace trop court (8 caractères minimum).';return}
     localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote()}
 });

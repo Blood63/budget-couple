@@ -42,7 +42,7 @@ const MIGRATIONS={
       const v=Math.round(L.reduce((s,x)=>s+val(x),0)*100)/100,c=Math.round(L.reduce((s,x)=>s+cost(x),0)*100)/100;
       p.capital=v;p.invested=c;p.monthly=Math.round(((+p.monthly||0)+L.reduce((s,x)=>s+(+x.monthly||0),0))*100)/100;
       p.rate=v?Math.round(L.reduce((s,x)=>s+val(x)*(+x.rate||0),0)/v*100)/100:(+p.rate||0);
-      const date=L.map(x=>x.priceDate).filter(Boolean).sort().pop()||new Date(t||Date.now()).toISOString().slice(0,10);
+      const _md=new Date(t||Date.now()),date=L.map(x=>x.priceDate).filter(Boolean).sort().pop()||`${_md.getFullYear()}-${String(_md.getMonth()+1).padStart(2,'0')}-${String(_md.getDate()).padStart(2,'0')}`;
       d.valuations.push({id:'mig-'+p.id,pid:p.id,date,value:v,u:t,c:t});
       p.archivedLines=L.map(x=>{const {u,by,fu,c,...r}=x;return r})});
     if((d.positions||[]).length)d.archive.positions=(d.archive.positions||[]).concat(d.positions);

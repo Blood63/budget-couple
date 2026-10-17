@@ -247,6 +247,11 @@
     "livretJeune": {
       "amount": 1600,
       "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2904"
+    },
+    "pea": {
+      "amount": 150000,
+      "basis": "versements hors gains",
+      "source": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2385"
     }
   },
   "lepIncome": {

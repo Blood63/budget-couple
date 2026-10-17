@@ -4,6 +4,9 @@ const pad2=n=>String(n).padStart(2,'0');
 const dim=(y,m)=>new Date(y,m,0).getDate(); // m : 1-12
 const ymd=(y,m,d)=>`${y}-${pad2(m)}-${pad2(d)}`;
 const R2=x=>Math.round(x*100)/100;
+/* Dates locales (jamais UTC) pour les saisies et défauts : à 00h30 à Paris, on est déjà le nouveau jour/mois local. */
+const localIso=(d=new Date())=>ymd(d.getFullYear(),d.getMonth()+1,d.getDate());
+const localMonth=(d=new Date())=>localIso(d).slice(0,7);
 
 /* ---------- Comptes courants ---------- */
 const accOfOwner=(D,o)=>{const L=(D.accounts||[]).filter(a=>a.owner===o);return(L.find(a=>a.id==='acc-'+o)||L[0]||{}).id||null};
@@ -19,6 +22,10 @@ function accountEvents(D,accId,month){const [y,m]=month.split('-').map(Number),l
     else if(src===accId&&src!==a.id)E.push({day:cl(fd.day),amount:-v,label:'Versement vers '+(a.label||'compte'),kind:'feed'})})});
   const mo=(D.months||[]).find(x=>x.month===month);if(mo){[['p1','a'],['p2','b']].forEach(([k,f])=>{if(mo[f]>0&&accOfOwner(D,k)===accId){
     const inc=(D.incomes||[]).filter(i=>i.account===accId&&i.recurring).sort((a,b)=>b.amount-a.amount)[0];E.push({day:cl(inc?inc.day:1),amount:-mo[f],label:'Épargne du mois',kind:'saving'})}})}
+  else{/* Mois sans épargne saisie (mois futurs notamment) : les versements programmés des placements sont débités du compte du titulaire
+         (compte joint pour un placement commun). Si le mois est saisi, son total d'épargne fait foi : pas de double comptage. */
+    (D.placements||[]).filter(p=>+p.monthly>0&&!p.noAuto).forEach(p=>{const src=p.owner==='p1'||p.owner==='p2'?accOfOwner(D,p.owner):accOfOwner(D,'joint');
+      if(src===accId)E.push({day:cl(p.payDay),amount:-(+p.monthly),label:'Versement programmé '+(p.name||p.type||'placement'),kind:'saving-planned'})})}
   return E.sort((a,b)=>a.day-b.day||b.amount-a.amount)}
 /* Prévision d'un compte pour le mois : solde de départ = solde saisi (à sa date) reporté jour par jour */
 function accountForecast(D,acc,month,today){const [y,m]=month.split('-').map(Number),last=dim(y,m),E=accountEvents(D,acc.id,month);
@@ -51,7 +58,7 @@ function livretInterest(p,Y,ctx){const rates=ctx.rates,mv=(ctx.movements||[]).fi
   if(p.open&&typeof p.open[Y]==='number')B0=p.open[Y];
   else{est=true;const cd=p.capitalDate||ctx.today||y1;
     if(cd>=y0){B0=(+p.capital||0)-flows(y0,cd).reduce((s,f)=>s+f.amount,0)-ints.filter(i=>i.date&&i.date>y0&&i.date<=cd).reduce((s,i)=>s+(+i.amount||0),0)}
-    else{const nx=new Date(cd+'T12:00');nx.setDate(nx.getDate()+1);B0=(+p.capital||0)+flows(nx.toISOString().slice(0,10),`${Y-1}-12-31`).reduce((s,f)=>s+f.amount,0)}}
+    else{const nx=new Date(cd+'T12:00');nx.setDate(nx.getDate()+1);B0=(+p.capital||0)+flows(localIso(nx),`${Y-1}-12-31`).reduce((s,f)=>s+f.amount,0)}}
   B0=Math.max(0,R2(B0));const dq=new Array(25).fill(0);flows(y0,y1).forEach(f=>{if(f.amount>=0)dq[qDeposit(f.date)]+=f.amount;else dq[qWithdraw(f.date)]+=f.amount});
   let bal=B0,tot=0;const Q=[];for(let q=0;q<24;q++){bal+=dq[q];const date=ymd(Y,(q>>1)+1,q&1?16:1),r=rateOn(p,date,rates),i=Math.max(0,bal)*r/100/24;tot+=i;Q.push({date,bal:R2(bal),rate:r,i})}
   return{amount:R2(tot),B0,estimatedB0:est,quinzaines:Q,end:R2(bal+dq[24])}}
@@ -97,13 +104,13 @@ function insuranceExtract(raw){const text=String(raw||'').replace(/\r/g,'').repl
 
 /* Résiliation : règles générales (service-public.gouv.fr). Retourne {from, txt} */
 const HAMON_TYPES=['habitation','auto','moto','trottinette','affinitaire'];
-function cancelInfo(ins,today){const t=today||new Date().toISOString().slice(0,10);if(!ins.start)return null;
-  const a=new Date(ins.start+'T12:00');a.setFullYear(a.getFullYear()+1);const one=a.toISOString().slice(0,10);
+function cancelInfo(ins,today){const t=today||localIso();if(!ins.start)return null;
+  const a=new Date(ins.start+'T12:00');a.setFullYear(a.getFullYear()+1);const one=localIso(a);
   if(HAMON_TYPES.includes(ins.type))return{from:one,ok:t>=one,txt:t>=one?'Résiliable à tout moment, sans frais ni motif (loi Hamon : contrat de plus d’un an) ; effet 1 mois après réception de la demande par l’assureur.':`Résiliable à tout moment à partir du ${one.split('-').reverse().join('/')} (loi Hamon, 1 an après la date d’effet).`};
   if(ins.type==='sante')return{from:one,ok:t>=one,txt:t>=one?'Complémentaire santé : résiliable à tout moment après 1 an de contrat.':`Complémentaire santé : résiliable à tout moment à partir du ${one.split('-').reverse().join('/')}.`};
   if(ins.type==='emprunteur')return{from:ins.start,ok:true,txt:'Assurance emprunteur : résiliable à tout moment (loi Lemoine), à condition de présenter des garanties équivalentes.'};
   return{from:ins.end||'',ok:false,txt:'Résiliation en principe à l’échéance annuelle (loi Chatel : l’assureur doit vous rappeler la date limite). Vérifiez le préavis dans vos conditions générales.'}}
-function nextDue(ins,today){const t=today||new Date().toISOString().slice(0,10);let e=ins.end||ins.renewal||'';if(!e&&ins.start)e='--'+ins.start.slice(5);if(!e)return'';
+function nextDue(ins,today){const t=today||localIso();let e=ins.end||ins.renewal||'';if(!e&&ins.start)e='--'+ins.start.slice(5);if(!e)return'';
   if(e.startsWith('--')){const md=e.slice(2);let y=+t.slice(0,4);let d=`${y}-${md}`;if(d<t)d=`${y+1}-${md}`;return d}
   if(e<t&&(ins.tacit||ins.renewal)){let d=e;while(d<t){d=String(+d.slice(0,4)+1)+d.slice(4)}return d}return e}
 
@@ -267,12 +274,19 @@ function savingsScenarios(months){const L=[...(months||[])].filter(m=>m&&(isFini
   return{months:L,avg:{m3:a3,m6:a6,m12:a12},prudent,realistic}}
 /* Projection 5 ans : placements projetés par produit + flux mensuel historique.
    Les versements permanents des placements sont inclus dans le flux ; seul l'excédent est ajouté séparément (pas de double comptage). */
-function fiveYearProjection(streams,opts={}){const months=opts.months||60,base=(streams||[]).map(p=>({capital:+p.capital||0,monthly:+p.monthly||0,rate:+p.rate||0}));
-  const programmed=R2(base.reduce((s,p)=>s+p.monthly,0)),initial=R2(base.reduce((s,p)=>s+p.capital,0)),cashRate=+opts.cashRate||0;
-  const run=flow=>{let vals=base.map(p=>p.capital),cash=0;const eff=Math.max(flow||0,programmed),resid=eff-programmed;const series=[{month:0,total:initial,placements:initial,cash:0,contributions:0,gains:0}];
-    for(let m=1;m<=months;m++){vals=vals.map((v,i)=>v*(1+base[i].rate/100/12)+base[i].monthly);cash=cash*(1+cashRate/100/12)+resid;const total=vals.reduce((a,b)=>a+b,0)+cash,contrib=eff*m;
+function fiveYearProjection(streams,opts={}){const months=opts.months||60,base=(streams||[]).map(p=>({capital:+p.capital||0,monthly:+p.monthly||0,rate:+p.rate||0,cap:+p.cap||null,depBase:p.depBase!=null?+p.depBase:null,depositUntil:p.depositUntil||null}));
+  const programmed=R2(base.reduce((s,p)=>s+p.monthly,0)),initial=R2(base.reduce((s,p)=>s+p.capital,0)),cashRate=+opts.cashRate||0,asOf=opts.asOf||localIso();
+  const monthAt=m=>{const d=new Date(+asOf.slice(0,4),+asOf.slice(5,7)-1+m,15);return localMonth(d)};
+  const run=flow=>{let vals=base.map(p=>p.capital),deps=base.map(p=>p.depBase!=null?p.depBase:p.capital),cash=0;const eff=Math.max(flow||0,programmed),resid=eff-programmed;const series=[{month:0,total:initial,placements:initial,cash:0,contributions:0,gains:0}];
+    for(let m=1;m<=months;m++){let capped=0;
+      vals=vals.map((v,i)=>{const p=base[i];let dep=p.monthly;
+        if(p.depositUntil&&monthAt(m)>=String(p.depositUntil).slice(0,7))dep=0;
+        if(dep>0&&p.cap&&p.depBase!=null){dep=Math.min(dep,Math.max(0,p.cap-deps[i]));deps[i]+=dep}
+        capped+=p.monthly-dep;return v*(1+p.rate/100/12)+dep});
+      cash=cash*(1+cashRate/100/12)+resid+capped; // excédent plafonné redirigé vers la poche libre, pas de rendement inventé par produit
+      const total=vals.reduce((a,b)=>a+b,0)+cash,contrib=eff*m;
       series.push({month:m,total:R2(total),placements:R2(vals.reduce((a,b)=>a+b,0)),cash:R2(cash),contributions:R2(contrib),gains:R2(total-initial-contrib)})}
     return{flow:R2(eff),requested:R2(flow||0),series,end:series[series.length-1]}};
   const sc=savingsScenarios(opts.monthsData||[]);
   return{initial,programmed,scenarios:sc,cashRate,prudent:run(opts.prudent!=null?opts.prudent:sc.prudent),realistic:run(opts.realistic!=null?opts.realistic:sc.realistic)}}
-if(typeof module!=='undefined')module.exports={savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+if(typeof module!=='undefined')module.exports={localIso,localMonth,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
