@@ -15,7 +15,7 @@ try:
     c=b.new_context(viewport={'width':w,'height':844},locale='fr-FR')
     c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-cfg',{json.dumps(json.dumps(CFG))});localStorage.setItem('budget-couple-me','{who}');sessionStorage.s=1}}")
     c.route('**/*supabase.co/**',lambda r:F.handle(r,name));pg=c.new_page();pg.on('pageerror',lambda e:errs.append(name+': '+str(e)))
-    pg.on('console',lambda m:m.type=='error' and 'status of 400' not in m.text and errs.append(name+' console: '+m.text[:200]))  # 400 attendu : bucket absent;pg.on('dialog',lambda d:d.accept())
+    pg.on('console',lambda m:m.type=='error' and 'status of 400' not in m.text and 'status of 404' not in m.text and errs.append(name+' console: '+m.text[:200]));pg.on('response',lambda r:r.status==404 and '/rest/v1/rpc/' not in r.url and errs.append(name+' 404 inattendu: '+r.url))  # 404 attendu : sonde RPC (secure.sql absent)  # 400 attendu : bucket absent;pg.on('dialog',lambda d:d.accept())
     pg.goto('http://localhost:18766/');pg.wait_for_function("document.querySelector('#syncState').textContent.includes('✓')");return pg
   A=dev('A','p1')
   A.evaluate("go('assurances')");A.click('#addIns');A.set_input_files('#insFile',os.path.join(FX,'habitation-fictive.pdf'))

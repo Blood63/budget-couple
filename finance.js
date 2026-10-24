@@ -48,6 +48,13 @@ function safeToSpend(o={}){const budget=+o.budget||0,spent=+o.spent||0,daysInMon
   const remaining=R2(budget-spent),daysLeft=Math.max(1,daysInMonth-day+1),elapsed=Math.max(1,day),projection=R2(spent/elapsed*daysInMonth);
   return{budget,spent,remaining,daysLeft,elapsed,daysInMonth,projection,perDay:remaining>0?R2(remaining/daysLeft):0,over:remaining<0?R2(-remaining):0,
     status:!budget?'no-budget':remaining<0?'over':projection>budget?'risk':'ok'}}
+/* Plafonds par catégorie (v13) : caps = {categorie: montant mensuel}. Pour chaque plafond > 0 : dépensé, reste, reste/jour, projection, statut.
+   statut : 'over' (dépassé), 'risk' (projection au-dessus), 'near' (≥ 80 % consommé), 'ok'. Trié du plus urgent au moins urgent. */
+function categoryCaps(misc,month,caps,day,daysInMonth){const out=[];Object.entries(caps||{}).forEach(([k,cap])=>{cap=+cap||0;if(cap<=0)return;
+  const spent=R2((misc||[]).filter(x=>String(x.date||'').startsWith(month)&&(x.category||'autre')===k).reduce((s,x)=>s+(+x.amount||0),0));
+  const ss=safeToSpend({budget:cap,spent,day,daysInMonth}),pct=spent/cap*100;
+  out.push({key:k,cap,spent,left:ss.remaining,perDay:ss.perDay,projection:ss.projection,pct,status:ss.status==='over'?'over':ss.status==='risk'?'risk':pct>=80?'near':'ok'})});
+  const W={over:0,risk:1,near:2,ok:3};return out.sort((a,b)=>W[a.status]-W[b.status]||b.pct-a.pct)}
 /* ---------- Intérêts des livrets (règle des quinzaines) ----------
    Dépôt : valeur le 16 si fait du 1er au 15, le 1er du mois suivant si fait du 16 à la fin du mois.
    Retrait : cesse de rapporter dès le 1er (retrait du 1er au 15) ou le 16 (retrait du 16 à la fin).
@@ -296,4 +303,4 @@ function fiveYearProjection(streams,opts={}){const months=opts.months||60,base=(
     return{flow:R2(eff),requested:R2(flow||0),series,end:series[series.length-1]}};
   const sc=savingsScenarios(opts.monthsData||[]);
   return{initial,programmed,scenarios:sc,cashRate,prudent:run(opts.prudent!=null?opts.prudent:sc.prudent),realistic:run(opts.realistic!=null?opts.realistic:sc.realistic)}}
-if(typeof module!=='undefined')module.exports={localIso,localMonth,safeToSpend,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+if(typeof module!=='undefined')module.exports={localIso,localMonth,safeToSpend,categoryCaps,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

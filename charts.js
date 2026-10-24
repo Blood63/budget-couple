@@ -35,7 +35,7 @@ function interactiveChart(o){const id='chart-'+(++_chartSeq),points=o.points||[]
    <div class="ichart-detail" aria-live="polite">${_chartDetail(c,c.index)}</div>
    <label class="ichart-range-l"><span class="sr-only">Choisir un point du graphique ${esc(o.title||'')}</span><input type="range" class="chart-range" min="0" max="${points.length-1}" step="1" value="${points.length-1}" aria-label="Point du graphique"></label>
    <div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}${(o.lineSeries||[]).map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>
-   <details class="ichart-data"><summary>Données du graphique</summary><div class="ichart-scroll">${table}</div></details></figure>`}
+   <details class="ichart-data"><summary>Données du graphique</summary><div class="ichart-scroll" tabindex="0" role="region" aria-label="Tableau des données">${table}</div></details></figure>`}
 function _chartNearest(fig,ev){const c=_charts.get(fig.dataset.chart);if(!c)return -1;const svg=fig.querySelector('svg'),r=svg.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*360;
   let best=0,bd=1e9;c.points.forEach((p,i)=>{const d=Math.abs(p._x-x);if(d<bd){bd=d;best=i}});return best}
 document.addEventListener('input',e=>{const r=e.target.closest('.chart-range');if(r)_chartSelect(r.closest('[data-chart]').dataset.chart,+r.value)});

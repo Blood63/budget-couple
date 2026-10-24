@@ -146,3 +146,26 @@ manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + 
 - Synchronisation par élément (liste `debts`, fusion et suppressions comme le reste). Migration de données v12 purement additive (`debts: []`).
 - **Espace utilisé** (Réglages) : taille du document partagé vs 500 Mo de base Supabase, documents vs 1 Go de Storage, stockage local vs ≈ 5 M caractères. Si localStorage est plein, la sauvegarde bascule sur IndexedDB (aucune perte) et revient automatiquement.
 - Mise en page : libellés longs et montants à 7 chiffres sans troncature ni chevauchement de 320 à 430 px (check-up automatisé `tests/e2e/test_checkup.py`).
+
+## v13 — Sécurité renforcée, invitation par code, plafonds, thème clair
+
+### Sécurité Supabase (`supabase/secure.sql`)
+Avant : toute personne possédant la clé publishable (publique) pouvait **lister tous les espaces et tous les documents**.
+Après : accès uniquement via les fonctions `get_space` / `save_space` / `sync_ts` avec le code exact ; plus de listing de la table ni du Storage.
+
+Étapes :
+1. Supabase › SQL Editor : exécuter `supabase/secure.sql` (après `schema.sql` et `storage.sql`). Le script est idempotent et ne modifie aucune donnée.
+2. Exécuter les requêtes de vérification (bloc 4, en lecture seule) : `anon_peut_lire_table` doit valoir `false`.
+3. Dans l'appli › Réglages : « Sécurité renforcée : Oui ».
+4. « Changer le code d'espace » : un code aléatoire fort est généré, puis données et documents sont copiés (rien n'est effacé).
+5. Envoyer le **code seul** à votre partenaire (Inviter › Code seul) : il le saisit ou scanne le QR.
+6. Quand tout est synchronisé : « Vider l'ancien espace ».
+
+⚠️ Ne pas ré-exécuter `schema.sql` après `secure.sql` (cela recréerait les anciennes policies ouvertes) ; si besoin, relancez `secure.sql` ensuite.
+
+### Autres nouveautés
+- Invitation : lien complet (appareil neuf) ou code seul (appareil déjà configuré).
+- Accueil allégé : reste à vivre, reste à dépenser par jour, au plus 3 alertes ; le reste dans « Plus ».
+- Plafonds optionnels par catégorie (Dépenses), avec alerte et reste par catégorie.
+- Thème clair / sombre (automatique ou manuel, Réglages › Affichage).
+- Données vierges sans informations personnelles ; la fusion ne remplace jamais une valeur réelle par une valeur par défaut.

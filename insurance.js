@@ -12,11 +12,11 @@ async function idbSet(k,v){const db=await idb();return new Promise((ok,ko)=>{con
 async function idbGet(k){const db=await idb();return new Promise((ok,ko)=>{const r=db.transaction('docs').objectStore('docs').get(k);r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)})}
 async function idbDel(k){const db=await idb();return new Promise(ok=>{const t=db.transaction('docs','readwrite');t.objectStore('docs').delete(k);t.oncomplete=()=>ok();t.onerror=()=>ok()})}
 /* --- Supabase Storage --- */
-async function spaceFolder(){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('budget-couple:'+cfg.space));return [...new Uint8Array(h)].slice(0,16).map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function spaceFolder(code=cfg.space){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('budget-couple:'+code));return [...new Uint8Array(h)].slice(0,16).map(b=>b.toString(16).padStart(2,'0')).join('')}
 const stHeaders=extra=>{const h=sbH();delete h['Content-Type'];return Object.assign(h,extra||{})};
 const safeName=n=>String(n||'document').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9._-]+/g,'-').slice(-80);
 let storageState='';// '', 'ok', 'missing', 'denied'
-async function storageUpload(insId,file){const path=`${await spaceFolder()}/${insId}/${Date.now().toString(36)}-${safeName(file.name)}`;
+async function storageUpload(insId,file,code=cfg.space){const path=`${await spaceFolder(code)}/${insId}/${Date.now().toString(36)}-${safeName(file.name)}`;
   const r=await fetch(`${cfg.url}/storage/v1/object/${BUCKET}/${path}`,{method:'POST',headers:stHeaders({'Content-Type':file.type||'application/octet-stream','x-upsert':'true','cache-control':'3600'}),body:file});
   if(r.ok){storageState='ok';return path}let j={};try{j=await r.json()}catch{}const msg=(j.message||j.error||'')+'';
   storageState=/bucket not found/i.test(msg)||r.status===404?'missing':(r.status===401||r.status===403||/row-level security|policy|unauthorized/i.test(msg))?'denied':'error';

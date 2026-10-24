@@ -1,12 +1,13 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=12;
+const DATA_VERSION=13;
 const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules','debts'];
-const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify'];
+const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify','catBudget'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
-const BIRTHS={p1:'2000-06-22',p2:'2002-03-10'},TAX0={mode:'separe',children:0,childOf:'p1'};
-const blankData=()=>({debts:[],imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{p1:'Emilien',p2:'Julie'},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
+/* v13 : aucune donnée personnelle par défaut (nouveaux espaces vides) */
+const NAMES0={p1:'Personne 1',p2:'Personne 2'},BIRTHS={p1:'',p2:''},TAX0={mode:'separe',children:0,childOf:'p1'};
+const blankData=()=>({debts:[],imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{...NAMES0},catBudget:{},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
@@ -17,7 +18,7 @@ const MIGRATIONS={
   /* v8 → v9 : relevés importés (imports) et catégories apprises (catrules, id déterministe kw-<marchand>) ; aucune donnée existante modifiée */
   9(d){['imports','catrules'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});return d},
   /* v7 → v8 : comptes courants (une charge = un compte de prélèvement, un revenu = un compte de réception), assurances, intérêts, mouvements de livrets, bilans mensuels */
-  8(d){const t=d.updated||0,names=Object.assign({p1:'Emilien',p2:'Julie'},d.names);d.accounts=Array.isArray(d.accounts)?d.accounts:[];
+  8(d){const t=d.updated||0,names=Object.assign({...NAMES0},d.names);d.accounts=Array.isArray(d.accounts)?d.accounts:[];
     const used=new Set();(d.fixed||[]).forEach(f=>used.add(f.paidBy==='p1'||f.paidBy==='p2'?f.paidBy:'joint'));(d.incomes||[]).forEach(i=>used.add(i.person==='p2'?'p2':'p1'));
     (d.misc||[]).forEach(m=>used.add(m.paidBy==='p1'||m.paidBy==='p2'?m.paidBy:'joint'));if(d.transfer&&d.transfer.amount){used.add('p1');used.add('p2')}
     ['joint','p1','p2'].forEach((o,i)=>{if(used.has(o)&&!d.accounts.some(a=>a.id===ACC_ID[o]))d.accounts.push({id:ACC_ID[o],label:o==='joint'?'Compte joint':'Compte '+names[o],bank:'',owner:o,u:t,c:i})});
@@ -53,7 +54,9 @@ const MIGRATIONS={
   /* v11 : répartition de la cible par objectif commun (null = réglages) — additif */
   11:d=>{(d.goals||[]).forEach(g=>{if(!('split' in g))g.split=null});return d},
   /* v12 : dettes entre nous — nouvelle liste vide, rien d'existant n'est modifié */
-  12:d=>{if(!Array.isArray(d.debts))d.debts=[];return d}
+  12:d=>{if(!Array.isArray(d.debts))d.debts=[];return d},
+  /* v13 : plafond optionnel par catégorie de dépenses diverses ({categorie: montant}) — additif */
+  13:d=>{if(!d.catBudget||typeof d.catBudget!=='object'||Array.isArray(d.catBudget))d.catBudget={};return d}
 };
 function migrateData(raw){
   let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;
@@ -101,7 +104,10 @@ function mergeData(a,b){
     r.u=Math.max(x.u||0,y.u||0);if(!Object.keys(r.fu).length)delete r.fu;return r};
   LISTS.forEach(l=>{const m=new Map();(a[l]||[]).concat(b[l]||[]).forEach(x=>m.set(x.id,pick(m.get(x.id),x)));
     r[l]=[...m.values()].filter(x=>!(r.deleted[x.id]>=x.u)).sort((x,y)=>(x.c??0)-(y.c??0)||(x.id<y.id?-1:1))});
-  r.su={...a.su};SCAL.forEach(k=>{const ta=a.su?.[k]||0,tb=b.su?.[k]||0;if(tb>ta||(tb===ta&&JSON.stringify(b[k])>JSON.stringify(a[k]))){r[k]=JSON.parse(JSON.stringify(b[k]));r.su[k]=tb}});
+  // À horodatage égal, une valeur par défaut (appareil qui vient de rejoindre) ne remplace jamais une valeur réelle ; un champ absent non plus.
+  const B0=blankData(),isDef=(k,v)=>v===undefined||v===null||JSON.stringify(v)===JSON.stringify(B0[k]);
+  r.su={...a.su};SCAL.forEach(k=>{const ta=a.su?.[k]||0,tb=b.su?.[k]||0,da=isDef(k,a[k]),db=isDef(k,b[k]);
+    if(b[k]===undefined)return;if(tb>ta||(tb===ta&&(da&&!db||da===db&&JSON.stringify(b[k])>JSON.stringify(a[k])))){r[k]=JSON.parse(JSON.stringify(b[k]));r.su[k]=tb}});
   r.budget={...a.budget};r.budgetU={...a.budgetU};Object.keys(b.budget||{}).forEach(mo=>{const ta=a.budgetU?.[mo]||0,tb=b.budgetU?.[mo]||0;if(!(mo in a.budget)||tb>ta||(tb===ta&&b.budget[mo]>a.budget[mo])){r.budget[mo]=b.budget[mo];r.budgetU[mo]=tb}});
   const hm=new Map();(a.history||[]).concat(b.history||[]).forEach(h=>hm.set(h.id,h));r.history=[...hm.values()].sort((x,y)=>y.t-x.t||(x.id<y.id?-1:1)).slice(0,500);
   r.updated=Math.max(a.updated||0,b.updated||0);r.version=Math.max(a.version||0,b.version||0);

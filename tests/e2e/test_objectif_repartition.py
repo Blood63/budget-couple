@@ -16,7 +16,7 @@ try:
   c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(D))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
   pg=c.new_page();pg.clock.install(time='2026-10-14T10:00:00+02:00');pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text))
   pg.goto('http://localhost:18765/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(400);pg.add_script_tag(path='/tmp/axe.min.js')
-  d=pg.evaluate('D');assert d['version']==12 and d['goals'][0]['split'] is None and len(d['months'])==3 and d['months'][2]['manual']['p2']['g1']==150;print('MIGRATION v10→v11 OK')
+  d=pg.evaluate('D');assert d['version']==13 and d['goals'][0]['split'] is None and len(d['months'])==3 and d['months'][2]['manual']['p2']['g1']==150;print('MIGRATION v10→v11 OK')
   r0=C(pg);IN=1400
   assert abs(total_in(r0)-IN)<0.02,r0
   # défaut = réglages 60/40 : part Paul 1800 (dont 300 initial), Lucie 1200 (dont 200 initial)

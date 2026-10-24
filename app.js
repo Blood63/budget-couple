@@ -133,7 +133,8 @@ function transferSheet(){const t=D.transfer;openSheet('Virement entre vous',`<fo
    <label>Jour du virement<input name="day" type="number" min="1" max="31" value="${t.day||''}" placeholder="1"></label>
    <p class="mut">Indique le virement mensuel de l’un vers l’autre (ex. part du loyer). Il est pris en compte dans l’équilibre et dans la prévision des comptes.</p><button class="btn">Enregistrer</button></form>`,()=>
    $('#fTransfer').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target);D.transfer={label:f.label,from:f.from,amount:num(f.amount),day:Math.min(31,parseInt(f.day)||0)||null,fromAccount:f.fromAccount||null,toAccount:f.toAccount||null};closeSheet();save();toast('Enregistré')}))}
-let miscF={q:'',cat:'',who:'',sort:'date',source:''};
+let miscF={q:'',cat:'',who:'',sort:'date',source:''},homeMoreOpen=(()=>{try{return sessionStorage.getItem('budget-couple-more')==='1'}catch{return false}})();
+document.addEventListener('toggle',e=>{if(e.target.id==='homeMore'){homeMoreOpen=e.target.open;try{sessionStorage.setItem('budget-couple-more',homeMoreOpen?'1':'0')}catch{}}},true);
 function miscFiltered(all){const q=miscF.q.trim().toLowerCase();
   let L=all.filter(x=>(!miscF.cat||x.category===miscF.cat)&&(!miscF.who||x.paidBy===miscF.who)&&(!miscF.source||(miscF.source==='import'?x.source==='import':x.source!=='import'))&&(!q||`${x.label||''} ${catName('misc',x.category)} ${paidName(x.paidBy)}`.toLowerCase().includes(q)));
   if(miscF.sort==='amount')L.sort((a,b)=>b.amount-a.amount||b.date.localeCompare(a.date));else if(miscF.sort==='cat')L.sort((a,b)=>catName('misc',a.category).localeCompare(catName('misc',b.category),'fr')||b.date.localeCompare(a.date));else L.sort((a,b)=>b.date.localeCompare(a.date)||b.amount-a.amount);return L}
@@ -153,6 +154,7 @@ function vDiverses(){
    ${b&&pacing>b?`<p class="warn-t">${ic('alert',14)} Au rythme actuel, le mois finirait vers ${eur(pacing)}, au-dessus du budget de ${eur(b)}.</p>`:''}
    <label class="budget-edit"><span>Budget du mois (€)</span><input id="budgetIn" inputmode="decimal" value="${b||''}" placeholder="Définir un budget" aria-label="Budget du mois en euros"></label></section>
   <div class="f2 expense-actions"><button class="btn" id="quickAdd">${ic('plus',18)} Ajouter une dépense</button><button class="btn ghost" id="impStmt">${ic('file',18)} Importer un relevé</button></div>
+  ${catCapsCard(m,elapsed,dimM)}
   ${spent?`<div class="card"><h2>Où part l’argent ?</h2>${donut(cats,spent,'ce mois')}<div class="cat-bars">${cats.slice(0,4).map(c=>`<button type="button" data-misc-cat="${c.key}"><span><i style="background:${c.col}"></i>${esc(c.name)}</span><b>${eur(c.v)}</b><span class="mini-bar"><i style="width:${(c.v/spent*100).toFixed(0)}%;background:${c.col}"></i></span></button>`).join('')}</div></div>`:''}
   ${sec('Liste des dépenses',L.length?`<button class="link" id="expMisc">Exporter la sélection</button>`:'')}
   ${all.length?`<div class="filters expense-filters" role="search" aria-label="Filtrer les dépenses"><label class="search">${ic('search',16)}<input type="search" id="miscQ" placeholder="Rechercher un libellé, une catégorie…" value="${esc(miscF.q)}" aria-label="Rechercher une dépense"></label>
@@ -395,6 +397,7 @@ function vReglages(){
    <label>Jour du rappel mensuel de valorisation (assurance vie, PEA…)<input name="reminderDay" type="number" min="1" max="28" value="${D.reminderDay||1}"></label>
    <button class="btn">Enregistrer</button></form></div>
   ${installCard()}
+  ${typeof displayCard==='function'?displayCard():''}
   <div class="card"><h2>${ic('edit',18)} Cet appareil</h2><p class="mut">Utilisé par <b style="color:${COL[me]||'var(--txt)'}">${me?esc(N(me)):'personne (non défini)'}</b> : vos modifications sont signées dans l’historique.</p>
    <div class="f2"><button class="btn ghost" id="chooseMe">Changer</button><button class="btn ghost" id="openHist">${ic('repeat',16)} Historique</button></div></div>
   <div class="card"><h2>${ic('cloud',18)} Synchronisation Supabase</h2><form id="fSync">
@@ -403,7 +406,8 @@ function vReglages(){
    <label>Code d’espace partagé<input name="space" value="${esc(cfg.space||'')}" placeholder="un code long et secret"></label>
    <button class="btn">Enregistrer & synchroniser</button>
    <div class="f2"><button type="button" class="btn ghost" id="inviteBtn">${ic('link',16)} Lien d’invitation</button><button type="button" class="btn ghost" id="disconnect">Désactiver</button></div></form>
-   <div id="invitePanel"></div><p class="mut" id="syncMsg">${esc(lastErr)}</p></div>
+   <div id="invitePanel"></div><p class="mut" id="syncMsg" role="status">${esc(lastErr)}</p></div>
+  ${typeof securityCard==='function'?securityCard():''}
   <div class="card"><h2>${ic('chart',18)} Bilan du mois</h2><p class="mut">Le 1er de chaque mois, un bilan du mois écoulé est créé et affiché sur l’accueil. <button class="link" data-goto="bilans">Voir les bilans</button></p>
    ${'Notification' in window?`<label class="switch"><input type="checkbox" id="notifRep" ${D.notify?.reports&&Notification.permission==='granted'?'checked':''}><span></span>Notification sur cet appareil</label>
    <p class="mut">${Notification.permission==='denied'?'Notifications bloquées dans les réglages du navigateur. ':''}La notification s’affiche à la première ouverture de l’appli à partir du 1er (sans serveur, aucune donnée envoyée à un service tiers).</p>`:'<p class="mut">Ce navigateur ne gère pas les notifications.</p>'}</div>
@@ -482,28 +486,54 @@ function showErr(t){lastErr=t;const m=$('#syncMsg');if(m)m.textContent=t}
 function setSync(t,on){const b=$('#syncState');b.querySelector('span').textContent=t;b.className='badge'+(on?' on':on===false?' err':'')}
 /* Synchro sans perte : lecture → fusion par élément → écriture conditionnelle (updated_at inchangé), sinon on recommence */
 let syncing=null,again=false;
-const restUrl=q=>`${cfg.url}/rest/v1/budget_spaces?code=eq.${encodeURIComponent(cfg.space)}${q||''}`;
+const restUrl=(q,code=cfg.space)=>`${cfg.url}/rest/v1/budget_spaces?code=eq.${encodeURIComponent(code)}${q||''}`;
 let _syncTs=null,_syncCanon=null; // dernier état synchronisé : évite de retélécharger tout le document toutes les 15 s (quota d'egress Supabase)
-async function syncOnce(){
-  if(_syncTs&&_syncCanon===canon(D)){const h=await fetch(restUrl('&select=updated_at'),{headers:sbH(),cache:'no-store'});if(!h.ok)throw{sb:await sbErr(h)};const [hr]=await h.json();if(hr&&hr.updated_at===_syncTs)return}
+/* Accès distant : fonctions RPC de supabase/secure.sql si installées (sécurité renforcée), sinon accès direct à la table (ancien schéma).
+   secureMode : null = inconnu, true = RPC, false = table. Détecté à la première requête puis mémorisé pour la session. */
+let secureMode=null,spaceMoved=null;
+// mémorise le mode détecté 12 h (évite une requête 404 de sonde à chaque ouverture tant que secure.sql n'est pas installé)
+const SECM='budget-couple-secmode',secKey=()=>cfg.url+'|'+cfg.space;
+try{const s=JSON.parse(localStorage.getItem(SECM)||'null');if(s&&s.k===secKey()&&Date.now()-s.t<432e5)secureMode=s.v}catch{}
+function setSecureMode(v){secureMode=v;try{if(v===null)localStorage.removeItem(SECM);else localStorage.setItem(SECM,JSON.stringify({k:secKey(),v,t:Date.now()}))}catch{}}
+function resetSync(){_syncTs=null;_syncCanon=null;setSecureMode(null);spaceMoved=null}
+const tsEq=(a,b)=>a===b||!!(a&&b&&Date.parse(a)===Date.parse(b));
+async function rpc(fn,args){const r=await fetch(`${cfg.url}/rest/v1/rpc/${fn}`,{method:'POST',headers:sbH(),cache:'no-store',body:JSON.stringify(args)});
+  if(r.status===404){let j={};try{j=await r.clone().json()}catch{}if(j.code==='PGRST202'||!j.code||j.code==='42883'){if(secureMode===null)setSecureMode(false);return{missing:true}}}
+  if(!r.ok)throw{sb:await sbErr(r)};if(secureMode!==true)setSecureMode(true);const t=await r.text();return{v:t?JSON.parse(t):null}}
+const remote={
+  async ts(code=cfg.space){if(secureMode!==false){const x=await rpc('sync_ts',{p_code:code});if(!x.missing)return x.v}
+    const h=await fetch(restUrl('&select=updated_at',code),{headers:sbH(),cache:'no-store'});if(!h.ok)throw{sb:await sbErr(h)};const [hr]=await h.json();return hr?hr.updated_at:null},
+  async get(code=cfg.space){if(secureMode!==false){const x=await rpc('get_space',{p_code:code});if(!x.missing)return x.v||null}
+    const r=await fetch(restUrl('&select=data,updated_at',code),{headers:sbH(),cache:'no-store'});if(!r.ok)throw{sb:await sbErr(r)};const [row]=await r.json();return row||null},
+  /* écriture conditionnelle : expected = updated_at lu (null = création). Renvoie {ok, updated_at} */
+  async save(data,expected,code=cfg.space){if(secureMode!==false){const x=await rpc('save_space',{p_code:code,p_data:data,p_expected:expected});if(!x.missing)return x.v||{ok:false}}
+    const stampNow=new Date().toISOString();
+    if(expected==null){const w=await fetch(`${cfg.url}/rest/v1/budget_spaces`,{method:'POST',headers:{...sbH(),Prefer:'return=minimal'},body:JSON.stringify({code,data,updated_at:stampNow})});
+      if(w.status===409)return{ok:false};if(!w.ok)throw{sb:await sbErr(w)};return{ok:true,updated_at:stampNow}}
+    const w=await fetch(restUrl('&updated_at=eq.'+encodeURIComponent(expected),code),{method:'PATCH',headers:{...sbH(),Prefer:'return=representation'},body:JSON.stringify({data,updated_at:stampNow})});
+    if(!w.ok)throw{sb:await sbErr(w)};const rows=await w.json();return rows.length?{ok:true,updated_at:rows[0].updated_at||null}:{ok:false}}
+};
+const MOVED_MSG='Cet espace a été déplacé vers un nouveau code. Demandez le nouveau code à votre partenaire (Réglages › Inviter › Code seul) et saisissez-le dans « Code d’espace ». Vos données de cet appareil seront fusionnées sans perte.';
+async function syncOnce(retry){
+  if(!retry&&secureMode===false){try{return await syncOnce(true)}catch(e){if(e&&e.moved)throw e;setSecureMode(null);return syncOnce(true)}} // table refusée : secure.sql vient d'être installé → bascule RPC
+
+  if(_syncTs&&_syncCanon===canon(D)){if(tsEq(await remote.ts(),_syncTs))return}
   for(let attempt=0;attempt<6;attempt++){
-    const r=await fetch(restUrl('&select=data,updated_at'),{headers:sbH(),cache:'no-store'});if(!r.ok)throw{sb:await sbErr(r)};
-    const [row]=await r.json(),stampNow=new Date().toISOString();
-    if(!row){const w=await fetch(`${cfg.url}/rest/v1/budget_spaces`,{method:'POST',headers:{...sbH(),Prefer:'return=minimal'},body:JSON.stringify({code:cfg.space,data:D,updated_at:stampNow})});
-      if(w.status===409)continue;if(!w.ok)throw{sb:await sbErr(w)};return}
-    const remote=migrate(row.data),merged=mergeData(D,remote),changedLocal=canon(merged)!==canon(D);
+    const row=await remote.get();
+    if(row&&row.data&&row.data.moved){spaceMoved=row.data.moved;throw{sb:MOVED_MSG,moved:true}} // espace déplacé : on n'écrit plus et on ne fusionne rien
+    if(!row){const w=await remote.save(D,null);if(!w.ok)continue;_syncTs=w.updated_at||null;_syncCanon=canon(D);return}
+    const rem=migrate(row.data),merged=mergeData(D,rem),changedLocal=canon(merged)!==canon(D);
     if(changedLocal){adopt(merged);animate=false;if(!document.querySelector('#sheet.open'))render()}
-    if(canon(merged)===canon(mergeData(remote,remote))){_syncTs=row.updated_at;_syncCanon=canon(D);return}
-    const w=await fetch(restUrl('&updated_at=eq.'+encodeURIComponent(row.updated_at)),{method:'PATCH',headers:{...sbH(),Prefer:'return=representation'},body:JSON.stringify({data:D,updated_at:stampNow})});
-    if(!w.ok)throw{sb:await sbErr(w)};const rows=await w.json();if(rows.length){_syncTs=rows[0].updated_at||null;_syncCanon=canon(D);return} // sinon quelqu'un a écrit entre-temps → on refusionne
+    if(canon(merged)===canon(mergeData(rem,rem))){_syncTs=row.updated_at;_syncCanon=canon(D);return}
+    const w=await remote.save(D,row.updated_at);if(w.ok){_syncTs=w.updated_at||null;_syncCanon=canon(D);return} // sinon quelqu'un a écrit entre-temps → on refusionne
   }
   throw{sb:'Conflit de synchronisation persistant, réessayez.'};
 }
 async function pullRemote(){
   if(!sbOn())return setSync('Local');if(!navigator.onLine){setSync('Hors ligne',false);return showErr('Pas de connexion internet.')}
   if(syncing){again=true;return syncing}
-  syncing=(async()=>{try{do{again=false;setSync('Synchro…',null);await syncOnce()}while(again);setSync('Synchro ✓',true);showErr('Synchronisé ✓')}
-    catch(e){setSync('Erreur synchro',false);showErr(netErr(e));console.warn('sync',e)}finally{syncing=null}})();
+  syncing=(async()=>{const mv0=!!spaceMoved;try{do{again=false;setSync('Synchro…',null);await syncOnce()}while(again);setSync('Synchro ✓',true);showErr('Synchronisé ✓');if(typeof refreshSecurity==='function')refreshSecurity()}
+    catch(e){if(!e||!e.moved)setSecureMode(null);setSync(e&&e.moved?'Espace déplacé':'Erreur synchro',false);showErr(netErr(e));console.warn('sync',e);if(typeof refreshSecurity==='function')refreshSecurity()}finally{syncing=null;if(mv0!==!!spaceMoved&&tab==='accueil'&&!document.querySelector('#sheet.open')&&!document.activeElement?.closest?.('form'))render()}})();
   return syncing;
 }
 let pt;function pushRemote(){if(!sbOn())return;clearTimeout(pt);return new Promise(res=>pt=setTimeout(()=>pullRemote().then(res),250))}
@@ -512,22 +542,16 @@ const APP_URL='https://blood63.github.io/budget-couple/';
 const b64u=s=>btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const unb64u=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)));
 function inviteLink(){return APP_URL+'#invite='+b64u(JSON.stringify({v:1,url:cfg.url,key:cfg.key,space:cfg.space}))}
-function showInvite(){const P=$('#invitePanel');if(!sbOn()){P.innerHTML='<p class="neg">Configurez et enregistrez d’abord la synchro.</p>';return}
-  const L=inviteLink(),qr=qrcode(0,'M');qr.addData(L);qr.make();
-  P.innerHTML=`<div class="invite"><b>Inviter dans l’espace « ${esc(cfg.space)} »</b>
-   <p class="warn-t" style="margin:0">${ic('alert',14)} Ce lien donne accès à toutes vos données (lecture et modification). Ne l’envoyez qu’à votre partenaire, par un canal privé.</p>
-   <div style="background:#fff;padding:10px;border-radius:10px;justify-self:center">${qr.createSvgTag({cellSize:4,margin:0,scalable:true}).replace('<svg ','<svg style="width:220px;height:220px;display:block" ')}</div>
-   <input id="inviteLink" type="password" readonly autocomplete="off" value="${esc(L)}" aria-label="Lien d’invitation (masqué)">
-   <div class="f2"><button type="button" class="btn" id="copyInv">${ic('copy',16)} Copier</button>${navigator.share?`<button type="button" class="btn ghost" id="shareInv">${ic('share',16)} Partager</button>`:''}</div></div>`;
-  on('#copyInv','click',async()=>{try{await navigator.clipboard.writeText(L)}catch{const i=$('#inviteLink');i.type='text';i.select();document.execCommand('copy');i.type='password'}$('#copyInv').textContent='Copié ✓'});
-  on('#shareInv','click',()=>navigator.share({title:'Budget Couple',text:'Rejoins notre espace Budget Couple :',url:L}).catch(()=>{}));
-}
-async function handleInvite(){const m=location.hash.match(/^#invite=([A-Za-z0-9_-]+)/);if(!m)return;
-  const clear=()=>history.replaceState(null,'',location.pathname+location.search);
+async function handleInvite(){const clear=()=>history.replaceState(null,'',location.pathname+location.search);
+  const j=location.hash.match(/^#join=([^&]+)/);
+  if(j){let code='';try{code=decodeURIComponent(j[1]).trim()}catch{}clear();if(code.length<8)return alert('Code d’espace invalide.');
+    if(!cfg.url||!cfg.key){go('reglages');setTimeout(()=>{const i=document.querySelector('#fSync [name=space]');if(i)i.value=code;showErr('Renseignez l’URL du projet et la clé (demandez le lien complet à votre partenaire), puis enregistrez.')},50);return}
+    if(confirm('Rejoindre l’espace avec ce code ?\n\nVos données de cet appareil seront fusionnées sans perte.')){cfg={...cfg,space:code};localStorage.setItem(CFG,JSON.stringify(cfg));resetSync();go('reglages');await pullRemote()}return}
+  const m=location.hash.match(/^#invite=([A-Za-z0-9_-]+)/);if(!m)return;
   let c;try{c=normCfg(JSON.parse(unb64u(m[1])))}catch{clear();alert('Lien d’invitation invalide.');return}
   if(!c.url||!c.key||!c.space){clear();alert('Lien d’invitation incomplet.');return}
   if(confirm(`Rejoindre l’espace « ${c.space} » ?\n\nLes données de cet espace seront synchronisées sur cet appareil.`)){
-    cfg=c;localStorage.setItem(CFG,JSON.stringify(cfg));clear();go('reglages');await pullRemote();
+    cfg=c;localStorage.setItem(CFG,JSON.stringify(cfg));resetSync();clear();go('reglages');await pullRemote();
   }else clear();}
 /* ---------- Catégories ---------- */
 const CAT_COL=['#6d8bff','#3ecf8e','#ffb547','#ff7ab6','#4ec9e0','#b48cff','#ff8a5c','#9bd25e','#8b94a8'];
@@ -543,7 +567,7 @@ const paidName=k=>k==='joint'?'Compte commun':N(k);
 function donut(parts,total,center){const R=52,C=2*Math.PI*R,id='donut-'+Math.random().toString(36).slice(2,8);let off=0;const P=parts.filter(p=>p.v>0).sort((a,b)=>b.v-a.v);
   const segs=P.map(p=>{const len=p.v/total*C,s=`<circle class="donut-seg" data-name="${esc(p.name)}" r="${R}" cx="70" cy="70" fill="none" stroke="${p.col}" stroke-width="18" stroke-dasharray="${Math.max(0,len-2)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;off+=len;return s}).join('');
   return `<figure class="donut-w" data-donut-chart="${id}"><svg viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="${esc(P.map(p=>`${p.name} ${eur(p.v)}`).join(', '))}"><circle r="${R}" cx="70" cy="70" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="18"/>${segs}
-   <text x="70" y="67" text-anchor="middle" fill="#8b94a8" font-size="10">${esc(center)}</text><text x="70" y="84" text-anchor="middle" fill="#eef1f7" font-size="15" font-weight="700">${eur(total).replace(/,\d\d/,'')}</text></svg>
+   <text x="70" y="67" text-anchor="middle" style="fill:var(--mut)" font-size="10">${esc(center)}</text><text x="70" y="84" text-anchor="middle" style="fill:var(--txt)" font-size="15" font-weight="700">${eur(total).replace(/,\d\d/,'')}</text></svg>
    <figcaption class="sr-only">Répartition par catégorie, total ${eur(total)}</figcaption>
    <ul class="legend-l">${P.map((p,i)=>`<li class="${i===0?'sel':''}"><button type="button" data-donut data-name="${esc(p.name)}" data-value="${p.v}" data-pct="${(p.v/total*100).toFixed(1).replace('.',',')}" aria-pressed="${i===0}" aria-label="Afficher le détail ${esc(p.name)}"><i style="background:${p.col}"></i><span>${esc(p.name)}</span><b>${eur(p.v)}</b><small>${(p.v/total*100).toFixed(0)} %</small></button></li>`).join('')}</ul>
    <div class="donut-detail" aria-live="polite">${P[0]?`<b>${esc(P[0].name)}</b><span>${eur(P[0].v)} · ${(P[0].v/total*100).toFixed(1).replace('.',',')} % du total</span>`:'Aucune donnée'}</div></figure>`;
@@ -575,6 +599,21 @@ function safeSpendCard(){const m=curMonth(),bud=D.budget[m]||0,spent=D.misc.filt
   return `<section class="card safe-spend" aria-labelledby="safeSpendH">${head}<div class="ss-n">${eur(ss.perDay)}<small> / jour</small></div>
    <p class="mut">Reste ${eur(ss.remaining)} à répartir sur ${ss.daysLeft} jour${ss.daysLeft>1?'s':''}, aujourd’hui inclus (${eur(ss.spent)} dépensés sur ${eur(ss.budget)}).</p>
    ${ss.status==='risk'?`<p class="warn-t">${ic('alert',14)} Au rythme actuel, projection de fin de mois : ${eur(ss.projection)}, au-dessus du budget de ${eur(ss.budget)}.</p>`:`<p class="mut">Projection de fin de mois au rythme actuel : ${eur(ss.projection)}.</p>`}</section>`}
+/* ---------- Plafonds par catégorie (v13) ---------- */
+const capsOf=(m,day,dim)=>categoryCaps(D.misc,m,D.catBudget,day,dim);
+const CAP_TXT={over:'dépassé',risk:'rythme trop élevé',near:'presque atteint',ok:'dans les clous'};
+function catCapsCard(m,day,dim){const L=capsOf(m,day,dim),isCur=m===curMonth();
+  return `<section class="card" aria-labelledby="capsH"><div class="row-b"><h2 id="capsH">${ic('target',18)} Plafonds par catégorie</h2><button type="button" class="link" id="editCaps">${L.length?'Modifier':'Définir'}</button></div>
+   ${L.length?`<div class="list caps">${L.map(c=>`<div class="item col cap-${c.status}"><span class="row-b"><b>${esc(catName('misc',c.key))}</b><span class="${c.status==='over'?'neg':c.status==='ok'?'mut':'warn-t'}">${CAP_TXT[c.status]}</span></span>
+     ${bar(Math.min(100,c.pct),c.status==='over'?'over':'')}
+     <small>${eur(c.spent)} sur ${eur(c.cap)} · ${c.left>=0?`reste ${eur(c.left)}${isCur?` · ${eur(c.perDay)}/jour`:''}`:`<span class="neg">dépassé de ${eur(-c.left)}</span>`}${isCur&&c.status==='risk'?` · projection ${eur(c.projection)}`:''}</small></div>`).join('')}</div>`
+   :'<p class="mut">Facultatif : fixez un plafond mensuel pour une catégorie (ex. Restaurants) et l’appli vous alerte avant de le dépasser.</p>'}</section>`}
+function capsSheet(){openSheet('Plafonds par catégorie',`<form id="fCaps"><p class="mut">Montant mensuel par catégorie de dépenses diverses. Laissez vide pour aucun plafond. Les plafonds valent pour tous les mois.</p>
+   <div class="f2">${CAT_MISC.map(([k,n])=>`<label>${esc(n)} (€)<input name="${k}" inputmode="decimal" value="${+D.catBudget?.[k]>0?D.catBudget[k]:''}" placeholder="—"></label>`).join('')}</div>
+   <button class="btn">Enregistrer</button></form>`,()=>$('#fCaps').addEventListener('submit',e=>{e.preventDefault();const f=fd(e.target),o={};CAT_MISC.forEach(([k])=>{const v=num(f[k]);if(v>0)o[k]=Math.round(v*100)/100});D.catBudget=o;closeSheet();save();toast('Plafonds enregistrés')}))}
+function catAlertCard(){const now=new Date(),L=capsOf(curMonth(),now.getDate(),new Date(now.getFullYear(),now.getMonth()+1,0).getDate()).filter(c=>c.status!=='ok');if(!L.length)return'';
+  return `<section class="card alert-card" aria-labelledby="capAlH"><div class="row-b"><h2 id="capAlH">${ic('alert',18)} Plafonds de catégorie</h2><button type="button" class="link" data-goto="budget" data-seg-to="diverses">Voir</button></div>
+   <ul class="plain-list">${L.slice(0,3).map(c=>`<li><b>${esc(catName('misc',c.key))}</b> : ${c.status==='over'?`<span class="neg">dépassé de ${eur(-c.left)}</span> (${eur(c.spent)} / ${eur(c.cap)})`:c.status==='risk'?`reste ${eur(c.left)} (${eur(c.perDay)}/jour), projection ${eur(c.projection)} pour ${eur(c.cap)}`:`reste ${eur(c.left)} sur ${eur(c.cap)} (${eur(c.perDay)}/jour)`}</li>`).join('')}</ul></section>`}
 /* ---------- Tableau de bord ---------- */
 function nextCharges(n=5){const t=new Date(),today=t.getDate(),dim=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
   return D.fixed.filter(f=>f.day).map(f=>{const d=f.day>=today?f.day-today:dim-today+f.day;return{...f,inDays:d}}).sort((a,b)=>a.inDays-b.inDays).slice(0,n)}
@@ -584,6 +623,9 @@ function vAccueil(){
   const m=curMonth(),a=summary('p1',m),b=summary('p2',m),rest=a.rest+b.rest,rev=a.rev+b.rev,ep=a.ep+b.ep,bud=D.budget[m]||0,spent=D.misc.filter(x=>x.date.startsWith(m)).reduce((s,x)=>s+x.amount,0),C=compute();
   const goals=[...D.goals].map(g=>({g,p:g.target?Math.min(100,C.saved[g.id]/g.target*100):0})).sort((x,y)=>y.p-x.p).slice(0,4);
   const nc=nextCharges();
+  // au plus 3 actions prioritaires en tête (découvert, plafonds, échéances d'assurance, valorisations, intérêts, bilan) ; le reste dans « Plus »
+  const acts=[accountAlertCard(),catAlertCard(),insRemindCard(),remindCard(),interestCard(),reportCard()].filter(Boolean),top=acts.slice(0,3),rest3=acts.slice(3);
+  const moreBits=[rest3.length?`${rest3.length} autre${rest3.length>1?'s':''} action${rest3.length>1?'s':''}`:'','équilibre','prélèvements','objectifs','activité'].filter(Boolean);
   return `<p class="hello">${me?`Bonjour ${esc(N(me))}`:'Bonjour'} · ${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>
   <div class="card hero"><small>Reste à vivre du couple · ${monthLabel(m)}</small><div class="hero-n">${money(rest,rest<0?'neg':'')}</div>
    <div class="hero-grid"><div><small>Revenus</small>${money(rev)}</div><div><small>Épargné ce mois</small>${money(ep)}</div>
@@ -591,7 +633,10 @@ function vAccueil(){
    ${bud?bar(spent/bud*100,spent>bud?'over':''):''}</div>
   ${safeSpendCard()}
   <button class="btn wide" id="quickAdd">${ic('plus',18)} Ajouter une dépense</button>
-  ${reportCard()}${remindCard()}${interestCard()}${insRemindCard()}${accountAlertCard()}${onboarding()}${tipsCard()}
+  ${spaceMoved?`<div class="card"><p class="neg">${esc(MOVED_MSG)}</p><button class="btn ghost" data-goto="reglages">Réglages</button></div>`:''}
+  ${onboarding()}${top.join('')}
+  <details class="more" id="homeMore" ${homeMoreOpen?'open':''}><summary><span>Plus</span><small>${moreBits.join(' · ')}</small></summary>
+  ${rest3.join('')}${tipsCard()}
   ${D.fixed.length||D.misc.length||D.settlements.length||D.transfer.amount?balanceCard(m):''}
   ${typeof debtCard==='function'?debtCard():''}
   ${sec('Prochains prélèvements',`<button class="link" data-goto="budget" data-seg-to="fixes">Tout voir</button>`)}
@@ -600,7 +645,7 @@ function vAccueil(){
   <div class="list">${goals.map(({g,p})=>`<button class="item col" data-edit-goal="${g.id}"><span class="row-b"><b>${esc(g.name)}</b><span class="pct" style="--pc:${COL[g.owner]}">${p.toFixed(0)} %</span></span>${bar(p,p>=100?'done':'')}<small>${eur(C.saved[g.id])} sur ${eur(g.target)}</small></button>`).join('')||empty('target','Aucun objectif pour l’instant.')}</div>
   <nav class="shortcuts" aria-label="Raccourcis"><button data-goto="assurances">${ic('shield',18)}<span>Assurances</span></button><button data-goto="epargne" data-scroll="sec-interets">${ic('trend',18)}<span>Intérêts</span></button><button data-goto="bilans">${ic('chart',18)}<span>Bilans</span></button><button data-goto="budget" data-seg-to="comptes">${ic('wallet',18)}<span>Comptes</span></button></nav>
   ${sec('Activité récente',`<button class="link" data-goto="activite">Historique</button>`)}
-  <div class="list">${D.history.slice(0,4).map(histItem).join('')||empty('repeat','Les modifications apparaîtront ici.')}</div>`;
+  <div class="list">${D.history.slice(0,4).map(histItem).join('')||empty('repeat','Les modifications apparaîtront ici.')}</div></details>`;
 }
 /* ---------- Historique ---------- */
 const KIND={months:'Épargne',goals:'Objectif',fixed:'Charge',misc:'Dépense',placements:'Placement',accounts:'Compte',insurances:'Assurance',interests:'Intérêts',movements:'Mouvement',debts:'Dette',imports:'Relevé',reports:'Bilan',dismissed:'Conseil masqué',valuations:'Valorisation',incomes:'Revenu',settlements:'Règlement',names:'Prénoms',births:'Dates de naissance',tax:'Situation fiscale',ratio:'Répartition',transfer:'Virement',budget:'Budget'};
@@ -802,7 +847,7 @@ document.addEventListener('click',e=>{
   if(d.editIncome)return incomeSheet(d.editIncome);if(d.editFixed)return fixedSheet(d.editFixed);if(d.editMonth)return monthSheet(d.editMonth);
   if(d.editGoal)return goalSheet(d.editGoal);if(d.editPlac)return placSheet(d.editPlac);
   ({addIncome:()=>incomeSheet(),addFixed:()=>fixedSheet(),editTransfer:transferSheet,addMisc:miscSheet,quickAdd:miscSheet,openHist:()=>go('activite'),chooseMe:whoSheet,addMonth:()=>monthSheet(),addGoal:()=>goalSheet(),addPlac:()=>placSheet(),
-    inviteBtn:showInvite,disconnect:()=>{cfg={};localStorage.removeItem(CFG);lastErr='';render();setSync('Local')},
+    inviteBtn:()=>showInvite(),changeCode:changeSpaceCode,editCaps:capsSheet,clearOld:clearOldSpace,disconnect:()=>{cfg={};localStorage.removeItem(CFG);resetSync();lastErr='';render();setSync('Local')},
     expCsv:()=>{const q=v=>{const t=String(v??'');return /[";\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t},R=[['type','date/mois','libellé','catégorie','montant','personne']];
       D.misc.forEach(x=>R.push(['dépense',x.date,x.label||'',x.category||'',String(x.amount).replace('.',','),N(x.payer)]));D.fixed.forEach(f=>R.push(['charge fixe','jour '+(f.day||''),f.label,f.category||'',String(f.amount).replace('.',','),paidName(f.paidBy)]));
       D.incomes.forEach(i=>R.push(['revenu',i.recurring?'mensuel':i.month,i.label||i.type,i.type,String(i.amount).replace('.',','),N(i.person)]));D.months.forEach(m=>R.push(['épargne',m.month,'','',String((m.a||0)+(m.b||0)).replace('.',','),'']));
@@ -841,7 +886,7 @@ document.addEventListener('submit',async e=>{const f=e.target;
     D.valuations.push({id:uid(),pid:f.dataset.pid,date:todayIso(),value:v});save();toast('Valorisation enregistrée');return}
   if(f.id==='fNames'){e.preventDefault();const v=fd(f);D.names={p1:v.p1||'Personne 1',p2:v.p2||'Personne 2'};D.ratio=Math.min(100,Math.max(0,num(v.ratio)));D.reminderDay=Math.min(28,Math.max(1,parseInt(v.reminderDay)||1));const okd=x=>/^\d{4}-\d{2}-\d{2}$/.test(x||'')&&x<=todayIso();D.births={p1:okd(v.b1)?v.b1:'',p2:okd(v.b2)?v.b2:''};save();toast('Réglages enregistrés')}
   if(f.id==='fSync'){e.preventDefault();const v=fd(f);cfg=normCfg(v);if(cfg.space&&cfg.space.length<8){$('#syncMsg').textContent='Code d’espace trop court (8 caractères minimum).';return}
-    localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote()}
+    resetSync();localStorage.setItem(CFG,JSON.stringify(cfg));$('#syncMsg').textContent='Connexion…';await pullRemote()}
 });
 /* ---------- Connexion ---------- */
 function netBanner(){$('#offline').hidden=navigator.onLine}
@@ -851,12 +896,13 @@ persist(); // enregistre la migration locale (sans horodater)
 buildNav();render();netBanner();
 fetch('rates.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j){RATES=j;if(!document.querySelector('#sheet.open'))render()}}).catch(()=>{});
 function tickReports(){const r=ensureReports();if(r){save();reportNotify(r)}}
-if(/^#invite=/.test(location.hash))handleInvite();else Promise.resolve(pullRemote()).finally(()=>setTimeout(tickReports,50));
+addEventListener('hashchange',()=>{if(/^#(invite|join)=/.test(location.hash))handleInvite()});
+if(/^#(invite|join)=/.test(location.hash))handleInvite();else Promise.resolve(pullRemote()).finally(()=>setTimeout(tickReports,50));
 if(!me&&!/^#invite=/.test(location.hash))setTimeout(whoSheet,400);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')Promise.resolve(pullRemote()).finally(tickReports)});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 /* Installation : bouton dédié quand Chrome propose l'installation */
-let installEvt=null;const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+var installEvt=null;function standalone(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;if(tab==='reglages')render()});
 addEventListener('appinstalled',()=>{installEvt=null;toast('Application installée');if(tab==='reglages')render()});
 function installCard(){if(standalone())return'';

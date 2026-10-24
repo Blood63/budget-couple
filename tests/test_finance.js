@@ -91,3 +91,13 @@ console.log('OK finance');
  const r=F.safeToSpend({budget:300,spent:290,day:28,daysInMonth:31});a.equal(r.status,'risk');a.ok(r.projection>300);
  const o=F.safeToSpend({budget:300,spent:350,day:10,daysInMonth:31});a.equal(o.status,'over');a.equal(o.over,50);a.equal(o.perDay,0);
  a.equal(F.safeToSpend({budget:0,spent:10,day:10,daysInMonth:31}).status,'no-budget');console.log('OK safe to spend')}
+/* v13 : plafonds par catégorie */
+{const F=require('../finance.js'),misc=[{date:'2026-10-02',category:'resto',amount:60},{date:'2026-10-05',category:'resto',amount:50},{date:'2026-10-03',category:'courses',amount:100},{date:'2026-09-30',category:'resto',amount:999},{date:'2026-10-04',amount:30}];
+ const L=F.categoryCaps(misc,'2026-10',{resto:100,courses:400,autre:200,loisirs:0},10,31);
+ a.deepEqual(L.map(c=>c.key),['resto','courses','autre'],'tri urgence, plafond 0 ignoré');
+ a.equal(L[0].status,'over');a.equal(L[0].left,-10);a.equal(L[0].spent,110);
+ a.equal(L[1].status,'ok');a.equal(L[1].left,300);a.equal(L[1].perDay,13.64);
+ a.equal(L[2].spent,30,'sans catégorie = autre');
+ a.equal(F.categoryCaps(misc,'2026-10',{courses:150},10,31)[0].status,'risk','projection 310 > 150');
+ a.equal(F.categoryCaps(misc,'2026-10',{courses:120},31,31)[0].status,'near');
+ a.deepEqual(F.categoryCaps(misc,'2026-10',undefined,1,31),[]);console.log('plafonds par catégorie OK')}

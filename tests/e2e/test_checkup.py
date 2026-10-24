@@ -64,12 +64,12 @@ try:
       if 'supabase' in u:found.append('RÉSEAU '+u)
       r.abort()
     c.route('**/*',blk)
-    if not data:c.add_init_script("if(!sessionStorage.s){localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}")
-    if data:c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(data))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
+    if not data:c.add_init_script("sessionStorage.setItem('budget-couple-more','1')");c.add_init_script("if(!sessionStorage.s){localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}")
+    if data:c.add_init_script("sessionStorage.setItem('budget-couple-more','1')");c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(data))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
     pg=c.new_page();pg.clock.install(time='2026-10-14T10:00:00+02:00');errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and 'ERR_FAILED' not in m.text and errs.append(m.text))
     t0=time.time();pg.goto('http://localhost:18766/');pg.wait_for_timeout(700);pg.add_script_tag(path='/tmp/axe.min.js')
-    if name=='v1':d=pg.evaluate('D');assert d['version']==12 and d['goals'][0]['split'] is None and d['goals'][0]['target']==2000 and d['misc'][0]['amount']==40,d
+    if name=='v1':d=pg.evaluate('D');assert d['version']==13 and d['goals'][0]['split'] is None and d['goals'][0]['target']==2000 and d['misc'][0]['amount']==40,d
     tabs=pg.evaluate("TABS.map(t=>t[0]).concat(['reglages','assurances','bilans','activite'].filter(x=>typeof views==='undefined'||views[x]))")
     for t in tabs:
       t1=time.time();pg.evaluate(f"go('{t}')");pg.wait_for_timeout(250);dt=time.time()-t1

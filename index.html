@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0e14">
+<script>try{var t=localStorage.getItem("budget-couple-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Budget">
@@ -22,7 +23,7 @@
     <button id="gear" class="icon-btn" aria-label="Réglages"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M1 14h6 M9 8h6 M17 16h6"/></svg></button>
   </div>
 </header>
-<div id="offline" class="offline" hidden>Pas de connexion internet : les modifications seront envoyées dès le retour du réseau. Rechargez l’appli une fois reconnecté.</div>
+<div id="offline" class="offline" role="status" hidden>Pas de connexion : les saisies restent sur cet appareil et partiront automatiquement au retour du réseau. Sans internet, l’appli ne peut pas être rouverte : évitez de la fermer ou de la recharger.</div>
 <main id="view"></main>
 <nav id="tabs" aria-label="Navigation"></nav>
 <div id="sheet" class="sheet" hidden>
@@ -46,6 +47,7 @@
 <script src="debts.js"></script>
 <script src="charts.js"></script>
 <script src="insights.js"></script>
+<script src="security.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

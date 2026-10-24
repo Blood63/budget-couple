@@ -20,10 +20,11 @@ V6={"version":6,"updated":1,"ratio":55,"reminderDay":1,
 BAD=re.compile(r'\b(achetez|vendez|investissez dans|nous recommandons|MSCI|S&P|Amundi|iShares|Lyxor)\b',re.I)
 with sync_playwright() as p:
   b=p.chromium.launch();c=b.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True,locale='fr-FR')
-  c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V6))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
+  c.add_init_script("sessionStorage.setItem('budget-couple-more','1')");c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V6))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
   pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
   pg.goto('http://localhost:18766/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(300);pg.evaluate('render()')
-  d=pg.evaluate('D');assert d['version']==12 and d['births']=={'p1':'2000-06-22','p2':'2002-03-10'} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
+  d=pg.evaluate('D');assert d['version']==13 and d['births']=={'p1':'','p2':''} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
+  assert pg.evaluate("[ageOf('p1'),ageOf('p2')]")==[None,None];pg.evaluate("D.births={p1:'2000-01-15',p2:'2002-01-15'};save();render()")
   assert pg.evaluate("[ageOf('p1'),ageOf('p2')]")==[26,24];print('MIGRATION v6→v7 OK, âges 26 / 24')
   T=pg.evaluate('tips()');K={t['key']:t for t in T};print(len(T),'conseils :',sorted(K))
   need=['precaution-high','ceil-full-la','ceil-near-ld','ceil-near-lj','lep-p2','order-ce-lj','pel10-pe','rate-2026-10','goal-slow-g1','misc-up-2026-10','lj-end-p2','per-p1','pea-date-p1','av-date-p2','idle-2026-10']
@@ -70,7 +71,7 @@ with sync_playwright() as p:
   pg.fill('#fTax [name=children]','2');pg.dispatch_event('#fTax [name=children]','change');pg.wait_for_timeout(300);assert pg.evaluate('taxNow().com.parts')==3;print('SITUATION FISCALE OK (commune, 2 enfants → 3 parts)')
   pg.select_option('#fTax [name=mode]','separe');pg.wait_for_timeout(200);pg.fill('#fTax [name=children]','0');pg.dispatch_event('#fTax [name=children]','change');pg.wait_for_timeout(200)
   # Réglages : dates de naissance préremplies et modifiables
-  pg.click('#gear');pg.wait_for_timeout(500);assert pg.input_value('#fNames [name=b2]')=='2002-03-10' and pg.input_value('#fNames [name=b1]')=='2000-06-22'
+  pg.click('#gear');pg.wait_for_timeout(500);assert pg.input_value('#fNames [name=b2]')=='2002-01-15' and pg.input_value('#fNames [name=b1]')=='2000-01-15'
   pg.locator('#fNames [name=b1]').scroll_into_view_if_needed();pg.wait_for_timeout(2500);assert pg.evaluate('document.documentElement.scrollWidth')<=390;pg.screenshot(path=f'{OUT}/v5-reglages-naissance.png')
   pg.fill('#fNames [name=b1]','2004-01-15');pg.click('#fNames .btn');pg.wait_for_timeout(300)
   K2={t['key'] for t in pg.evaluate('tips()')};assert pg.evaluate("ageOf('p1')")==22 and 'lj-elig-p1' in K2;print('NAISSANCE modifiée → Livret Jeune éligible pour p1 OK')
