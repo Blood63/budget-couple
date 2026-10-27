@@ -23,7 +23,7 @@ with sync_playwright() as p:
   c.add_init_script("sessionStorage.setItem('budget-couple-more','1')");c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V6))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
   pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
   pg.goto('http://localhost:18766/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(300);pg.evaluate('render()')
-  d=pg.evaluate('D');assert d['version']==13 and d['births']=={'p1':'','p2':''} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
+  d=pg.evaluate('D');assert d['version']==14 and d['births']=={'p1':'','p2':''} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
   assert pg.evaluate("[ageOf('p1'),ageOf('p2')]")==[None,None];pg.evaluate("D.births={p1:'2000-01-15',p2:'2002-01-15'};save();render()")
   assert pg.evaluate("[ageOf('p1'),ageOf('p2')]")==[26,24];print('MIGRATION v6→v7 OK, âges 26 / 24')
   T=pg.evaluate('tips()');K={t['key']:t for t in T};print(len(T),'conseils :',sorted(K))

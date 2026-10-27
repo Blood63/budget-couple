@@ -22,7 +22,7 @@ try:
     pg.on('console',lambda m:m.type=='error' and 'Failed to fetch' not in m.text and 'status of 404' not in m.text and errs.append(name+' '+m.text));pg.on('response',lambda r:r.status==404 and '/rest/v1/rpc/' not in r.url and errs.append(name+' 404 '+r.url))
     pg.goto('http://localhost:18765/');pg.wait_for_function("document.querySelector('#syncState').textContent.includes('✓')");pg.wait_for_timeout(900);pg.add_script_tag(path='/tmp/axe.min.js');return pg
   A=dev('A','p1');B=dev('B','p2')
-  d=A.evaluate('D');assert d['version']==13 and d['debts']==[] and d['misc'][0]['amount']==60 and d['fixed'][0]['amount']==800;print('MIGRATION v11→v12 OK')
+  d=A.evaluate('D');assert d['version']==14 and d['debts']==[] and d['misc'][0]['amount']==60 and d['fixed'][0]['amount']==800;print('MIGRATION v11→v12 OK')
   bal0=A.evaluate("balance(curMonth()).net")
   # ajout rapide (défaut : l'autre doit à moi)
   assert A.input_value('#fDebtQ [name=from]')=='p2'

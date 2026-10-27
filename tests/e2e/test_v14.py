@@ -39,7 +39,7 @@ try:
   assert ('Manque' in t) and ('Alice' in t and 'Bruno' in t)
   v=norm(pg.locator('#view').inner_text());assert 'échéance dépassée, reste' in v and '0 € (part atteinte)' in v and 'ajoutez une date' in v and '/mois' in v
   # données intactes (aucun changement de format)
-  d=pg.evaluate('JSON.parse(localStorage.getItem("budget-couple-data"))');assert d['goals'][0]['split']=={'mode':'pct','p1':60} and d['version']==13 and len(d['goals'])==5
+  d=pg.evaluate('JSON.parse(localStorage.getItem("budget-couple-data"))');assert d['goals'][0]['split']=={'mode':'pct','p1':60} and d['version']==14 and len(d['goals'])==5
   pg.locator('#goalNeeds').screenshot(path=OUT+'/v14-objectifs-carte.png')
   pg.set_viewport_size({'width':390,'height':1400});pg.wait_for_timeout(200);pg.screenshot(path=OUT+'/v14-objectifs-mensuel.png',clip={'x':0,'y':0,'width':390,'height':1100})
   pg.context.close()

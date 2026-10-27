@@ -169,3 +169,15 @@ Après : accès uniquement via les fonctions `get_space` / `save_space` / `sync_
 - Plafonds optionnels par catégorie (Dépenses), avec alerte et reste par catégorie.
 - Thème clair / sombre (automatique ou manuel, Réglages › Affichage).
 - Données vierges sans informations personnelles ; la fusion ne remplace jamais une valeur réelle par une valeur par défaut.
+
+## v15 — planification et sécurité des données
+
+- **Charges annuelles lissées** (Budget › Charges) : montant, mois d’échéance, part de chacun ; montant à provisionner ce mois-ci = reste ÷ mois restants, suivi de la provision, « Marquer payée » relance l’année suivante.
+- **Épargne de précaution** (Épargne) : mois de dépenses (charges fixes + moyenne des dépenses diverses sur 3 mois) couverts par les livrets ; jauge avec repère 3–6 mois. Indicatif, pas de conseil.
+- **Crédits** (Patrimoine) : capital, taux, durée, 1re échéance, mensualité (calculée si vide), assurance ; capital restant dû, date de fin, coût des intérêts, tableau d’amortissement annuel et mensuel.
+- **Patrimoine net** (Placements › carte, Accueil › Plus › raccourci) : comptes + placements − capital restant dû ; par personne et commun ; courbe mensuelle (un instantané par mois d’ouverture, appui long).
+- **Abonnements détectés** (Budget › Dépenses) : opérations importées au même libellé, montant proche, intervalle mensuel/trimestriel/annuel ; total mensuel/annuel, alerte de hausse, « Ignorer », exclusion de ce qui est déjà en charge fixe.
+- **Bilan de l’année** (Bilans) : dépenses par catégorie et par personne, charges fixes estimées, épargne, intérêts, versements PER (indicatif 6NS/6NT).
+- **Sauvegarde** (Réglages) : export JSON avec empreinte SHA-256 et comptages, CSV étendu ; restauration avec vérification d’intégrité, aperçu et confirmation, **ajout seulement** (rien d’existant n’est modifié ; les éléments supprimés depuis restent supprimés sauf case cochée).
+- **Rappels** (Réglages, propres à l’appareil) : épargne du mois, valorisations, échéances d’objectifs, charges annuelles, fin de crédit ; carte sur l’Accueil et notification facultative à l’ouverture. Sans serveur de push : rien n’arrive quand l’appli est fermée.
+- Données v14 (migration additive : listes `annuals`, `loans`, `networth`, `subsoff`). Calculs purs dans `plan.js` (tests `tests/test_plan.js`), interface dans `v15.js`.

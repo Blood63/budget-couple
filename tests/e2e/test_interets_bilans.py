@@ -23,7 +23,7 @@ try:
     pg=c.new_page();pg.clock.install(time='2027-01-03T10:00:00+01:00');pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text))
     pg.goto('http://localhost:18765/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(600);return pg
   pg=page(390);d=pg.evaluate('D')
-  assert d['version']==13 and [r['id'] for r in d['reports']]==['rep-2026-12'],d['reports'];r=d['reports'][0]
+  assert d['version']==14 and [r['id'] for r in d['reports']]==['rep-2026-12'],d['reports'];r=d['reports'][0]
   assert r['savings']=={'p1':350,'p2':200} and r['prevSavings']==550 and r['misc']==120 and r['goals'][0]['saved']==400+300+250+350+200,r
   t=pg.inner_text('#view');assert 'Bilan de décembre 2026' in t and 'Intérêts 2026 à valider' in t;print('BILAN + CARTE INTÉRÊTS OK')
   pg.add_script_tag(path='/tmp/axe.min.js');v=pg.evaluate(AX);print('AXE accueil',v);assert not v

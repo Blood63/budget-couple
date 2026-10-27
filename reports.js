@@ -36,7 +36,7 @@ function reportHtml(r){const ep=r.savings.p1+r.savings.p2,d=ep-r.prevSavings,pre
 function reportSheet(id){const r=D.reports.find(x=>x.id===id);if(!r)return;const s=seenRep();if(!s.includes(id)){s.push(id);localStorage.setItem('bc-rep-seen',JSON.stringify(s.slice(-36)))}
   openSheet(`Bilan de ${monthLabel(r.month)}`,reportHtml(r)+`<button class="btn ghost" data-rep-regen="${r.id}">${ic('repeat',16)} Recalculer avec les données actuelles</button>`,()=>{})}
 function vBilans(){const L=[...D.reports].sort((a,b)=>b.month.localeCompare(a.month));
-  return `<p class="mut">Un bilan est créé automatiquement le 1er de chaque mois pour le mois écoulé.</p>
+  return `<button class="btn ghost wide" data-goto="annuel">${ic('piggy',18)} Bilan de l’année (dépenses, épargne, intérêts, PER)</button><p class="mut">Un bilan est créé automatiquement le 1er de chaque mois pour le mois écoulé.</p>
   <div class="list">${L.map(r=>{const ep=r.savings.p1+r.savings.p2;return `<button class="item" data-rep="${r.id}"><span class="grow"><b>${esc(monthLabel(r.month))}</b><small>Épargne ${eur(ep)} · dépenses ${eur(r.misc)}</small></span>${ic('chev',16)}</button>`}).join('')||empty('chart','Le premier bilan apparaîtra le 1er du mois prochain.')}</div>
   <button class="btn ghost wide" id="repNow">Générer le bilan du mois en cours (provisoire)</button>`}
 document.addEventListener('click',e=>{const t=e.target.closest('[data-rep],[data-rep-seen],[data-rep-regen],#repNow');if(!t)return;

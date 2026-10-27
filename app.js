@@ -109,7 +109,7 @@ function vFixes(){
   ${D.fixed.length>3?`<div class="filters" role="search"><label class="search">${ic('search',16)}<input type="search" id="fixQ" placeholder="Rechercher une charge" value="${esc(fixF.q)}" aria-label="Rechercher une charge"></label>
    <select id="fixCat" aria-label="Filtrer par catégorie"><option value="">Toutes catégories</option>${catOpts('fixed',fixF.cat)}</select></div>`:''}
   <div class="list">${L.map(f=>`<button class="item" data-edit-fixed="${f.id}" aria-label="${esc(f.label)}, ${eur(f.amount)}, le ${f.day||'?'}"><span class="day" style="box-shadow:inset 3px 0 0 ${catColor('fixed',f.category)}">${f.day||'—'}</span>
-   <span class="grow"><b>${esc(f.label)}</b><small>${catName('fixed',f.category)} · ${esc(paidName(f.paidBy))} · ${esc(D.names.p1)} ${f.split} % / ${esc(D.names.p2)} ${100-f.split} %</small>${splitBar(f.split)}</span>${money(f.amount)}</button>`).join('')||empty('home',D.fixed.length?'Aucune charge ne correspond.':'Aucune charge fixe pour l’instant.')}</div>`;
+   <span class="grow"><b>${esc(f.label)}</b><small>${catName('fixed',f.category)} · ${esc(paidName(f.paidBy))} · ${esc(D.names.p1)} ${f.split} % / ${esc(D.names.p2)} ${100-f.split} %</small>${splitBar(f.split)}</span>${money(f.amount)}</button>`).join('')||empty('home',D.fixed.length?'Aucune charge ne correspond.':'Aucune charge fixe pour l’instant.')}</div>${H15('fixes')}`;
 }
 function fixedSheet(id){const f=D.fixed.find(x=>x.id===id)||{split:D.ratio,category:'logement',paidBy:'joint'};
   openSheet(id?'Modifier la charge':'Nouvelle charge',`<form id="fFixed">
@@ -167,7 +167,7 @@ function vDiverses(){
   <div class="expense-list">${Object.entries(byDay).map(([date,X])=>`<section class="day-group" aria-label="${frDate(date)}"><h3><span>${new Date(date+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</span><span>${eur(X.reduce((s,x)=>s+x.amount,0))} · ${X.length} op.</span></h3>
    <div class="list">${X.map(x=>`<div class="item expense-item"><span class="avatar" style="--pc:${catColor('misc',x.category)}">${ic('cart',16)}</span>
    <button class="grow plain" data-edit-misc="${x.id}" aria-label="Modifier ${esc(x.label||catName('misc',x.category))}, ${eur(x.amount)}"><b>${esc(x.label||catName('misc',x.category))}</b><small>${catName('misc',x.category)} · ${esc(paidName(x.paidBy))}${x.for&&x.for!=='common'?' · pour '+esc(N(x.for)):''}${x.source==='import'?' · relevé':''}</small></button>${money(x.amount)}
-   <button class="icon-btn expense-del" data-del-misc="${x.id}" aria-label="Supprimer ${esc(x.label||'la dépense')}">${ic('trash',18)}</button></div>`).join('')}</div></section>`).join('')||empty('cart',all.length?'Aucune dépense ne correspond aux filtres.':'Aucune dépense ce mois-ci.')}</div>`;
+   <button class="icon-btn expense-del" data-del-misc="${x.id}" aria-label="Supprimer ${esc(x.label||'la dépense')}">${ic('trash',18)}</button></div>`).join('')}</div></section>`).join('')||empty('cart',all.length?'Aucune dépense ne correspond aux filtres.':'Aucune dépense ce mois-ci.')}</div>${H15('diverses')}`;
 }
 function miscSheet(id){const m=D.miscMonth||curMonth(),ex=id&&D.misc.find(x=>x.id===id),last=ex||D.misc[D.misc.length-1]||{};
   openSheet(ex?'Modifier la dépense':'Dépense rapide',`<form id="fMisc">
@@ -194,6 +194,7 @@ function vEpargne(){
    ${splitBar(t1+t2?t1/(t1+t2)*100:50)}${un>0?`<p class="warn-t">${ic('alert',14)} ${eur(un)} non affecté à un objectif</p>`:''}</div>
   ${savingsChart()}
   ${typeof personSavingsSection==='function'?personSavingsSection():''}
+  ${H15('epargne')}
   ${typeof projection5Card==='function'?projection5Card():''}
   <button class="btn wide" id="addMonth">${ic('plus',18)} Saisir l’épargne d’un mois</button>
   ${sec('Historique des affectations')}<div class="list">${m.map(x=>`<button class="item col" data-edit-month="${x.id}"><span class="row-b"><b>${monthLabel(x.month)}</b>${money(x.a+x.b)}</span>
@@ -342,6 +343,7 @@ function vPlacements(){
      ${env?`<small>${lv?`Valorisé le ${new Date(lv.date+'T12:00').toLocaleDateString('fr-FR')}`:'Aucune valorisation'}${g.inv?` · <span class="${g.d>=0?'pos':'neg'}">${g.d>=0?'+':''}${eur(g.d)} (${g.pc.toFixed(1)} %)</span>`:''}</small>`:''}
      ${isDue?`<small class="warn-c">${ic('alert',12)} Valorisation à mettre à jour</small>`:''}${ri.warn?`<small class="neg">${ic('alert',12)} ${esc(ri.warn)}</small>`:''}</span>
      <span class="r">${money(placValue(p))}<small class="mut">4 ans : ${eur(futureOf(p.id))}</small></span></button>`}).join('')}</div>`}).join('')||empty('trend','Ajoute un livret, un PEL, une assurance vie… pour voir la projection sur 4 ans.')}
+  ${H15('placements')}
   ${tipsSection()}
   <div class="card"><h2>${ic('calendar',18)} Taux réglementés en vigueur</h2>${reg.length?`<ul class="bal-l">${reg.map(([k,r])=>`<li><span>${RATES.products[k].name}</span><small>depuis le ${frDate(r.from)} · <a href="${RATES.products[k].source}" target="_blank" rel="noopener">${RATES.products[k].sourceName}</a></small><b>${pct(r.rate)}</b></li>`).join('')}</ul>
    <p class="mut">Mis à jour automatiquement (rates.json, vérifié le ${frDate(RATES.checked)}). PEL : taux figé à l’ouverture. Livret Jeune : taux libre de la banque, au moins égal au Livret A.</p>`:'<p class="mut">Chargement des taux…</p>'}</div>
@@ -424,9 +426,7 @@ function vReglages(){
   <div class="card"><h2>${ic('chart',18)} Bilan du mois</h2><p class="mut">Le 1er de chaque mois, un bilan du mois écoulé est créé et affiché sur l’accueil. <button class="link" data-goto="bilans">Voir les bilans</button></p>
    ${'Notification' in window?`<label class="switch"><input type="checkbox" id="notifRep" ${D.notify?.reports&&Notification.permission==='granted'?'checked':''}><span></span>Notification sur cet appareil</label>
    <p class="mut">${Notification.permission==='denied'?'Notifications bloquées dans les réglages du navigateur. ':''}La notification s’affiche à la première ouverture de l’appli à partir du 1er (sans serveur, aucune donnée envoyée à un service tiers).</p>`:'<p class="mut">Ce navigateur ne gère pas les notifications.</p>'}</div>
-  <div class="card"><h2>Sauvegarde</h2><div class="f2"><button class="btn ghost" id="exp">Exporter (JSON)</button><button class="btn ghost" id="expCsv">Exporter (CSV)</button>
-   <label class="btn ghost">Importer<input type="file" id="imp" accept=".json" hidden></label></div>
-   <button class="btn danger" id="reset">${sbOn()?'Vider le cache et recharger':'Tout effacer sur cet appareil'}</button><p class="mut">Format de données v${DATA_VERSION}</p></div>`;
+  ${remindersCard()}${backupCard()}`;
 }
 /* ---------- Répartition automatique ---------- */
 // mois entre un mois "YYYY-MM" et une date cible "YYYY-MM" (min 1) ; sans date : 12 mois
@@ -637,7 +637,7 @@ function vAccueil(){
   const goals=[...D.goals].map(g=>({g,p:g.target?Math.min(100,C.saved[g.id]/g.target*100):0})).sort((x,y)=>y.p-x.p).slice(0,4);
   const nc=nextCharges();
   // au plus 3 actions prioritaires en tête (découvert, plafonds, échéances d'assurance, valorisations, intérêts, bilan) ; le reste dans « Plus »
-  const acts=[accountAlertCard(),catAlertCard(),insRemindCard(),remindCard(),interestCard(),reportCard()].filter(Boolean),top=acts.slice(0,3),rest3=acts.slice(3);
+  const acts=[reminderCard(),accountAlertCard(),catAlertCard(),insRemindCard(),remindCard(),interestCard(),reportCard()].filter(Boolean),top=acts.slice(0,3),rest3=acts.slice(3);
   const moreBits=[rest3.length?`${rest3.length} autre${rest3.length>1?'s':''} action${rest3.length>1?'s':''}`:'','équilibre','prélèvements','objectifs','activité'].filter(Boolean);
   return `<p class="hello">${me?`Bonjour ${esc(N(me))}`:'Bonjour'} · ${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>
   <div class="card hero"><small>Reste à vivre du couple · ${monthLabel(m)}</small><div class="hero-n">${money(rest,rest<0?'neg':'')}</div>
@@ -656,7 +656,7 @@ function vAccueil(){
   <div class="list">${nc.map(f=>`<div class="item"><span class="day" aria-hidden="true">${f.day}</span><span class="grow"><b>${esc(f.label)}</b><small>${f.inDays===0?'Aujourd’hui':f.inDays===1?'Demain':`Dans ${f.inDays} jours`} · ${esc(paidName(f.paidBy))}</small></span>${money(f.amount)}</div>`).join('')||empty('calendar','Ajoute des charges avec un jour de prélèvement.')}</div>
   ${sec('Objectifs',`<button class="link" data-goto="objectifs">Tout voir</button>`)}
   <div class="list">${goals.map(({g,p})=>`<button class="item col" data-edit-goal="${g.id}"><span class="row-b"><b>${esc(g.name)}</b><span class="pct" style="--pc:${COL[g.owner]}">${p.toFixed(0)} %</span></span>${bar(p,p>=100?'done':'')}<small>${eur(C.saved[g.id])} sur ${eur(g.target)}</small></button>`).join('')||empty('target','Aucun objectif pour l’instant.')}</div>
-  <nav class="shortcuts" aria-label="Raccourcis"><button data-goto="assurances">${ic('shield',18)}<span>Assurances</span></button><button data-goto="epargne" data-scroll="sec-interets">${ic('trend',18)}<span>Intérêts</span></button><button data-goto="bilans">${ic('chart',18)}<span>Bilans</span></button><button data-goto="budget" data-seg-to="comptes">${ic('wallet',18)}<span>Comptes</span></button></nav>
+  <nav class="shortcuts" aria-label="Raccourcis"><button data-goto="assurances">${ic('shield',18)}<span>Assurances</span></button><button data-goto="epargne" data-scroll="sec-interets">${ic('trend',18)}<span>Intérêts</span></button><button data-goto="bilans">${ic('chart',18)}<span>Bilans</span></button><button data-goto="budget" data-seg-to="comptes">${ic('wallet',18)}<span>Comptes</span></button><button data-goto="patrimoine">${ic('home',18)}<span>Patrimoine</span></button><button data-goto="annuel">${ic('piggy',18)}<span>Bilan annuel</span></button></nav>
   ${sec('Activité récente',`<button class="link" data-goto="activite">Historique</button>`)}
   <div class="list">${D.history.slice(0,4).map(histItem).join('')||empty('repeat','Les modifications apparaîtront ici.')}</div></details>`;
 }
@@ -733,7 +733,7 @@ function tips(){const T=[],m=curMonth(),a=summary('p1',m),b=summary('p2',m),rev=
   // 1. Épargne de précaution
   const precau=D.placements.filter(p=>LIVRETS.includes(p.type)).reduce((s,p)=>s+placValue(p),0);
   if(monthly>0){const mo=precau/monthly;
-    if(mo<3)add('precaution-low','warn','Épargne de précaution à constituer','On recommande généralement de garder l’équivalent de 3 à 6 mois de dépenses sur des livrets disponibles à tout moment, pour faire face aux imprévus.',
+    if(mo<3)add('precaution-low','warn','Épargne de précaution à constituer','Un repère souvent cité est de garder l’équivalent de 3 à 6 mois de dépenses sur des livrets disponibles à tout moment, pour faire face aux imprévus.',
       `Vos livrets totalisent ${eur(precau)}, soit ${mo.toFixed(1).replace('.',',')} mois de dépenses (${eur(monthly)}/mois de charges fixes${am.months?' et dépenses diverses moyennes':''}). Objectif indicatif : ${eur(monthly*3)} à ${eur(monthly*6)}.`);
     else if(mo<=6)add('precaution-ok','ok','Épargne de précaution en place','Votre réserve disponible se situe dans la fourchette habituelle de 3 à 6 mois de dépenses.',`${eur(precau)} sur vos livrets, soit ${mo.toFixed(1).replace('.',',')} mois de dépenses (${eur(monthly)}/mois).`);
     else add('precaution-high','info','Réserve de précaution au-delà de 6 mois','Au-delà de 6 mois de dépenses, une partie de cette épargne pourrait servir vos projets à plus long terme. Pour savoir comment, parlez-en à votre banque ou à un conseiller.',
@@ -813,8 +813,8 @@ document.addEventListener('click',e=>{const h=e.target.closest('[data-hide-tip]'
   if(e.target.closest('#showTips')){D.dismissed=[];save();toast('Conseils réaffichés');return}
   const s=e.target.closest('[data-scroll]');if(s)setTimeout(()=>{const el=document.getElementById(s.dataset.scroll);if(el)el.scrollIntoView({block:'start'})},50)});
 const TABS=[['accueil','Accueil','grid',vAccueil],['budget','Budget','wallet',vBudget],['epargne','Épargne','piggy',vEpargne],['objectifs','Objectifs','target',vObjectifs],['placements','Placements','trend',vPlacements]];
-const views=Object.fromEntries(TABS.map(t=>[t[0],t[3]]));views.reglages=vReglages;views.activite=vActivite;views.assurances=vAssurances;views.bilans=vBilans;
-const titles={...Object.fromEntries(TABS.map(t=>[t[0],t[1]])),reglages:'Réglages',activite:'Historique',assurances:'Assurances',bilans:'Bilans du mois'};
+const views=Object.fromEntries(TABS.map(t=>[t[0],t[3]]));views.reglages=vReglages;views.activite=vActivite;views.assurances=vAssurances;views.bilans=vBilans;views.patrimoine=vPatrimoine;views.annuel=vAnnuel;
+const titles={...Object.fromEntries(TABS.map(t=>[t[0],t[1]])),reglages:'Réglages',activite:'Historique',assurances:'Assurances',bilans:'Bilans du mois',patrimoine:'Patrimoine',annuel:'Bilan de l’année'};
 function buildNav(){const n=$('#tabs');n.setAttribute('role','tablist');n.innerHTML=TABS.map(([k,l,i])=>`<button role="tab" data-tab="${k}" aria-controls="view" id="tab-${k}">${ic(i,22)}<span>${l}</span>${k==='placements'?'<i class="tab-badge" hidden></i>':''}</button>`).join('')+'<span class="tab-ind" aria-hidden="true"></span>';
   n.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;const b=[...n.querySelectorAll('button')],i=b.indexOf(document.activeElement);if(i<0)return;const j=(i+(e.key==='ArrowRight'?1:-1)+b.length)%b.length;b[j].focus();b[j].click()})}
 function go(t){if(t===tab&&$('#view').childElementCount)return;const order=Object.keys(views),dir=order.indexOf(t)>=order.indexOf(tab)?1:-1;tab=t;animate=true;render(dir);scrollTo({top:0})}
@@ -863,9 +863,9 @@ document.addEventListener('click',e=>{
     inviteBtn:()=>showInvite(),changeCode:changeSpaceCode,editCaps:capsSheet,clearOld:clearOldSpace,disconnect:()=>{cfg={};localStorage.removeItem(CFG);resetSync();lastErr='';render();setSync('Local')},
     expCsv:()=>{const q=v=>{const t=String(v??'');return /[";\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t},R=[['type','date/mois','libellé','catégorie','montant','personne']];
       D.misc.forEach(x=>R.push(['dépense',x.date,x.label||'',x.category||'',String(x.amount).replace('.',','),N(x.payer)]));D.fixed.forEach(f=>R.push(['charge fixe','jour '+(f.day||''),f.label,f.category||'',String(f.amount).replace('.',','),paidName(f.paidBy)]));
-      D.incomes.forEach(i=>R.push(['revenu',i.recurring?'mensuel':i.month,i.label||i.type,i.type,String(i.amount).replace('.',','),N(i.person)]));D.months.forEach(m=>R.push(['épargne',m.month,'','',String((m.a||0)+(m.b||0)).replace('.',','),'']));
+      D.incomes.forEach(i=>R.push(['revenu',i.recurring?'mensuel':i.month,i.label||i.type,i.type,String(i.amount).replace('.',','),N(i.person)]));D.months.forEach(m=>R.push(['épargne',m.month,'','',String((m.a||0)+(m.b||0)).replace('.',','),'']));D.annuals.forEach(a=>R.push(['charge annuelle','mois '+a.month,a.label,a.category||'',String(a.amount).replace('.',','),'']));D.loans.forEach(l=>R.push(['crédit',l.start,l.label,'',String(l.principal).replace('.',','),N(l.owner==='p1'||l.owner==='p2'?l.owner:'common')]));
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+R.map(r=>r.map(q).join(';')).join('\n')],{type:'text/csv'}));a.download='budget-couple.csv';a.click()},
-    exp:()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,2)],{type:'application/json'}));a.download='budget-couple.json';a.click()},
+    exp:backupExport,
     reset:()=>{if(confirm(sbOn()?'Vider le cache de cet appareil et recharger depuis Supabase ?':'Effacer toutes les données de cet appareil ?')){adopt(blank());render();pullRemote()}}
   }[t.id]||(()=>{}))();
 });
@@ -889,7 +889,7 @@ document.addEventListener('change',async e=>{const t=e.target;
   if(t.id==='miscMonth'){D.miscMonth=t.value||curMonth();persist();render()}
   if(t.id==='budgetIn'){D.budget[D.miscMonth||curMonth()]=num(t.value);save()}
   if(t.id==='notifRep'){if(!('Notification' in window))return;if(t.checked){const p=await Notification.requestPermission().catch(()=>'denied');if(p!=='granted'){t.checked=false;toast('Notifications refusées par le navigateur');return}}D.notify={...(D.notify||{}),reports:t.checked};save();toast(t.checked?'Notification activée':'Notification désactivée');return}
-  if(t.id==='imp'){try{adopt(mergeData(D,migrate(JSON.parse(await t.files[0].text()))));render();pushRemote();alert('Sauvegarde fusionnée avec les données actuelles.')}catch{alert('Fichier invalide')}}
+  if(t.id==='imp'){const f=t.files[0];t.value='';try{await backupImport(f)}catch(err){console.error(err);alert('Fichier invalide')}}
 });
 // validation commune : champs numériques positifs
 document.addEventListener('submit',e=>{const bad=[...e.target.querySelectorAll('input[inputmode=decimal]:not([data-signed])')].find(i=>i.value.trim()&&(!/^[\d\s]*[.,]?\d*$/.test(i.value.trim())||isNaN(num(i.value))));
@@ -908,7 +908,7 @@ addEventListener('online',()=>{netBanner();pullRemote()});addEventListener('offl
 persist(); // enregistre la migration locale (sans horodater)
 buildNav();render();netBanner();
 fetch('rates.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j){RATES=j;if(!document.querySelector('#sheet.open'))render()}}).catch(()=>{});
-function tickReports(){const r=ensureReports();if(r){save();reportNotify(r)}}
+function tickReports(){const r=ensureReports();if(r){save();reportNotify(r)}remTick()}
 addEventListener('hashchange',()=>{if(/^#(invite|join)=/.test(location.hash))handleInvite()});
 if(/^#(invite|join)=/.test(location.hash))handleInvite();else Promise.resolve(pullRemote()).finally(()=>setTimeout(tickReports,50));
 if(!me&&!/^#invite=/.test(location.hash))setTimeout(whoSheet,400);

@@ -20,36 +20,36 @@ a.equal(S.canon(S.mergeData(m1,m1)),S.canon(m1));console.log('OK');
  const q=S.irCompute(150000,2,2,P),noCap=S.irCompute(150000,2,0,P);a.ok(noCap.net-q.net<=2*2*1807+1,'quotient familial plafonné');
  a.equal(S.proDeduct(3000,P),509);a.equal(S.proDeduct(30000,P),3000);a.equal(S.proDeduct(200000,P),14555);
  const t=S.taxEstimate({p1:{sal:30000,other:0},p2:{sal:24000,other:0}},{mode:'separe',children:0},P);a.equal(t.sep.total,2265);a.equal(t.com.net,2575);
- const m=S.migrateData({version:6,placements:[]});a.equal(m.version,13);a.deepEqual(m.births,{p1:'',p2:''});a.equal(m.tax.mode,'separe');a.deepEqual(m.dismissed,[]);
+ const m=S.migrateData({version:6,placements:[]});a.equal(m.version,14);a.deepEqual(m.births,{p1:'',p2:''});a.equal(m.tax.mode,'separe');a.deepEqual(m.dismissed,[]);
  const m2=S.migrateData(JSON.parse(JSON.stringify(m)));a.equal(S.canon(m2),S.canon(m));console.log('OK impôt + migration v7')}
 /* v8 : comptes courants, assurances, intérêts, bilans */
 {const a=require('assert'),S=require('../store.js');
  const v7={version:7,names:{p1:'Paul',p2:'Lucie'},ratio:50,fixed:[{id:'f1',label:'Loyer',amount:900,day:5,split:50,paidBy:'joint'},{id:'f2',label:'Mobile',amount:20,day:8,split:100,paidBy:'p1'}],
    incomes:[{id:'i1',person:'p1',type:'salaire',amount:2000,recurring:true},{id:'i2',person:'p2',type:'salaire',amount:1800,recurring:true}],misc:[],months:[],goals:[],placements:[],transfer:{amount:0}};
- const m=S.migrateData(JSON.parse(JSON.stringify(v7)));a.equal(m.version,13);
+ const m=S.migrateData(JSON.parse(JSON.stringify(v7)));a.equal(m.version,14);
  a.deepEqual(m.accounts.map(x=>x.id).sort(),['acc-joint','acc-p1','acc-p2']);a.equal(m.fixed[0].account,'acc-joint');a.equal(m.fixed[1].account,'acc-p1');a.equal(m.incomes[1].account,'acc-p2');
  ['insurances','interests','movements','reports'].forEach(k=>a.deepEqual(m[k],[]));
  // deux appareils migrent indépendamment → données identiques ; la fusion ne duplique rien
  const m2=S.migrateData(JSON.parse(JSON.stringify(v7)));a.equal(S.canon(m),S.canon(m2));const mg=S.mergeData(m,m2);a.equal(mg.accounts.length,3);
  a.equal(S.canon(S.migrateData(JSON.parse(JSON.stringify(m)))),S.canon(m),'migration idempotente');
  // toutes les versions de départ
- for(const v of [undefined,1,2,3,4,5,6,7,8,9,10,11,12]){const d=S.migrateData({version:v,fixed:[{id:'x',label:'A',amount:10,day:3,split:50}],misc:[],goals:[]});a.equal(d.version,13,'depuis v'+v);a.ok(Array.isArray(d.accounts)&&Array.isArray(d.reports)&&Array.isArray(d.imports)&&Array.isArray(d.catrules),'listes v'+v);a.equal(d.fixed.length,1)}
+ for(const v of [undefined,1,2,3,4,5,6,7,8,9,10,11,12,13]){const d=S.migrateData({version:v,fixed:[{id:'x',label:'A',amount:10,day:3,split:50}],misc:[],goals:[]});a.equal(d.version,14,'depuis v'+v);a.ok(Array.isArray(d.accounts)&&Array.isArray(d.reports)&&Array.isArray(d.imports)&&Array.isArray(d.catrules),'listes v'+v);a.equal(d.fixed.length,1)}
  // données vides
- const e=S.migrateData({});a.equal(e.version,13);a.equal(e.accounts.length,0);
+ const e=S.migrateData({});a.equal(e.version,14);a.equal(e.accounts.length,0);
  // pas d'historique pour les bilans automatiques
  const snap=S.snapshot(e);e.reports.push({id:'rep-2026-09',month:'2026-09'});S.stamp(e,snap,1000,'p1');a.equal(e.history.length,0);
  console.log('OK migration v8 (toutes versions, 2 appareils)')}
 {const m=S.migrateData({version:9,placements:[{id:'a',type:'av'},{id:'l',type:'livretA'}],insurances:[{id:'s',type:'sante'},{id:'h',type:'habitation',label:'Habitation maison propriétaire'}]});
- a.equal(m.version,13);a.equal(m.placements[0].contract,null);a.ok(!('contract' in m.placements[1]));a.equal(m.insurances[0].persons,1);a.equal(m.insurances[1].profile,'proprietaire');console.log('migration v9→v10 OK')}
+ a.equal(m.version,14);a.equal(m.placements[0].contract,null);a.ok(!('contract' in m.placements[1]));a.equal(m.insurances[0].persons,1);a.equal(m.insurances[1].profile,'proprietaire');console.log('migration v9→v10 OK')}
 {const g={id:'g',owner:'common',target:1000,name:'X'},m=S.migrateData({version:10,goals:[g,{id:'h',owner:'p1',target:5}],months:[{id:'m',month:'2026-01',a:10,b:5}]});
- a.equal(m.version,13);a.strictEqual(m.goals[0].split,null);a.equal(m.goals[0].target,1000);a.equal(m.months[0].a,10);console.log('migration v10→v11 OK')}
+ a.equal(m.version,14);a.strictEqual(m.goals[0].split,null);a.equal(m.goals[0].target,1000);a.equal(m.months[0].a,10);console.log('migration v10→v11 OK')}
 {const src={version:11,misc:[{id:'x',date:'2026-10-01',label:'A',amount:5,paidBy:'p1',payer:'common',for:'common'}],settlements:[{id:'s',month:'2026-09',from:'p2',to:'p1',amount:12}]},m=S.migrateData(JSON.parse(JSON.stringify(src)));
- a.equal(m.version,13);a.deepEqual(m.debts,[]);a.deepEqual(m.misc[0],src.misc[0]);a.deepEqual(m.settlements[0],src.settlements[0]);
+ a.equal(m.version,14);a.deepEqual(m.debts,[]);a.deepEqual(m.misc[0],src.misc[0]);a.deepEqual(m.settlements[0],src.settlements[0]);
  const k=S.migrateData({version:11,debts:[{id:'d',from:'p1',to:'p2',amount:3}]});a.equal(k.debts.length,1);console.log('migration v11→v12 OK')}
 
 /* v13 : plafonds par catégorie (additif) et aucune donnée personnelle par défaut */
 {const src={version:12,names:{p1:'Alice',p2:'Bruno'},births:{p1:'1990-01-02',p2:''},misc:[{id:'x',date:'2026-10-01',label:'A',amount:5,paidBy:'p1',for:'common',category:'courses'}],budget:{'2026-10':300}};
- const m=S.migrateData(JSON.parse(JSON.stringify(src)));a.equal(m.version,13);a.deepEqual(m.catBudget,{});a.deepEqual(m.names,src.names);a.deepEqual(m.births,src.births);a.equal(m.budget['2026-10'],300);a.equal(m.misc[0].amount,5);
+ const m=S.migrateData(JSON.parse(JSON.stringify(src)));a.equal(m.version,14);a.deepEqual(m.catBudget,{});a.deepEqual(m.names,src.names);a.deepEqual(m.births,src.births);a.equal(m.budget['2026-10'],300);a.equal(m.misc[0].amount,5);
  const k=S.migrateData({version:12,catBudget:{courses:250}});a.deepEqual(k.catBudget,{courses:250});
  const b=S.blankData();a.deepEqual(b.names,{p1:'Personne 1',p2:'Personne 2'});a.deepEqual(b.births,{p1:'',p2:''});
  a.ok(!/Emilien|Julie|2000-06|2002-03/.test(JSON.stringify(b)),'aucune donnée personnelle par défaut');console.log('migration v12→v13 + blankData OK')}
@@ -62,3 +62,10 @@ a.equal(S.canon(S.mergeData(m1,m1)),S.canon(m1));console.log('OK');
  // une vraie modification récente garde la priorité
  const edited=JSON.parse(JSON.stringify(blank));edited.names={p1:'Alice',p2:'Chloé'};edited.su={names:5};a.equal(S.mergeData(remote,edited).names.p2,'Chloé');a.equal(S.mergeData(edited,remote).names.p2,'Chloé');
  console.log('fusion appareil vierge OK')}
+{const S=require('../store.js'),a=require('assert');
+ for(const v of [12,13]){const src={version:v,names:{p1:'Emilien',p2:'Julie'},goals:[{id:'g1',name:'Voyage',target:2000,u:1}],fixed:[{id:'f1',label:'Loyer',amount:800}],catBudget:{courses:300},loans:'bad'};
+  const m=S.migrateData(JSON.parse(JSON.stringify(src)));a.equal(m.version,14);a.equal(m.goals[0].name,"Voyage");a.equal(m.goals[0].target,2000);a.equal(m.fixed[0].amount,800);a.deepEqual(m.catBudget,src.catBudget);a.deepEqual(m.names,src.names);
+  ['annuals','loans','networth','subsoff'].forEach(k=>a.deepEqual(m[k],[]))}
+ const A=S.migrateData({version:14,annuals:[{id:'an1',label:'Taxe foncière',amount:900,u:5}]}),B=S.migrateData({version:13,goals:[{id:'g',u:2}]});
+ const r=S.mergeData(A,B);a.equal(r.annuals.length,1);a.equal(r.goals.length,1);
+ const r2=S.mergeData(B,A);a.equal(r2.annuals.length,1);console.log('migration v12/v13→v14 + fusion OK')}

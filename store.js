@@ -1,13 +1,13 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=13;
-const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules','debts'];
+const DATA_VERSION=14;
+const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules','debts','annuals','loans','networth','subsoff'];
 const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify','catBudget'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
 /* v13 : aucune donnée personnelle par défaut (nouveaux espaces vides) */
 const NAMES0={p1:'Personne 1',p2:'Personne 2'},BIRTHS={p1:'',p2:''},TAX0={mode:'separe',children:0,childOf:'p1'};
-const blankData=()=>({debts:[],imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{...NAMES0},catBudget:{},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
+const blankData=()=>({debts:[],annuals:[],loans:[],networth:[],subsoff:[],imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{...NAMES0},catBudget:{},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
@@ -56,7 +56,8 @@ const MIGRATIONS={
   /* v12 : dettes entre nous — nouvelle liste vide, rien d'existant n'est modifié */
   12:d=>{if(!Array.isArray(d.debts))d.debts=[];return d},
   /* v13 : plafond optionnel par catégorie de dépenses diverses ({categorie: montant}) — additif */
-  13:d=>{if(!d.catBudget||typeof d.catBudget!=='object'||Array.isArray(d.catBudget))d.catBudget={};return d}
+  13:d=>{if(!d.catBudget||typeof d.catBudget!=='object'||Array.isArray(d.catBudget))d.catBudget={};return d},
+  14:d=>{['annuals','loans','networth','subsoff'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});return d}
 };
 function migrateData(raw){
   let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;
@@ -74,7 +75,7 @@ function isinValid(raw){const s=String(raw||'').toUpperCase().replace(/\s/g,'');
   return (10-sum%10)%10===+digits[digits.length-1]}
 /* Signature d'un élément (sans métadonnées) pour détecter les modifications */
 const META=new Set(['u','by','fu','c']);
-const QUIET=new Set(['reports','notify','catrules']); // générés automatiquement / propres à l'appareil : pas d'historique
+const QUIET=new Set(['reports','notify','catrules','networth']); // générés automatiquement / propres à l'appareil : pas d'historique
 const sig=x=>{const {u,by,fu,...r}=x;return JSON.stringify(r)};
 const itemLabel=(l,x)=>l==='dismissed'?(x.title||'Conseil'):l==='interests'?`Intérêts ${x.year}`:l==='movements'?(x.label||'Mouvement'):l==='imports'?`Relevé ${x.file||''}`.trim():x.label||x.name||(x.month?x.month:'')||(l==='settlements'?'Règlement':'')||'élément';
 function snapshot(d){const s={};LISTS.forEach(l=>d[l].forEach(x=>s[l+'\u0001'+x.id]={sig:sig(x),label:itemLabel(l,x),obj:JSON.parse(JSON.stringify(x))}));SCAL.forEach(k=>s['$'+k]={sig:JSON.stringify(d[k])});
