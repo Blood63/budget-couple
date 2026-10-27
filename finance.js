@@ -303,4 +303,22 @@ function fiveYearProjection(streams,opts={}){const months=opts.months||60,base=(
     return{flow:R2(eff),requested:R2(flow||0),series,end:series[series.length-1]}};
   const sc=savingsScenarios(opts.monthsData||[]);
   return{initial,programmed,scenarios:sc,cashRate,prudent:run(opts.prudent!=null?opts.prudent:sc.prudent),realistic:run(opts.realistic!=null?opts.realistic:sc.realistic)}}
-if(typeof module!=='undefined')module.exports={localIso,localMonth,safeToSpend,categoryCaps,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+
+/* Effort mensuel par personne pour atteindre chaque objectif à sa date.
+   items : [{id,date:'AAAA-MM'|'',share:{p1,p2},paid:{p1,p2}}] ; cm : mois courant 'AAAA-MM'.
+   mois restants = mois de l'échéance − mois courant (au moins 1 : le mois de l'échéance compte).
+   mensuel = arrondi au centime SUPÉRIEUR de (part − déjà épargné) ÷ mois restants (calcul direct, sans boucle). */
+function goalMonthlyNeeds(items,cm){
+  const c=v=>Math.round((+v||0)*100),tot={p1:0,p2:0},late=[],nodate=[];
+  const goals=(items||[]).map(g=>{const d=/^\d{4}-\d{2}/.test(g.date||'')?g.date.slice(0,7):'';
+    let mo=0;if(d){const[y1,m1]=cm.split('-').map(Number),[y2,m2]=d.split('-').map(Number);mo=(y2-y1)*12+m2-m1}
+    const per={};['p1','p2'].forEach(k=>{const rest=Math.max(0,c(g.share&&g.share[k])-c(g.paid&&g.paid[k]));
+      let status,monthly=null;
+      if(!rest)status='done',monthly=0;else if(!d)status='nodate';else if(mo<0)status='late';
+      else{status='ok';monthly=Math.ceil(rest/Math.max(1,mo))/100;tot[k]+=Math.round(monthly*100)}
+      per[k]={rest:rest/100,monthly,status}});
+    const st=Object.values(per).map(x=>x.status);
+    if(st.includes('late'))late.push(g.id);if(st.includes('nodate'))nodate.push(g.id);
+    return{id:g.id,months:d?Math.max(1,mo):null,overdue:!!d&&mo<0,per}});
+  return{goals,total:{p1:tot.p1/100,p2:tot.p2/100},late,nodate}}
+if(typeof module!=='undefined')module.exports={goalMonthlyNeeds,localIso,localMonth,safeToSpend,categoryCaps,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

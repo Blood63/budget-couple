@@ -101,3 +101,18 @@ console.log('OK finance');
  a.equal(F.categoryCaps(misc,'2026-10',{courses:150},10,31)[0].status,'risk','projection 310 > 150');
  a.equal(F.categoryCaps(misc,'2026-10',{courses:120},31,31)[0].status,'near');
  a.deepEqual(F.categoryCaps(misc,'2026-10',undefined,1,31),[]);console.log('plafonds par catégorie OK')}
+{const F=require('../finance.js'),a=require('assert');
+ const r=F.goalMonthlyNeeds([
+  {id:'g1',date:'2027-04',share:{p1:600,p2:400},paid:{p1:100,p2:0}}, // 6 mois
+  {id:'g2',date:'2026-10',share:{p1:100,p2:0},paid:{p1:0,p2:0}},     // échéance ce mois → 1 mois
+  {id:'g3',date:'2026-08',share:{p1:50,p2:50},paid:{p1:50,p2:10}},   // dépassé côté p2, atteint p1
+  {id:'g4',date:'',share:{p1:0,p2:300},paid:{p1:0,p2:0}},            // sans date
+  {id:'g5',date:'2027-01',share:{p1:100,p2:0},paid:{p1:0,p2:0}}],'2026-10'); // 100/3
+ a.deepStrictEqual(r.goals[0].per.p1,{rest:500,monthly:83.34,status:'ok'});a.strictEqual(r.goals[0].per.p2.monthly,66.67);
+ a.strictEqual(r.goals[1].per.p1.monthly,100);a.strictEqual(r.goals[1].per.p2.status,'done');
+ a.strictEqual(r.goals[2].per.p1.status,'done');a.strictEqual(r.goals[2].per.p2.status,'late');a.ok(r.goals[2].overdue);
+ a.strictEqual(r.goals[3].per.p2.status,'nodate');a.strictEqual(r.goals[4].per.p1.monthly,33.34);
+ a.deepStrictEqual(r.total,{p1:216.68,p2:66.67});a.deepStrictEqual(r.late,['g3']);a.deepStrictEqual(r.nodate,['g4']);
+ a.ok(r.goals[4].per.p1.monthly*3>=100);
+ a.deepStrictEqual(F.goalMonthlyNeeds([],'2026-10').total,{p1:0,p2:0});
+ console.log('effort mensuel objectifs OK')}
