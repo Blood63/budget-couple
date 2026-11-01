@@ -62,4 +62,15 @@ a.deepStrictEqual(PL.scal,['reminderDay']);a.deepStrictEqual(PL.budget,['2026-01
 let out=P.applyRestore(cur,bak,PL,false);a.deepStrictEqual(out.goals.map(g=>g.name),['Actuel','Nouveau']);a.strictEqual(out.names.p1,'Alice');a.strictEqual(out.ratio,60);a.strictEqual(out.reminderDay,3);a.strictEqual(out.deleted.g3,9);
 out=P.applyRestore(cur,bak,PL,true);a.ok(out.goals.some(g=>g.id==='g3')&&!out.deleted.g3);a.strictEqual(cur.goals.length,1,'entrée non modifiée');
 a.ok(P.backupBody({a:1,miscMonth:'x'})==='{"a":1}');
+/* v16 : échéance annuelle en retard (since) — plus de bascule silencieuse */
+{const A={amount:480,month:3,since:'2026-01',saved:480};
+ let p=P.annualPlan(A,'2026-03');a.strictEqual(p.due,'2026-03');a.ok(!p.late);a.ok(p.ready&&p.funded);
+ p=P.annualPlan(A,'2026-04');a.strictEqual(p.due,'2026-03','reste sur l’échéance non payée');a.ok(p.late);a.strictEqual(p.lateMonths,1);a.ok(!p.ready,'jamais « prête » si en retard');a.ok(p.funded);
+ p=P.annualPlan({...A,saved:100},'2026-11');a.strictEqual(p.lateMonths,8);a.strictEqual(p.monthly,380,'reste à payer d’un coup');a.strictEqual(p.months,1);
+ p=P.annualPlan({...A,paidYear:2026},'2026-11');a.strictEqual(p.due,'2027-03');a.ok(!p.late,'marquée payée → année suivante');
+ a.strictEqual(P.annualPlan({...A,since:'2026-11'},'2026-12').due,'2027-03','créée après l’échéance : prochaine année, pas de retard');
+ a.ok(!P.annualPlan({amount:480,month:3},'2026-11').late,'sans since : ancien comportement (jamais en retard)');a.strictEqual(P.annualNext({month:3},'2026-11'),'2027-03');
+ a.strictEqual(P.annualNext({month:12,since:'2026-12'},'2027-03'),'2026-12');a.ok(P.annualPlan({amount:10,month:12,since:'2026-12'},'2027-03').late);
+ a.deepEqual(P.annualLate([A,{amount:5,month:12,since:'2026-01'},{...A,paidYear:2026}],'2026-11').map(x=>x.p.due),['2026-03']);
+ a.strictEqual(P.annualTotals([{...A,saved:0}],'2026-11').monthly,480);P.annualPlan({amount:NaN,month:'x',since:'zz'},'2026-11')}
 console.log('plan v15 OK')

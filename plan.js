@@ -8,10 +8,13 @@ const ownKey=o=>o==='p1'||o==='p2'?o:'common';
 /* 1) Charges annuelles lissées. a = {amount, month (1–12), saved (déjà provisionné), paidYear (dernière année payée), split (% personne 1)}
    Prochaine échéance : ce mois-ci ou plus tard dans l'année, sinon l'an prochain ; une échéance marquée payée passe à l'année suivante.
    Mois de provision = mois restants avant l'échéance (au moins 1) ; mensuel = (montant − provisionné) ÷ mois, arrondi au centime supérieur. */
-function annualNext(a,cm){const[y,m]=cm.split('-').map(Number),mo=Math.min(12,Math.max(1,Math.round(+a.month||1)));let Y=mo>=m?y:y+1;if(+a.paidYear>=Y)Y=+a.paidYear+1;return `${Y}-${String(mo).padStart(2,'0')}`}
-function annualPlan(a,cm){const amt=_c(a.amount),saved=Math.max(0,_c(a.saved)),due=annualNext(a,cm),months=Math.max(1,ymDiff(cm,due)),rest=Math.max(0,amt-saved);
+function annualNext(a,cm){const mo=Math.min(12,Math.max(1,Math.round(+a.month||1))),base=/^\d{4}-(0[1-9]|1[0-2])/.test(a.since||'')?a.since.slice(0,7):cm,[by,bm]=base.split('-').map(Number);let Y=mo>=bm?by:by+1;if(+a.paidYear>=Y)Y=+a.paidYear+1;return `${Y}-${String(mo).padStart(2,'0')}`}
+/* 'since' (AAAA-MM, mois de suivi) : sans lui, l'échéance est la prochaine à partir de cm (ancien comportement, jamais en retard). Avec lui, une échéance passée et non marquée payée reste « en retard ». */
+function annualPlan(a,cm){const amt=_c(a.amount),saved=Math.max(0,_c(a.saved)),due=annualNext(a,cm),inM=ymDiff(cm,due),late=inM<0,months=Math.max(1,inM),rest=Math.max(0,amt-saved);
   const monthly=rest?Math.ceil(rest/months)/100:0,sp=Math.min(100,Math.max(0,a.split==null?50:+a.split)),p1=Math.round(monthly*sp)/100;
-  return{due,months,inMonths:ymDiff(cm,due),amount:amt/100,saved:saved/100,rest:rest/100,monthly,smoothed:Math.ceil(amt/12)/100,ready:!rest,pct:amt?Math.min(100,saved/amt*100):100,per:{p1,p2:_r2(monthly-p1)}}}
+  return{due,months,inMonths:inM,late,lateMonths:late?-inM:0,amount:amt/100,saved:saved/100,rest:rest/100,monthly,smoothed:Math.ceil(amt/12)/100,funded:!rest,ready:!rest&&!late,pct:amt?Math.min(100,saved/amt*100):100,per:{p1,p2:_r2(monthly-p1)}}}
+/* échéances passées non marquées payées */
+function annualLate(list,cm){return(list||[]).map(a=>({a,p:annualPlan(a,cm)})).filter(x=>x.p.late).sort((x,y)=>x.p.due.localeCompare(y.p.due))}
 function annualTotals(list,cm){const t={monthly:0,p1:0,p2:0,smoothed:0,year:0};(list||[]).forEach(a=>{const p=annualPlan(a,cm);t.monthly+=_c(p.monthly);t.p1+=_c(p.per.p1);t.p2+=_c(p.per.p2);t.smoothed+=_c(p.smoothed);t.year+=_c(p.amount)});
   Object.keys(t).forEach(k=>t[k]/=100);return t}
 /* 2) Épargne de précaution : mois de dépenses couverts par l'épargne disponible (livrets). Repère usuel : 3 à 6 mois. */
@@ -76,4 +79,4 @@ function applyRestore(cur,bak,P,withDeleted){const r=JSON.parse(JSON.stringify(c
   const take=e=>{const x=B.get(e.list+'\u0001'+e.id);if(!x||(r[e.list]||[]).some(y=>y.id===e.id))return;const {u,by,fu,...o}=JSON.parse(JSON.stringify(x));(r[e.list]=r[e.list]||[]).push(o)};
   P.add.forEach(take);if(withDeleted)P.deleted.forEach(e=>{delete r.deleted[e.id];take(e)});
   P.scal.forEach(k=>r[k]=JSON.parse(JSON.stringify(bak[k])));P.budget.forEach(m=>{r.budget[m]=bak.budget[m]});return r}
-if(typeof module!=='undefined')module.exports={ymAdd,ymDiff,annualNext,annualPlan,annualTotals,precaution,loanPayment,loanSchedule,loanRemaining,loanStatus,loanYears,netWorth,detectSubs,subKey,yearReport,backupBody,countsOf,restorePlan,applyRestore,BACKUP_FMT};
+if(typeof module!=='undefined')module.exports={ymAdd,ymDiff,annualNext,annualPlan,annualLate,annualTotals,precaution,loanPayment,loanSchedule,loanRemaining,loanStatus,loanYears,netWorth,detectSubs,subKey,yearReport,backupBody,countsOf,restorePlan,applyRestore,BACKUP_FMT};

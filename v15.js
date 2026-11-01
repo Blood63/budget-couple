@@ -10,10 +10,13 @@ const annIn=a=>({...a,split:splitOf(a)});
 function annualCard(){const cm=curMonth(),L=D.annuals.map(a=>({a,p:annualPlan(annIn(a),cm)})).sort((x,y)=>x.p.due.localeCompare(y.p.due)),T=annualTotals(D.annuals.map(annIn),cm);
   return `<section id="sec-annuels" class="v15" aria-labelledby="h-ann"><div class="sec"><h2 id="h-ann" tabindex="-1">Charges annuelles lissées</h2>${addBtn('addAnnual')}</div>
   ${L.length?`<div class="card"><small class="mut">À provisionner ce mois-ci</small><div class="big num">${eur(T.monthly)}</div><small class="mut">${esc(N('p1'))} ${eur(T.p1)} · ${esc(N('p2'))} ${eur(T.p2)} · ${eur(T.year)} par an, soit ${eur(T.smoothed)}/mois si lissé sur 12 mois</small></div>`:''}
-  <div class="list">${L.map(({a,p})=>`<div class="item col ann" data-id="${a.id}"><button class="plain row-b" data-ann-edit="${a.id}" aria-label="Modifier ${esc(a.label)}"><span class="grow"><b>${esc(a.label)}</b><small>Échéance ${monthLabel(p.due)} · ${eur(p.amount)}</small></span><span class="r">${money(p.monthly)}<small class="mut">${p.ready?'prête':'/mois · '+p.months+' mois'}</small></span></button>
-    ${bar(p.pct,p.ready?'done':'')}<small class="mut">Provisionné ${eur(p.saved)} sur ${eur(p.amount)}${p.ready?'':` · ${esc(N('p1'))} ${eur(p.per.p1)} / ${esc(N('p2'))} ${eur(p.per.p2)} par mois`}</small>
-    <div class="row-act"><button class="btn ghost small" data-ann-save="${a.id}" ${p.ready?'disabled':''}>${ic('plus',14)} Provision du mois</button><button class="btn ghost small" data-ann-paid="${a.id}">Marquer payée</button></div></div>`).join('')||empty('calendar','Taxe foncière, assurance auto, cadeaux de Noël… ajoutez vos dépenses annuelles pour les lisser sur l’année.')}</div></section>`}
-function annualSheet(id){const a=D.annuals.find(x=>x.id===id)||{month:+curMonth().slice(5,7),split:D.ratio,saved:0};
+  <div class="list">${L.map(({a,p})=>`<div class="item col ann${p.late?' ann-late':''}" data-id="${a.id}"><button class="plain row-b" data-ann-edit="${a.id}" aria-label="Modifier ${esc(a.label)}"><span class="grow"><b>${esc(a.label)}</b><small>Échéance ${monthLabel(p.due)} · ${eur(p.amount)}${p.late?` · <span class="neg late-t">${ic('alert',12)} en retard de ${p.lateMonths} mois</span>`:''}</small></span><span class="r">${p.late?`<b class="num">${eur(p.rest)}</b><small class="mut">${p.funded?'provision complète':'reste à payer'}</small>`:`${money(p.monthly)}<small class="mut">${p.ready?'prête':'/mois · '+p.months+' mois'}</small>`}</span></button>
+    ${bar(p.pct,p.ready?'done':'')}<small class="mut">Provisionné ${eur(p.saved)} sur ${eur(p.amount)}${p.ready||p.late?'':` · ${esc(N('p1'))} ${eur(p.per.p1)} / ${esc(N('p2'))} ${eur(p.per.p2)} par mois`}</small>
+    <div class="row-act"><button class="btn ghost small" data-ann-save="${a.id}" ${p.funded?'disabled':''}>${ic('plus',14)} Provision du mois</button><button class="btn ${p.late?'':'ghost '}small" data-ann-paid="${a.id}">${ic('check',14)} Marquer payée</button></div></div>`).join('')||empty('calendar','Taxe foncière, assurance auto, cadeaux de Noël… ajoutez vos dépenses annuelles pour les lisser sur l’année.')}</div></section>`}
+/* Alerte Accueil : échéances annuelles passées et non marquées payées (indépendante des rappels) */
+function annualLateCard(){const L=annualLate(D.annuals.map(annIn),curMonth());if(!L.length)return'';
+  return `<div class="card v15 late-card" id="annLate" role="group" aria-label="Échéances annuelles en retard"><h2>${ic('alert',18)} ${L.length>1?L.length+' échéances annuelles en retard':'Échéance annuelle en retard'}</h2><ul class="bal-l">${L.slice(0,3).map(({a,p})=>`<li><span>${esc(a.label)} · ${monthLabel(p.due)} · ${eur(p.amount)}</span><button class="link" data-goto="budget" data-seg-to="fixes">Marquer payée</button></li>`).join('')}</ul>${L.length>3?`<p class="mut">+ ${L.length-3} autre${L.length>4?'s':''}</p>`:''}<p class="mut">Marquez-les payées pour passer à l’échéance suivante.</p></div>`}
+function annualSheet(id){const a=D.annuals.find(x=>x.id===id)||{month:+curMonth().slice(5,7),split:D.ratio,saved:0};const yr=new Date().getFullYear();
   openSheet(id?'Modifier la charge annuelle':'Nouvelle charge annuelle',`<form id="fAnnual">
    <label>Libellé<input name="label" value="${esc(a.label||'')}" placeholder="ex. Taxe foncière" required></label>
    <div class="f2"><label>Montant annuel (€)<input name="amount" inputmode="decimal" value="${a.amount??''}" required></label>
@@ -21,11 +24,12 @@ function annualSheet(id){const a=D.annuals.find(x=>x.id===id)||{month:+curMonth(
    <div class="f2"><label>Part de ${esc(N('p1'))} (%)<input name="split" type="number" min="0" max="100" step="5" value="${splitOf(a)}"></label>
    <label>Déjà provisionné (€)<input name="saved" inputmode="decimal" value="${a.saved||''}" placeholder="0"></label></div>
    <label>Catégorie<select name="category">${catOpts('fixed',a.category||'autre')}</select></label>
+   ${id?`<label>Dernière année payée (facultatif)<input name="paidYear" type="number" inputmode="numeric" min="2000" max="${yr+1}" value="${a.paidYear||''}" placeholder="ex. ${yr}"></label>`:''}
    <p class="mut">Le montant à mettre de côté chaque mois = reste à provisionner ÷ mois restants avant l’échéance. ${esc(N('p2'))} prend en charge le reste du pourcentage.</p>
    <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="annuals|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>{
    $('#fAnnual').addEventListener('submit',e=>{e.preventDefault();const v=fd(e.target),amt=r2(num(v.amount));if(!v.label.trim()||!(amt>0))return toast('Indiquez un libellé et un montant');
     const o={label:v.label.trim(),amount:amt,month:Math.min(12,Math.max(1,parseInt(v.month)||1)),split:Math.max(0,Math.min(100,parseInt(v.split)||0)),saved:r2(Math.max(0,num(v.saved))),category:v.category};
-    if(id)Object.assign(D.annuals.find(x=>x.id===id),o);else D.annuals.push({id:uid(),...o});closeSheet();save();toast('Charge annuelle enregistrée')})})}
+    if(id){const ex=D.annuals.find(x=>x.id===id),py=parseInt(v.paidYear);if(py>=2000&&py<=yr+1)o.paidYear=py;else if(!String(v.paidYear||'').trim())delete ex.paidYear;Object.assign(ex,o);if(!ex.since)ex.since=curMonth()}else D.annuals.push({id:uid(),since:curMonth(),...o});closeSheet();save();toast('Charge annuelle enregistrée')})})}
 /* ---------- 2) Épargne de précaution (Épargne) ---------- */
 function precauData(){const fixed=D.fixed.reduce((s,f)=>s+(+f.amount||0),0),am=avgMisc(3),liv=D.placements.filter(p=>LIVRETS.includes(p.type));
   return{...precaution(liv.reduce((s,p)=>s+placValue(p),0),fixed+am.avg),fixed,misc:am.avg,miscMonths:am.months,count:liv.length}}
@@ -46,6 +50,9 @@ let nwPending=false;
 function nwSnapshot(W){const m=curMonth(),id='nw-'+m,v={month:m,p1:W.net.p1,p2:W.net.p2,common:W.net.common,total:W.net.total,assets:W.assets.total,debts:W.debts.total},x=D.networth.find(n=>n.id===id);
   if(!W.assets.total&&!W.debts.total&&!x)return;if(x&&['p1','p2','common','total','assets','debts'].every(k=>x[k]===v[k]))return;
   if(nwPending)return;nwPending=true;setTimeout(()=>{nwPending=false;const y=D.networth.find(n=>n.id===id);if(y)Object.assign(y,v);else D.networth.push({id,...v});save()},0)}
+/* Snapshot mensuel automatique : crée le point du mois s'il n'existe pas (id nw-AAAA-MM → jamais de doublon entre appareils ; ne réécrit jamais un point existant, donc pas de ping-pong de synchro) */
+function nwAuto(){const m=curMonth(),id='nw-'+m;if(D.networth.some(n=>n.id===id))return false;const {W}=nwNow();if(!W.assets.total&&!W.debts.total)return false;
+  D.networth.push({id,month:m,p1:W.net.p1,p2:W.net.p2,common:W.net.common,total:W.net.total,assets:W.assets.total,debts:W.debts.total});return true}
 function nwLinkCard(){const {W}=nwNow();if(!D.loans.length&&!W.assets.total)return'';
   return `<button class="card item v15 nwlink" data-goto="patrimoine"><span class="grow"><small class="mut">Patrimoine net (actifs − crédits)</small><b class="num">${eur(W.net.total)}</b><small class="mut">${D.loans.length?`${D.loans.length} crédit${D.loans.length>1?'s':''} · `:''}détail et évolution</small></span>${ic('chev',16)}</button>`}
 function vPatrimoine(){const {assets,debts,W}=nwNow(),cm=curMonth();nwSnapshot(W);
@@ -151,10 +158,10 @@ function dueReminders(){const P=remPrefs(),cm=curMonth(),day=new Date().getDate(
   if(T.saving&&(D.goals.length||D.months.length)&&day>=(+D.reminderDay||1)&&!D.months.some(m=>m.month===cm&&(m.a||m.b)))R.push({key:'saving-'+cm,title:`Épargne de ${monthLabel(cm)} à saisir`,goto:'epargne'});
   if(T.valuations&&typeof dueValuations==='function'){const n=dueValuations().length;if(n)R.push({key:'val-'+cm,title:`${n} valorisation${n>1?'s':''} à mettre à jour`,goto:'placements'})}
   if(T.goals){const C=compute();D.goals.forEach(g=>{if(!g.date||!g.target)return;const k=ymDiff(cm,g.date.slice(0,7));if(k>=0&&k<=2&&(C.saved[g.id]||0)<g.target)R.push({key:'goal-'+g.id+'-'+cm,title:`Objectif « ${g.name} » : échéance ${monthLabel(g.date.slice(0,7))}, ${eur(g.target-(C.saved[g.id]||0))} restants`,goto:'objectifs'})})}
-  if(T.annuals)D.annuals.forEach(a=>{const p=annualPlan(annIn(a),cm);if(p.inMonths<=1&&!(+a.paidYear>=+p.due.slice(0,4)))R.push({key:'ann-'+a.id+'-'+p.due,title:`${a.label} : ${eur(p.amount)} en ${monthLabel(p.due)}${p.ready?'':` (provision ${eur(p.saved)})`}`,goto:'budget',seg:'fixes'})});
+  if(T.annuals)D.annuals.forEach(a=>{const p=annualPlan(annIn(a),cm);if(p.late)R.push({key:'annlate-'+a.id+'-'+cm,late:true,title:`${a.label} : échéance de ${monthLabel(p.due)} non marquée payée (${eur(p.amount)})`,goto:'budget',seg:'fixes'});else if(p.inMonths<=1&&!(+a.paidYear>=+p.due.slice(0,4)))R.push({key:'ann-'+a.id+'-'+p.due,title:`${a.label} : ${eur(p.amount)} en ${monthLabel(p.due)}${p.ready?'':` (provision ${eur(p.saved)})`}`,goto:'budget',seg:'fixes'})});
   if(T.loans)D.loans.forEach(l=>{const s=loanStatus(l,cm);if(!s.error&&s.left>0&&s.left<=3)R.push({key:'loan-'+l.id+'-'+cm,title:`Crédit « ${l.label} » : dernière échéance en ${monthLabel(s.end)}`,goto:'patrimoine'})});
   return R}
-function reminderCard(){if(!remPrefs().on)return'';const R=dueReminders();if(!R.length)return'';
+function reminderCard(){if(!remPrefs().on)return'';const R=dueReminders().filter(r=>!r.late);if(!R.length)return'';
   return `<div class="card v15 remind-card" id="remCard"><h2>${ic('calendar',18)} Rappels</h2><ul class="bal-l">${R.slice(0,4).map(r=>`<li><span>${esc(r.title)}</span><button class="link" data-goto="${r.goto}" ${r.seg?`data-seg-to="${r.seg}"`:''}>Voir</button></li>`).join('')}</ul>${R.length>4?`<p class="mut">+ ${R.length-4} autre${R.length>5?'s':''}</p>`:''}</div>`}
 function remTick(){const P=remPrefs();if(!P.on||!P.notif||!('Notification' in window)||Notification.permission!=='granted')return;let seen={};try{seen=JSON.parse(localStorage.getItem('budget-couple-rem-seen')||'{}')}catch{}
   const t=todayIso(),fresh=dueReminders().filter(r=>!seen[r.key]);Object.keys(seen).forEach(k=>{if(seen[k]<t.slice(0,7))delete seen[k]});if(!fresh.length)return;
@@ -171,7 +178,7 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-ann-edit],
   if(t.id==='addAnnual')return annualSheet();if(t.id==='addLoan')return loanSheet();if(d.annEdit)return annualSheet(d.annEdit);
   if(d.annSave){const a=D.annuals.find(x=>x.id===d.annSave);if(!a)return;const p=annualPlan(annIn(a),curMonth());a.saved=r2((+a.saved||0)+p.monthly);save();return toast(`${eur(p.monthly)} provisionnés pour ${a.label}`)}
   if(d.annPaid){const a=D.annuals.find(x=>x.id===d.annPaid);if(!a)return;const p=annualPlan(annIn(a),curMonth());if(!confirm(`Marquer « ${a.label} » de ${monthLabel(p.due)} comme payée ? La provision repart pour l’échéance suivante.`))return;
-    a.paidYear=+p.due.slice(0,4);a.saved=r2(Math.max(0,(+a.saved||0)-p.amount));save();return toast('Échéance payée : provision remise à zéro')}
+    a.paidYear=+p.due.slice(0,4);a.saved=r2(Math.max(0,(+a.saved||0)-p.amount));save();const n=annualPlan(annIn(a),curMonth());return toast(n.late?`Échéance payée : encore en retard pour ${monthLabel(n.due)}`:`Échéance payée : prochaine en ${monthLabel(n.due)}`)}
   if(d.loan)return loanDetail(d.loan);if(d.loanEdit){closeSheet();return setTimeout(()=>loanSheet(d.loanEdit),0)}
   if(d.subOff||d.subOn||d.subFix)subsOpen=true;
   if(d.subOff){if(!D.subsoff.some(x=>x.key===d.subOff))D.subsoff.push({id:'so-'+d.subOff.replace(/[^a-z0-9]+/gi,'-').slice(0,40)+'-'+uid().slice(0,4),key:d.subOff});save();return toast('Abonnement ignoré')}

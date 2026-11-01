@@ -1,6 +1,6 @@
 'use strict';
 /* Budget Couple — modèle de données, migrations et fusion (fonctions pures, testables). */
-const DATA_VERSION=14;
+const DATA_VERSION=15;
 const LISTS=['months','goals','fixed','misc','placements','incomes','settlements','positions','valuations','dismissed','accounts','insurances','interests','movements','reports','imports','catrules','debts','annuals','loans','networth','subsoff'];
 const SCAL=['names','ratio','transfer','reminderDay','births','tax','notify','catBudget'];
 const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Transport'],['assurance','Assurances'],['abonnement','Abonnements'],['credit','Crédit'],['sante','Santé'],['autre','Autre']];
@@ -57,7 +57,9 @@ const MIGRATIONS={
   12:d=>{if(!Array.isArray(d.debts))d.debts=[];return d},
   /* v13 : plafond optionnel par catégorie de dépenses diverses ({categorie: montant}) — additif */
   13:d=>{if(!d.catBudget||typeof d.catBudget!=='object'||Array.isArray(d.catBudget))d.catBudget={};return d},
-  14:d=>{['annuals','loans','networth','subsoff'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});return d}
+  14:d=>{['annuals','loans','networth','subsoff'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});return d},
+  /* v15 : mois de suivi des charges annuelles (permet l'état « en retard ») — additif, jamais d'écrasement */
+  15:d=>{const t=new Date(),m=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');(d.annuals||[]).forEach(a=>{if(a&&!a.since)a.since=m});return d}
 };
 function migrateData(raw){
   let d=JSON.parse(JSON.stringify(raw||{}));const v=d.version||1;

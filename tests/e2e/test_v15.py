@@ -34,7 +34,7 @@ try:
     return pg
   data=lambda pg:pg.evaluate('JSON.parse(localStorage.getItem("budget-couple-data"))')
   pg=dev()
-  d=data(pg);assert d['version']==14 and all(d[k]==[] or k=='networth' for k in ['annuals','loans','subsoff']),d['version']
+  d=data(pg);assert d['version']==15 and all(d[k]==[] or k=='networth' for k in ['annuals','loans','subsoff']),d['version']
   assert len(d['misc'])==len(MISC) and d['fixed'][0]['amount']==800 and d['names']['p1']=='Alice','migration v13→v14 sans perte'
   assert pg.locator('#view .acts>*, #view > .card.act').count()<=3
   # ---------- 1) Charges annuelles ----------
@@ -92,7 +92,7 @@ try:
   # ---------- 7) Sauvegarde ----------
   pg.evaluate("go('reglages')");pg.wait_for_timeout(250);assert 'Données cohérentes' in pg.locator('#integ').inner_text()
   with pg.expect_download() as dl:pg.click('#exp')
-  path=dl.value.path();env=json.load(open(path,encoding='utf-8'));assert env['format']=='budget-couple-backup' and env['dataVersion']==14 and env['counts']['loans']==1
+  path=dl.value.path();env=json.load(open(path,encoding='utf-8'));assert env['format']=='budget-couple-backup' and env['dataVersion']==15 and env['counts']['loans']==1
   body=pg.evaluate("s=>backupBody(JSON.parse(s).data)",open(path,encoding='utf-8').read());assert hashlib.sha256(body.encode()).hexdigest()==env['sha256']
   with pg.expect_download() as dl2:pg.click('#expCsv')
   csv=open(dl2.value.path(),encoding='utf-8-sig').read();assert 'charge annuelle' in csv and 'crédit' in csv

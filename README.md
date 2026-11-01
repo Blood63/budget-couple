@@ -75,7 +75,7 @@ python3 -m http.server 8000
 ## Structure
 ```
 index.html  style.css  store.js  finance.js  accounts.js  insurance.js  interests.js  reports.js  statements.js  app.js
-manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + français)  supabase/schema.sql  supabase/storage.sql  screenshots/
+manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + français)  supabase/schema.sql  supabase/storage.sql
 ```
 
 ## v4 — Enveloppes à valorisation globale (format de données v6)
@@ -172,10 +172,10 @@ Après : accès uniquement via les fonctions `get_space` / `save_space` / `sync_
 
 ## v15 — planification et sécurité des données
 
-- **Charges annuelles lissées** (Budget › Charges) : montant, mois d’échéance, part de chacun ; montant à provisionner ce mois-ci = reste ÷ mois restants, suivi de la provision, « Marquer payée » relance l’année suivante.
+- **Charges annuelles lissées** (Budget › Charges) : montant, mois d’échéance, part de chacun ; montant à provisionner ce mois-ci = reste ÷ mois restants, suivi de la provision, « Marquer payée » relance l’année suivante. **v16** : une échéance passée et non marquée payée reste « en retard » (carte d’alerte sur l’Accueil, rappel) jusqu’à « Marquer payée » ; plus de bascule silencieuse ni de « prête » périmé ; champ facultatif « Dernière année payée ». Champ `since` (mois de suivi) ajouté par migration additive (v15 des données).
 - **Épargne de précaution** (Épargne) : mois de dépenses (charges fixes + moyenne des dépenses diverses sur 3 mois) couverts par les livrets ; jauge avec repère 3–6 mois. Indicatif, pas de conseil.
 - **Crédits** (Patrimoine) : capital, taux, durée, 1re échéance, mensualité (calculée si vide), assurance ; capital restant dû, date de fin, coût des intérêts, tableau d’amortissement annuel et mensuel.
-- **Patrimoine net** (Placements › carte, Accueil › Plus › raccourci) : comptes + placements − capital restant dû ; par personne et commun ; courbe mensuelle (un instantané par mois d’ouverture, appui long).
+- **Patrimoine net** (Placements › carte, Accueil › Plus › raccourci) : comptes + placements − capital restant dû ; par personne et commun ; courbe mensuelle (un instantané par mois d’ouverture, appui long). **v16** : le point du mois est créé automatiquement au chargement s’il n’existe pas (id `nw-AAAA-MM`, donc jamais de doublon entre appareils ; un point existant n’est jamais réécrit automatiquement).
 - **Abonnements détectés** (Budget › Dépenses) : opérations importées au même libellé, montant proche, intervalle mensuel/trimestriel/annuel ; total mensuel/annuel, alerte de hausse, « Ignorer », exclusion de ce qui est déjà en charge fixe.
 - **Bilan de l’année** (Bilans) : dépenses par catégorie et par personne, charges fixes estimées, épargne, intérêts, versements PER (indicatif 6NS/6NT).
 - **Sauvegarde** (Réglages) : export JSON avec empreinte SHA-256 et comptages, CSV étendu ; restauration avec vérification d’intégrité, aperçu et confirmation, **ajout seulement** (rien d’existant n’est modifié ; les éléments supprimés depuis restent supprimés sauf case cochée).

@@ -45,7 +45,7 @@ OVL='''(()=>{const out=[],R=e=>e.getBoundingClientRect(),vis=e=>{const r=R(e);re
  const scope=document.querySelector('#sheet.open')||document.querySelector('#view');
  scope.querySelectorAll('*').forEach(e=>{if(!vis(e)||!e.childElementCount&&!e.textContent.trim())return;const cs=getComputedStyle(e);
    if((cs.textOverflow==='ellipsis'||(cs.overflow.includes('hidden')&&[...e.querySelectorAll('*')].some(c=>vis(c)&&R(c).right>R(e).right+2)))&&e.scrollWidth>e.clientWidth+2&&e.textContent.trim()&&!e.matches('.bar,.bar *,.split,.split *,svg,svg *,input,select,textarea'))out.push('tronqué: '+e.tagName+'.'+e.className+' «'+e.textContent.trim().slice(0,30)+'»');
-   const r=R(e);if(r.right>innerWidth+1&&!e.closest('.hscroll,.chips,.tabs,nav,.chart-scroll,.ichart-scroll'))out.push('déborde: '+e.tagName+'.'+e.className);});
+   const r=R(e);if(r.right>innerWidth+1&&!e.closest('.hscroll,.chips,.tabs,nav,.chart-scroll,.ichart-scroll,.tbl-w'))out.push('déborde: '+e.tagName+'.'+e.className);});
  scope.querySelectorAll('.item,.row-b,.hero-grid,.f2,.f3,.gp,.contrib').forEach(p=>{const k=[...p.children].filter(vis);for(let i=0;i<k.length;i++)for(let j=i+1;j<k.length;j++){const a=R(k[i]),b=R(k[j]);
    const ox=Math.min(a.right,b.right)-Math.max(a.left,b.left),oy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);if(ox>2&&oy>2)out.push('chevauchement: '+p.className+' › '+k[i].tagName+'.'+k[i].className+' / '+k[j].tagName+'.'+k[j].className)}});
  return [...new Set(out)].slice(0,6)})()'''
@@ -69,8 +69,8 @@ try:
     pg=c.new_page();pg.clock.install(time='2026-10-14T10:00:00+02:00');errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and 'ERR_FAILED' not in m.text and errs.append(m.text))
     t0=time.time();pg.goto('http://localhost:18766/');pg.wait_for_timeout(700);pg.add_script_tag(path='/tmp/axe.min.js')
-    if name=='v1':d=pg.evaluate('D');assert d['version']==14 and d['goals'][0]['split'] is None and d['goals'][0]['target']==2000 and d['misc'][0]['amount']==40,d
-    tabs=pg.evaluate("TABS.map(t=>t[0]).concat(['reglages','assurances','bilans','activite'].filter(x=>typeof views==='undefined'||views[x]))")
+    if name=='v1':d=pg.evaluate('D');assert d['version']==15 and d['goals'][0]['split'] is None and d['goals'][0]['target']==2000 and d['misc'][0]['amount']==40,d
+    tabs=pg.evaluate("TABS.map(t=>t[0]).concat(['reglages','assurances','bilans','activite','patrimoine','annuel'].filter(x=>typeof views==='undefined'||views[x]))")
     for t in tabs:
       t1=time.time();pg.evaluate(f"go('{t}')");pg.wait_for_timeout(250);dt=time.time()-t1
       if dt>2:found.append(f'{name} {w} {t}: rendu lent {dt:.1f}s')
@@ -102,6 +102,10 @@ try:
             pg.evaluate("closeSheet()");pg.wait_for_timeout(150)
         except Exception as e:found.append(f'{name} {w} {t} {s}: {str(e)[:120]}')
     if errs:found.append(f'{name} {w}: console {errs[:4]}')
+    for sch in ('light','dark'):
+      pg.emulate_media(color_scheme=sch);pg.evaluate("toastUndo('Supprimé',()=>{})");pg.wait_for_timeout(500);vt=pg.evaluate("axe.run('#toast',{runOnly:['wcag2aa']}).then(r=>r.violations.map(v=>v.id))")
+      if vt:found.append(f'{name} {w} {sch}: contraste du toast Annuler {vt}')
+    pg.emulate_media(color_scheme='light')
     if w==390:pg.evaluate("go('accueil')");pg.wait_for_timeout(900);pg.screenshot(path=f'{OUT}/checkup-{name}.png')
     c.close()
   b.close()

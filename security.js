@@ -59,7 +59,8 @@ async function clearOldSpace(){const oldCode=localStorage.getItem(OLD_SPACE);if(
   catch(e){alert(netErr(e))}}
 /* Invitation : lien complet (URL + clé + code) ou code seul (pour un appareil déjà configuré) */
 let inviteMode='link';
-function showInvite(mode){if(mode)inviteMode=mode;const P=$('#invitePanel');if(!sbOn()){P.innerHTML='<p class="neg">Configurez et enregistrez d’abord la synchro.</p>';return}
+async function showInvite(mode){if(mode)inviteMode=mode;const P=$('#invitePanel');if(!sbOn()){P.innerHTML='<p class="neg">Configurez et enregistrez d’abord la synchro.</p>';return}
+  if(typeof qrcode==='undefined'){P.innerHTML='<p class="mut" role="status">Préparation du QR code…</p>';try{await(window._qrP||(window._qrP=loadScript('vendor/qrcode.js').catch(e=>{window._qrP=null;throw e})))}catch{P.innerHTML='<p class="neg">QR code indisponible (réseau). Réessayez.</p>';return}}
   const full=inviteMode==='link',L=full?inviteLink():cfg.space,qr=qrcode(0,'M');qr.addData(full?L:APP_URL+'#join='+encodeURIComponent(cfg.space));qr.make();
   P.innerHTML=`<div class="invite"><b>Inviter dans l’espace</b>
    <div class="seg inv-seg" role="tablist" aria-label="Type d’invitation"><button type="button" role="tab" aria-selected="${full}" class="${full?'on':''}" data-inv="link">Lien complet</button><button type="button" role="tab" aria-selected="${!full}" class="${!full?'on':''}" data-inv="code">Code seul</button></div>

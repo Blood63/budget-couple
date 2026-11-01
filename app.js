@@ -637,7 +637,7 @@ function vAccueil(){
   const goals=[...D.goals].map(g=>({g,p:g.target?Math.min(100,C.saved[g.id]/g.target*100):0})).sort((x,y)=>y.p-x.p).slice(0,4);
   const nc=nextCharges();
   // au plus 3 actions prioritaires en tête (découvert, plafonds, échéances d'assurance, valorisations, intérêts, bilan) ; le reste dans « Plus »
-  const acts=[reminderCard(),accountAlertCard(),catAlertCard(),insRemindCard(),remindCard(),interestCard(),reportCard()].filter(Boolean),top=acts.slice(0,3),rest3=acts.slice(3);
+  const acts=[annualLateCard(),reminderCard(),accountAlertCard(),catAlertCard(),insRemindCard(),remindCard(),interestCard(),reportCard()].filter(Boolean),top=acts.slice(0,3),rest3=acts.slice(3);
   const moreBits=[rest3.length?`${rest3.length} autre${rest3.length>1?'s':''} action${rest3.length>1?'s':''}`:'','équilibre','prélèvements','objectifs','activité'].filter(Boolean);
   return `<p class="hello">${me?`Bonjour ${esc(N(me))}`:'Bonjour'} · ${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>
   <div class="card hero"><small>Reste à vivre du couple · ${monthLabel(m)}</small><div class="hero-n">${money(rest,rest<0?'neg':'')}</div>
@@ -905,10 +905,11 @@ document.addEventListener('submit',async e=>{const f=e.target;
 function netBanner(){$('#offline').hidden=navigator.onLine}
 addEventListener('online',()=>{netBanner();pullRemote()});addEventListener('offline',()=>{netBanner();setSync('Hors ligne',false)});
 /* ---------- Démarrage ---------- */
+delete D.miscMonth; // Dépenses rouvre sur le mois courant à chaque nouvelle session
 persist(); // enregistre la migration locale (sans horodater)
 buildNav();render();netBanner();
 fetch('rates.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(j){RATES=j;if(!document.querySelector('#sheet.open'))render()}}).catch(()=>{});
-function tickReports(){const r=ensureReports();if(r){save();reportNotify(r)}remTick()}
+function tickReports(){const r=ensureReports(),n=nwAuto();if(r||n)save();if(r)reportNotify(r);remTick()}
 addEventListener('hashchange',()=>{if(/^#(invite|join)=/.test(location.hash))handleInvite()});
 if(/^#(invite|join)=/.test(location.hash))handleInvite();else Promise.resolve(pullRemote()).finally(()=>setTimeout(tickReports,50));
 if(!me&&!/^#invite=/.test(location.hash))setTimeout(whoSheet,400);

@@ -314,3 +314,7 @@ fieldset.feed{border:1px solid rgba(var(--tint),.1);border-radius:var(--r-sm);pa
 /* v15.1 : lien « Annuler » du toast lisible en thème clair (le toast y est sombre) */
 :root[data-theme=light] .toast-undo{color:#9db4ff}
 @media (prefers-color-scheme:light){:root:not([data-theme=dark]) .toast-undo{color:#9db4ff}}
+/* v16 : charges annuelles en retard */
+.ann-late{border-color:var(--bad)!important;box-shadow:inset 3px 0 0 var(--bad)}
+.late-card{border-color:var(--bad);box-shadow:inset 3px 0 0 var(--bad)}.late-card h2{color:var(--bad)}
+.late-t{font-weight:650}.late-t .ic{display:inline-block;vertical-align:-2px}
