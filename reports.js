@@ -14,8 +14,8 @@ function buildReport(m){const pm=prevMonthOf(m),sv=k=>savingOf(k,m),a=summary('p
 // un bilan n'a de sens que si l'appli était déjà utilisée pendant ce mois
 const hasActivity=m=>D.months.some(x=>x.month===m)||D.misc.some(x=>x.date.startsWith(m))||((D.incomes.length||D.fixed.length)&&D.history.some(h=>h.t<new Date(m+'-01T00:00').getTime()+31*864e5&&h.t<new Date(curMonth()+'-01T00:00').getTime()));
 /* Génère (une seule fois, id déterministe) le bilan du mois précédent dès le 1er. */
-function ensureReports(){const pm=prevMonthOf(curMonth());if(D.reports.some(r=>r.month===pm)||!hasActivity(pm))return null;
-  const r=buildReport(pm);D.reports.push(r);return r}
+function ensureReports(){const pm=prevMonthOf(curMonth()),ex=D.reports.find(r=>r.month===pm);if(ex&&!ex.provisional)return null;if(!ex&&!hasActivity(pm))return null;
+  const r=buildReport(pm);if(ex){Object.assign(ex,r);delete ex.provisional;return ex}D.reports.push(r);return r}
 function reportNotify(r){if(!D.notify?.reports||!('Notification' in window)||Notification.permission!=='granted')return;
   const t=`Bilan de ${monthLabel(r.month)}`,body=`Épargne : ${eur(r.savings.p1+r.savings.p2)} · dépenses diverses : ${eur(r.misc)}`;
   navigator.serviceWorker?.getRegistration().then(g=>g?g.showNotification(t,{body,icon:'icons/icon-192.png',tag:r.id}):new Notification(t,{body})).catch(()=>{})}

@@ -21,7 +21,7 @@ BAD=re.compile(r'\b(achetez|vendez|investissez dans|nous recommandons|MSCI|S&P|A
 with sync_playwright() as p:
   b=p.chromium.launch();c=b.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True,locale='fr-FR')
   c.add_init_script("sessionStorage.setItem('budget-couple-more','1')");c.add_init_script(f"if(!sessionStorage.s){{localStorage.setItem('budget-couple-data',{json.dumps(json.dumps(V6))});localStorage.setItem('budget-couple-me','p1');sessionStorage.s=1}}")
-  pg=c.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
+  pg=c.new_page();pg.clock.install(time='2026-10-20T12:00:00+02:00');pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('console',lambda m:m.type=='error' and errs.append(m.text));pg.on('dialog',lambda d:d.accept())
   pg.goto('http://localhost:18766/');pg.wait_for_function('RATES!==null');pg.wait_for_timeout(300);pg.evaluate('render()')
   d=pg.evaluate('D');assert d['version']==14 and d['births']=={'p1':'','p2':''} and d['dismissed']==[] and d['tax']['mode']=='separe' and len(d['placements'])==5
   assert pg.evaluate("[ageOf('p1'),ageOf('p2')]")==[None,None];pg.evaluate("D.births={p1:'2000-01-15',p2:'2002-01-15'};save();render()")

@@ -54,7 +54,7 @@ try:
   A.evaluate("go('accueil')");A.wait_for_timeout(300);A.click('#debtRepayAll');A.wait_for_timeout(200)
   assert all(x['repaid'] for x in debts(A)) and 'Personne ne doit rien' in A.inner_text('#debtNet')
   A.click('.toast-undo');A.wait_for_timeout(200);assert sum(1 for x in debts(A) if x['repaid'])==1
-  A.click('#debtRepayAll');A.wait_for_timeout(200);A.click('.debt-arch summary');assert 'Remboursées (4)' in A.inner_text('.debt-arch');v=A.evaluate(AX);assert not v,v
+  A.click('#debtRepayAll');A.wait_for_timeout(200);A.click('.debt-arch summary');A.wait_for_timeout(700);assert 'Remboursées (4)' in A.inner_text('.debt-arch');v=A.evaluate(AX);v and print(A.evaluate("axe.run(document,{runOnly:['wcag2aa']}).then(r=>JSON.stringify(r.violations.map(v=>v.nodes.map(n=>[n.html.slice(0,160),n.any[0].message]))))"));assert not v,v
   A.evaluate("D.debts.forEach(x=>{if(x.id!=='"+cid+"')x.repaid=null});save()")
   A.evaluate("document.querySelector('.debt-arch').open=true");A.click(f'[data-debt-unrepay="{cid}"]');A.wait_for_timeout(200);assert not any(x['repaid'] for x in debts(A))
   # synchro au repos : seulement updated_at (pas de re-téléchargement du document)

@@ -21,6 +21,7 @@ a.ok(P.loanStatus({principal:1000,rate:3,months:12,start:'2020-01'},'2026-10').d
 S=P.loanSchedule({principal:1200,rate:0,months:12,start:'2026-01'});a.strictEqual(S.payment,100);a.strictEqual(S.totalInterest,0);a.strictEqual(S.count,12);
 S=P.loanSchedule({principal:10000,rate:5,months:12,start:'2026-01',payment:40});a.ok(S.error);a.strictEqual(S.rows.length,0);
 S=P.loanSchedule({principal:10000,rate:2,months:60,start:'2026-01',payment:500});a.ok(S.count<60&&!S.error&&S.rows[S.rows.length-1].cap===0);
+S=P.loanSchedule({principal:1000,rate:1,months:12,start:'2026-13'});a.ok(S.error&&S.rows.length===0);S=P.loanSchedule({principal:1000,rate:1,months:12,start:'2026-00'});a.ok(S.error);
 a.ok(P.loanSchedule({principal:0,months:12,start:'2026-01'}).error);a.ok(P.loanSchedule({principal:10,months:12}).error);
 const Y=P.loanYears(P.loanSchedule({principal:1200,rate:0,months:12,start:'2026-07'}));a.deepStrictEqual(Y.map(y=>y.year),['2026','2027']);a.strictEqual(Y[0].princ,600);a.strictEqual(Y[1].cap,0);
 // 4) patrimoine

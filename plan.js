@@ -20,8 +20,8 @@ function precaution(available,monthly){available=Math.max(0,+available||0);month
   return{months,level:months<1?'critical':months<3?'low':months<=6?'ok':'high',available,monthly,low:_r2(monthly*3),high:_r2(monthly*6),gap:_r2(Math.max(0,monthly*3-available))}}
 /* 3) Crédits amortissables (échéances constantes). l = {principal, rate (% annuel), months, start 'AAAA-MM' (1re échéance), payment (facultatif), insurance (€/mois)} */
 function loanPayment(P,rate,n){P=+P||0;n=Math.max(1,Math.round(+n||1));const i=(+rate||0)/1200;return _r2(i?P*i/(1-Math.pow(1+i,-n)):P/n)}
-function loanSchedule(l){const P=_r2(l.principal),n=Math.max(1,Math.round(+l.months||1)),i=(+l.rate||0)/1200,auto=!(+l.payment>0),pay=auto?loanPayment(P,l.rate,n):_r2(l.payment),ins=_r2(l.insurance),start=/^\d{4}-\d{2}/.test(l.start||'')?l.start.slice(0,7):null;
-  if(!P||!start)return{rows:[],payment:pay,error:!P?'Capital manquant':'Date de début manquante'};
+function loanSchedule(l){const P=_r2(l.principal),n=Math.max(1,Math.round(+l.months||1)),i=(+l.rate||0)/1200,auto=!(+l.payment>0),pay=auto?loanPayment(P,l.rate,n):_r2(l.payment),ins=_r2(l.insurance),start=/^\d{4}-(0[1-9]|1[0-2])/.test(l.start||'')?l.start.slice(0,7):null;
+  if(!P||!start)return{rows:[],payment:pay,error:!P?'Capital manquant':'Date de début manquante ou invalide'};
   if(_r2(P*i)>=pay)return{rows:[],payment:pay,error:'La mensualité ne couvre pas les intérêts : vérifiez le taux et la mensualité.'};
   const rows=[];let cap=P,ti=0;const max=auto?n:1200;
   for(let k=0;k<max&&cap>0.004;k++){const int=_r2(cap*i);let princ=_r2(pay-int);if(princ>cap||(auto&&k===n-1))princ=cap;cap=_r2(cap-princ);ti+=_c(int);rows.push({k:k+1,month:ymAdd(start,k),pay:_r2(int+princ),int,princ,ins,cap})}

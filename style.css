@@ -311,3 +311,6 @@ fieldset.feed{border:1px solid rgba(var(--tint),.1);border-radius:var(--r-sm);pa
 @media (max-width:380px){.tbl{font-size:11.5px}.tbl th,.tbl td{padding:6px 3px}}
 .row-act{align-items:flex-start}.row-act .btn{width:auto;height:auto;min-height:44px;line-height:1.25}
 .subs>summary span span,.subs>summary small span{display:inline}.subs>summary b .ic,.v15 h2 .ic,.v15 small .ic,#sheetBody p>.ic,#integ .ic{display:inline-block;vertical-align:-2px;margin-right:4px}
+/* v15.1 : lien « Annuler » du toast lisible en thème clair (le toast y est sombre) */
+:root[data-theme=light] .toast-undo{color:#9db4ff}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]) .toast-undo{color:#9db4ff}}
