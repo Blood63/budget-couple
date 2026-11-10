@@ -491,7 +491,7 @@ let lastErr='';
 async function sbErr(r){let j={};try{j=await r.json()}catch{}const m=j.message||'';
   if(r.status===404||j.code==='PGRST205'||j.code==='42P01')return'Table budget_spaces introuvable : exécutez supabase/schema.sql dans le SQL Editor de Supabase.';
   if(r.status===401||/api key|apikey|JWT/i.test(m))return'Clé refusée ('+r.status+') : vérifiez la clé publishable/anon (attention aux l/I).';
-  if(r.status===403||j.code==='42501')return'Accès refusé par les politiques RLS : ré-exécutez supabase/schema.sql.';
+  if(r.status===403||j.code==='42501')return secureMode===true?'Accès refusé par les politiques RLS : vérifiez que supabase/secure.sql est bien installé. Ne ré-exécutez pas schema.sql après secure.sql (cela rouvrirait les anciennes politiques).':'Accès refusé par les politiques RLS : exécutez supabase/schema.sql, puis supabase/secure.sql pour renforcer la sécurité. Ne ré-exécutez pas schema.sql une fois secure.sql en place.';
   if(j.code==='23514')return'Code d’espace trop court (8 caractères minimum).';
   return'Erreur Supabase '+r.status+(m?' : '+m:'');}
 function netErr(e){return e&&e.sb?e.sb:'Impossible de joindre '+(cfg.url||'Supabase')+' : vérifiez l’URL (projet .supabase.co complet) et la connexion.'}
@@ -628,8 +628,8 @@ function catAlertCard(){const now=new Date(),L=capsOf(curMonth(),now.getDate(),n
   return `<section class="card alert-card" aria-labelledby="capAlH"><div class="row-b"><h2 id="capAlH">${ic('alert',18)} Plafonds de catégorie</h2><button type="button" class="link" data-goto="budget" data-seg-to="diverses">Voir</button></div>
    <ul class="plain-list">${L.slice(0,3).map(c=>`<li><b>${esc(catName('misc',c.key))}</b> : ${c.status==='over'?`<span class="neg">dépassé de ${eur(-c.left)}</span> (${eur(c.spent)} / ${eur(c.cap)})`:c.status==='risk'?`reste ${eur(c.left)} (${eur(c.perDay)}/jour), projection ${eur(c.projection)} pour ${eur(c.cap)}`:`reste ${eur(c.left)} sur ${eur(c.cap)} (${eur(c.perDay)}/jour)`}</li>`).join('')}</ul></section>`}
 /* ---------- Tableau de bord ---------- */
-function nextCharges(n=5){const t=new Date(),today=t.getDate(),dim=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
-  return D.fixed.filter(f=>f.day).map(f=>{const d=f.day>=today?f.day-today:dim-today+f.day;return{...f,inDays:d}}).sort((a,b)=>a.inDays-b.inDays).slice(0,n)}
+function nextCharges(n=5){const t=new Date(),today=t.getDate(),last=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();
+  return D.fixed.filter(f=>f.day).map(f=>{const q=nextChargeInDays(f.day,today,last);return{...f,day:q.day,inDays:q.inDays}}).sort((a,b)=>a.inDays-b.inDays).slice(0,n)}
 function onboarding(){const steps=[[D.incomes.length,'Ajouter vos revenus','budget','revenus'],[D.fixed.length,'Ajouter vos charges fixes','budget','fixes'],[D.goals.length,'Créer un objectif','objectifs'],[sbOn(),'Synchroniser vos deux téléphones','reglages']];
   if(steps.every(x=>x[0]))return'';return `<div class="card"><h2>Pour bien démarrer</h2><ol class="steps">${steps.map(([ok,l,t,sg])=>`<li class="${ok?'done':''}"><button class="link" data-goto="${t}" ${sg?`data-seg-to="${sg}"`:''}>${ok?'✓ ':''}${l}</button></li>`).join('')}</ol></div>`}
 function vAccueil(){
@@ -817,7 +817,7 @@ const views=Object.fromEntries(TABS.map(t=>[t[0],t[3]]));views.reglages=vReglage
 const titles={...Object.fromEntries(TABS.map(t=>[t[0],t[1]])),reglages:'Réglages',activite:'Historique',assurances:'Assurances',bilans:'Bilans du mois',patrimoine:'Patrimoine',annuel:'Bilan de l’année'};
 function buildNav(){const n=$('#tabs');n.setAttribute('role','tablist');n.innerHTML=TABS.map(([k,l,i])=>`<button role="tab" data-tab="${k}" aria-controls="view" id="tab-${k}">${ic(i,22)}<span>${l}</span>${k==='placements'?'<i class="tab-badge" hidden></i>':''}</button>`).join('')+'<span class="tab-ind" aria-hidden="true"></span>';
   n.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;const b=[...n.querySelectorAll('button')],i=b.indexOf(document.activeElement);if(i<0)return;const j=(i+(e.key==='ArrowRight'?1:-1)+b.length)%b.length;b[j].focus();b[j].click()})}
-function go(t){if(t===tab&&$('#view').childElementCount)return;const order=Object.keys(views),dir=order.indexOf(t)>=order.indexOf(tab)?1:-1;tab=t;animate=true;render(dir);scrollTo({top:0})}
+function go(t){if(t===tab&&$('#view').childElementCount){animate=false;render(0);scrollTo({top:0});return}const order=Object.keys(views),dir=order.indexOf(t)>=order.indexOf(tab)?1:-1;tab=t;animate=true;render(dir);scrollTo({top:0})}
 function render(dir=0){
   $('#title').textContent=titles[tab];$('#gear').classList.toggle('on',tab==='reglages');
   const i=TABS.findIndex(t=>t[0]===tab);document.querySelectorAll('#tabs button').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('active',on);b.setAttribute('aria-selected',on);b.tabIndex=on||(i<0&&b.dataset.tab==='accueil')?0:-1});$('#view').setAttribute('aria-labelledby',i>=0?'tab-'+tab:'title');
@@ -861,8 +861,8 @@ document.addEventListener('click',e=>{
   if(d.editGoal)return goalSheet(d.editGoal);if(d.editPlac)return placSheet(d.editPlac);
   ({addIncome:()=>incomeSheet(),addFixed:()=>fixedSheet(),editTransfer:transferSheet,addMisc:miscSheet,quickAdd:miscSheet,openHist:()=>go('activite'),chooseMe:whoSheet,addMonth:()=>monthSheet(),addGoal:()=>goalSheet(),addPlac:()=>placSheet(),
     inviteBtn:()=>showInvite(),changeCode:changeSpaceCode,editCaps:capsSheet,clearOld:clearOldSpace,disconnect:()=>{cfg={};localStorage.removeItem(CFG);resetSync();lastErr='';render();setSync('Local')},
-    expCsv:()=>{const q=v=>{const t=String(v??'');return /[";\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t},R=[['type','date/mois','libellé','catégorie','montant','personne']];
-      D.misc.forEach(x=>R.push(['dépense',x.date,x.label||'',x.category||'',String(x.amount).replace('.',','),N(x.payer)]));D.fixed.forEach(f=>R.push(['charge fixe','jour '+(f.day||''),f.label,f.category||'',String(f.amount).replace('.',','),paidName(f.paidBy)]));
+    expCsv:()=>{const q=v=>{const t=String(v??'');return /[";\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t},R=[['type','date/mois','libellé','catégorie','montant','payé par']];
+      D.misc.forEach(x=>R.push(['dépense',x.date,x.label||'',x.category||'',String(x.amount).replace('.',','),paidName(x.paidBy)]));D.fixed.forEach(f=>R.push(['charge fixe','jour '+(f.day||''),f.label,f.category||'',String(f.amount).replace('.',','),paidName(f.paidBy)]));
       D.incomes.forEach(i=>R.push(['revenu',i.recurring?'mensuel':i.month,i.label||i.type,i.type,String(i.amount).replace('.',','),N(i.person)]));D.months.forEach(m=>R.push(['épargne',m.month,'','',String((m.a||0)+(m.b||0)).replace('.',','),'']));D.annuals.forEach(a=>R.push(['charge annuelle','mois '+a.month,a.label,a.category||'',String(a.amount).replace('.',','),'']));D.loans.forEach(l=>R.push(['crédit',l.start,l.label,'',String(l.principal).replace('.',','),N(l.owner==='p1'||l.owner==='p2'?l.owner:'common')]));
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+R.map(r=>r.map(q).join(';')).join('\n')],{type:'text/csv'}));a.download='budget-couple.csv';a.click()},
     exp:backupExport,

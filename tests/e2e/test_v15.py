@@ -68,7 +68,7 @@ try:
   # ---------- 4) Patrimoine ----------
   W=pg.evaluate('nwNow().W');print('NET',W['net']);rem=S['remaining']
   assert abs(W['assets']['total']-(1500+5000+2000+3000))<1e-6 and abs(W['debts']['common']-rem)<1e-6 and abs(W['net']['total']-(11500-rem))<1e-6 and W['net']['p1']==8000 and W['net']['p2']==2000
-  d=data(pg);nw=[n for n in d['networth'] if n['id']=='nw-2026-10'];assert nw and abs(nw[0]['total']-W['net']['total'])<1e-6
+  d=data(pg);nw=[n for n in d['networth'] if n['id']=='nw-2026-10'];assert nw and abs(nw[0]['total']-11500)<1e-6,'point créé avant le prêt, jamais réécrit automatiquement'
   assert not [h for h in d.get('history',[]) if h['kind']=='networth'],'pas d’historique pour les instantanés'
   # historique fictif pour le graphique
   pg.evaluate("D.networth.push({id:'nw-2026-08',month:'2026-08',p1:7600,p2:1900,common:-14000,total:-4500,assets:10000,debts:14500},{id:'nw-2026-09',month:'2026-09',p1:7800,p2:1950,common:-13800,total:-4050,assets:10500,debts:14550});save()");pg.wait_for_timeout(300)

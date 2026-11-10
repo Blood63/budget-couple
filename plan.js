@@ -10,6 +10,10 @@ const ownKey=o=>o==='p1'||o==='p2'?o:'common';
    Mois de provision = mois restants avant l'échéance (au moins 1) ; mensuel = (montant − provisionné) ÷ mois, arrondi au centime supérieur. */
 function annualNext(a,cm){const mo=Math.min(12,Math.max(1,Math.round(+a.month||1))),base=/^\d{4}-(0[1-9]|1[0-2])/.test(a.since||'')?a.since.slice(0,7):cm,[by,bm]=base.split('-').map(Number);let Y=mo>=bm?by:by+1;if(+a.paidYear>=Y)Y=+a.paidYear+1;return `${Y}-${String(mo).padStart(2,'0')}`}
 /* 'since' (AAAA-MM, mois de suivi) : sans lui, l'échéance est la prochaine à partir de cm (ancien comportement, jamais en retard). Avec lui, une échéance passée et non marquée payée reste « en retard ». */
+/* Création : par défaut since = mois courant (pas de retard rétroactif). Si l'utilisateur indique que l'échéance de cette année n'est pas payée et que le mois d'échéance est déjà passé, since = AAAA-MM de cette échéance. */
+function annualSinceOnCreate(month,cm,unpaidThisYear){const mo=Math.min(12,Math.max(1,Math.round(+month||1))),base=/^\d{4}-(0[1-9]|1[0-2])/.test(cm||'')?cm.slice(0,7):cm||'';
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(base))return base;const[,cmn]=base.split('-').map(Number);
+  return unpaidThisYear&&mo<cmn?`${base.slice(0,4)}-${String(mo).padStart(2,'0')}`:base}
 function annualPlan(a,cm){const amt=_c(a.amount),saved=Math.max(0,_c(a.saved)),due=annualNext(a,cm),inM=ymDiff(cm,due),late=inM<0,months=Math.max(1,inM),rest=Math.max(0,amt-saved);
   const monthly=rest?Math.ceil(rest/months)/100:0,sp=Math.min(100,Math.max(0,a.split==null?50:+a.split)),p1=Math.round(monthly*sp)/100;
   return{due,months,inMonths:inM,late,lateMonths:late?-inM:0,amount:amt/100,saved:saved/100,rest:rest/100,monthly,smoothed:Math.ceil(amt/12)/100,funded:!rest,ready:!rest&&!late,pct:amt?Math.min(100,saved/amt*100):100,per:{p1,p2:_r2(monthly-p1)}}}
@@ -79,4 +83,4 @@ function applyRestore(cur,bak,P,withDeleted){const r=JSON.parse(JSON.stringify(c
   const take=e=>{const x=B.get(e.list+'\u0001'+e.id);if(!x||(r[e.list]||[]).some(y=>y.id===e.id))return;const {u,by,fu,...o}=JSON.parse(JSON.stringify(x));(r[e.list]=r[e.list]||[]).push(o)};
   P.add.forEach(take);if(withDeleted)P.deleted.forEach(e=>{delete r.deleted[e.id];take(e)});
   P.scal.forEach(k=>r[k]=JSON.parse(JSON.stringify(bak[k])));P.budget.forEach(m=>{r.budget[m]=bak.budget[m]});return r}
-if(typeof module!=='undefined')module.exports={ymAdd,ymDiff,annualNext,annualPlan,annualLate,annualTotals,precaution,loanPayment,loanSchedule,loanRemaining,loanStatus,loanYears,netWorth,detectSubs,subKey,yearReport,backupBody,countsOf,restorePlan,applyRestore,BACKUP_FMT};
+if(typeof module!=='undefined')module.exports={ymAdd,ymDiff,annualNext,annualSinceOnCreate,annualPlan,annualLate,annualTotals,precaution,loanPayment,loanSchedule,loanRemaining,loanStatus,loanYears,netWorth,detectSubs,subKey,yearReport,backupBody,countsOf,restorePlan,applyRestore,BACKUP_FMT};

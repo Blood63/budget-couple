@@ -7,7 +7,7 @@ const CAT_FIXED=[['logement','Logement'],['energie','Énergie'],['transport','Tr
 const CAT_MISC=[['courses','Courses'],['resto','Restaurants'],['loisirs','Loisirs'],['shopping','Shopping'],['transport','Transport'],['sante','Santé'],['maison','Maison'],['cadeaux','Cadeaux'],['autre','Autre']];
 /* v13 : aucune donnée personnelle par défaut (nouveaux espaces vides) */
 const NAMES0={p1:'Personne 1',p2:'Personne 2'},BIRTHS={p1:'',p2:''},TAX0={mode:'separe',children:0,childOf:'p1'};
-const blankData=()=>({debts:[],annuals:[],loans:[],networth:[],subsoff:[],imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{...NAMES0},catBudget:{},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:'Virement loyer'},reminderDay:1,
+const blankData=()=>({debts:[],annuals:[],loans:[],networth:[],subsoff:[],imports:[],catrules:[],accounts:[],insurances:[],interests:[],movements:[],reports:[],notify:{reports:false},births:{...BIRTHS},tax:{...TAX0},dismissed:[],version:DATA_VERSION,names:{...NAMES0},catBudget:{},ratio:50,months:[],goals:[],fixed:[],transfer:{from:'p2',amount:0,label:''},reminderDay:1,
   budget:{},misc:[],placements:[],incomes:[],settlements:[],deleted:{},su:{},budgetU:{},history:[],updated:0});
 /* Migrations : chaque étape prend les données de la version précédente.
    v1 (sans version)/v2 → v3 : charges avec split (% payé par la personne 1), revenus.
@@ -99,7 +99,8 @@ function mergeData(a,b){
   const r=JSON.parse(JSON.stringify(a));r.deleted={...a.deleted};
   Object.entries(b.deleted||{}).forEach(([id,t])=>{if(!(r.deleted[id]>=t))r.deleted[id]=t});
   // fusion champ par champ : pour chaque champ, la valeur modifiée le plus récemment gagne
-  const ft=(x,f)=>(x.fu&&x.fu[f])||x.c===undefined&&0||0;
+  // Horodatage de champ = fu[f] uniquement (pas la date de création c : elle ferait perdre un champ présent d'un seul côté).
+  const ft=(x,f)=>(x.fu&&x.fu[f])||0;
   const pick=(x,y)=>{if(!x)return y;if(!y)return x;const base=(y.u>x.u||(y.u===x.u&&sig(y)>sig(x)))?y:x,o=base===x?y:x,r=JSON.parse(JSON.stringify(base));
     r.fu=Object.assign({},o.fu,base.fu);
     new Set([...Object.keys(x),...Object.keys(y)]).forEach(f=>{if(META.has(f))return;const to=ft(o,f),tb=ft(base,f);

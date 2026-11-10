@@ -52,7 +52,7 @@ a.equal(S.canon(S.mergeData(m1,m1)),S.canon(m1));console.log('OK');
  const m=S.migrateData(JSON.parse(JSON.stringify(src)));a.equal(m.version,15);a.deepEqual(m.catBudget,{});a.deepEqual(m.names,src.names);a.deepEqual(m.births,src.births);a.equal(m.budget['2026-10'],300);a.equal(m.misc[0].amount,5);
  const k=S.migrateData({version:12,catBudget:{courses:250}});a.deepEqual(k.catBudget,{courses:250});
  const b=S.blankData();a.deepEqual(b.names,{p1:'Personne 1',p2:'Personne 2'});a.deepEqual(b.births,{p1:'',p2:''});
- a.ok(!/Emilien|Julie|2000-06|2002-03/.test(JSON.stringify(b)),'aucune donnée personnelle par défaut');console.log('migration v12→v13 + blankData OK')}
+ a.ok(!/Emilien|Julie|2000-06|2002-03|Virement loyer/.test(JSON.stringify(b)),'aucune donnée personnelle par défaut');a.equal(b.transfer.label,'');console.log('migration v12→v13 + blankData OK')}
 /* Fusion : un appareil vierge qui rejoint n'écrase jamais des réglages existants */
 {const remote=S.migrateData({version:12,names:{p1:'Alice',p2:'Bruno'},births:{p1:'1990-01-02',p2:'1991-03-04'},ratio:60,reminderDay:5,transfer:{from:'p1',amount:400,label:'Loyer'},catBudget:{courses:250}});
  remote.su={};const blank=S.migrateData(S.blankData());
@@ -74,3 +74,22 @@ a.equal(S.canon(S.mergeData(m1,m1)),S.canon(m1));console.log('OK');
  const m=S.migrateData(JSON.parse(JSON.stringify(src)));a.equal(m.version,15);a.match(m.annuals[0].since,/^\d{4}-(0[1-9]|1[0-2])$/);a.equal(m.annuals[1].since,'2025-01');
  ['label','amount','month','saved','paidYear','split'].forEach(k=>a.deepEqual(m.annuals[0][k],src.annuals[0][k]));
  const m2=S.migrateData(JSON.parse(JSON.stringify(m)));a.deepEqual(m2.annuals,m.annuals);console.log('migration v14→v15 OK')}
+
+{ // fusion champ par champ : ft n'utilise que fu[f] (pas c). Un champ présent d'un seul côté avec fu est conservé ; une valeur réelle n'est pas écrasée par un défaut.
+ const S=require('../store.js'),a=require('assert');
+ const base=S.migrateData({version:15,misc:[{id:'m1',date:'2026-11-02',label:'Courses',amount:10,paidBy:'p1',for:'common',category:'courses',u:100,c:100}]});
+ const A=JSON.parse(JSON.stringify(base)),B=JSON.parse(JSON.stringify(base));
+ A.misc[0]={...A.misc[0],notes:'garder',u:100,c:100,fu:{notes:100}};
+ B.misc[0]={...B.misc[0],amount:25,label:'Courses',u:200,c:100,fu:{amount:200}};
+ delete B.misc[0].notes;
+ const r1=S.mergeData(A,B),r2=S.mergeData(B,A);
+ a.equal(S.canon(r1),S.canon(r2));
+ a.equal(r1.misc[0].amount,25,'le montant le plus récemment modifié gagne');
+ a.equal(r1.misc[0].notes,'garder','le champ seul d\'un côté (avec fu) n\'est pas perdu');
+ a.equal(r1.misc[0].label,'Courses');
+ const remote=S.migrateData({version:15,names:{p1:'Alice',p2:'Bruno'},transfer:{from:'p1',amount:400,label:'Loyer'}});
+ remote.su={};const blank=S.migrateData(S.blankData());
+ a.equal(blank.transfer.label,'');
+ a.equal(S.mergeData(blank,remote).transfer.label,'Loyer');
+ a.equal(S.mergeData(remote,blank).transfer.label,'Loyer');
+ console.log('fusion ft + valeur réelle conservée OK')}

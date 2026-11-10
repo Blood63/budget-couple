@@ -1,6 +1,6 @@
 # Budget Couple 💰
 
-Application web installable (PWA) pour suivre à deux l'épargne mensuelle, les objectifs, les dépenses fixes, les dépenses diverses et la projection de vos placements. 100 % statique (HTML/CSS/JS), thème sombre, pensée mobile.
+Application web installable (PWA) pour suivre à deux l'épargne mensuelle, les objectifs, les dépenses fixes, les dépenses diverses et la projection de vos placements. 100 % statique (HTML/CSS/JS), thèmes clair et sombre, pensée mobile.
 
 ## Fonctionnalités
 - **Accueil** : résumé du mois (reste à vivre, revenus, épargne, dépenses vs budget), saisie rapide d'une dépense, **équilibre « qui doit combien à qui »** (avec « Marquer comme réglé »), prochains prélèvements, progression des objectifs, activité récente.
@@ -30,7 +30,7 @@ Les cours des titres sont saisis à la main (pas de source de cours gratuite, fi
 - **Ce qu'il faudrait pour le faire proprement** (chantier séparé, à décider explicitement) : une saisie optionnelle et désactivée par défaut des supports (ISIN/symbole + quantité), une source de cours sous licence ou avec clé servie par une fonction serveur (par ex. Supabase Edge Function avec secret, jamais la clé dans le navigateur), l'affichage systématique de la date et de la source du cours, un repli manuel en cas d'échec ou de cours périmé, et des tests sur fixtures. En attendant, la saisie mensuelle de la valorisation globale reste la méthode fiable.
 
 ### Format des données
-Les données sont versionnées (actuellement **v9**) et migrées automatiquement à l'ouverture (localStorage, Supabase, fichier importé) : v2→v3 charges en %, v3→v4 horodatage par élément, catégories, payeur réel, historique, v4→v5 placements typés et lignes d'enveloppe, v5→v6 valorisations globales, v6→v7 âges/impôt/conseils, v7→v8 comptes courants (identifiants déterministes `acc-joint`, `acc-p1`, `acc-p2` : deux téléphones qui migrent séparément obtiennent exactement les mêmes données), assurances, intérêts, mouvements, bilans, v8→v9 relevés importés et catégories apprises (aucune donnée existante modifiée). Le schéma Supabase ne change pas (tout est dans `data jsonb`).
+Les données sont versionnées (actuellement **v15**) et migrées automatiquement à l'ouverture (localStorage, Supabase, fichier importé) : v2→v3 charges en %, v3→v4 horodatage par élément, catégories, payeur réel, historique, v4→v5 placements typés et lignes d'enveloppe, v5→v6 valorisations globales, v6→v7 âges/impôt/conseils, v7→v8 comptes courants (identifiants déterministes `acc-joint`, `acc-p1`, `acc-p2` : deux téléphones qui migrent séparément obtiennent exactement les mêmes données), assurances, intérêts, mouvements, bilans, v8→v9 relevés importés et catégories apprises, v9→v10 fiches contrat / profils d'assurance, v10→v11 répartition des objectifs, v11→v12 dettes entre nous, v12→v13 plafonds par catégorie, v13→v14 charges annuelles / crédits / patrimoine / abonnements ignorés, v14→v15 mois de suivi (`since`) des charges annuelles. Chaque étape est additive : aucune donnée existante n'est écrasée. Le schéma Supabase ne change pas (tout est dans `data jsonb`).
 
 ## Tests
 ```bash
@@ -74,8 +74,8 @@ python3 -m http.server 8000
 
 ## Structure
 ```
-index.html  style.css  store.js  finance.js  accounts.js  insurance.js  interests.js  reports.js  statements.js  app.js
-manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + français)  supabase/schema.sql  supabase/storage.sql
+index.html  style.css  store.js  finance.js  accounts.js  insurance.js  interests.js  reports.js  statements.js  quality.js  charts.js  insights.js  debts.js  security.js  plan.js  v15.js  storage.js  app.js
+manifest-v2.webmanifest  sw.js  icons/  vendor/ (qrcode, pdf.js, tesseract.js + français)  supabase/schema.sql  supabase/storage.sql  supabase/secure.sql
 ```
 
 ## v4 — Enveloppes à valorisation globale (format de données v6)
@@ -181,3 +181,16 @@ Après : accès uniquement via les fonctions `get_space` / `save_space` / `sync_
 - **Sauvegarde** (Réglages) : export JSON avec empreinte SHA-256 et comptages, CSV étendu ; restauration avec vérification d’intégrité, aperçu et confirmation, **ajout seulement** (rien d’existant n’est modifié ; les éléments supprimés depuis restent supprimés sauf case cochée).
 - **Rappels** (Réglages, propres à l’appareil) : épargne du mois, valorisations, échéances d’objectifs, charges annuelles, fin de crédit ; carte sur l’Accueil et notification facultative à l’ouverture. Sans serveur de push : rien n’arrive quand l’appli est fermée.
 - Données v14 (migration additive : listes `annuals`, `loans`, `networth`, `subsoff`). Calculs purs dans `plan.js` (tests `tests/test_plan.js`), interface dans `v15.js`.
+
+## v17 — correctifs du check-up
+
+- **Prochains prélèvements** : un jour 29/30/31 est calé sur le dernier jour du mois (28 ou 29 février) ; « Aujourd’hui » s’affiche le bon jour, comme la prévision de compte.
+- **Patrimoine** : un point `nw-AAAA-MM` existant n’est jamais réécrit en ouvrant l’onglet (création seulement s’il manque).
+- **Abonnements détectés** : « Ajouter aux charges fixes » utilise la catégorie `abonnement`.
+- **Toasts** : le texte long passe à la ligne (plus de coupe à 320/390 px) ; le bouton Annuler et le contraste sont conservés.
+- **Nouvelle charge annuelle** : case « L’échéance de cette année reste à payer » (création uniquement, si le mois d’échéance est déjà passé) pour enregistrer un retard ; le champ « Dernière année payée » est inchangé. Aucune migration : les charges existantes gardent leur `since`.
+- **Données vierges** : plus de libellé « Virement loyer » dans un nouvel espace (les espaces déjà enregistrés ne sont pas modifiés).
+- **Navigation** : un lien vers un sous-écran (Charges, Comptes…) fonctionne même si l’onglet Budget est déjà ouvert.
+- **Erreur 403** : en mode sécurisé, le message pointe vers `secure.sql` et ne demande plus de ré-exécuter `schema.sql`.
+- **Export CSV global** : la colonne des dépenses est « payé par » (le payeur), comme l’export Dépenses.
+- Service worker `budget-couple-v29`.

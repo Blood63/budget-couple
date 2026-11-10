@@ -7,6 +7,12 @@ p=P.annualPlan({amount:100,month:1,saved:0},'2026-10');a.strictEqual(p.months,3)
 p=P.annualPlan({amount:300,month:12,saved:400},'2026-10');a.ok(p.ready);a.strictEqual(p.monthly,0);a.strictEqual(p.pct,100);
 p=P.annualPlan({amount:1200,month:10,paidYear:2026},'2026-10');a.strictEqual(p.months,12);a.strictEqual(p.monthly,100);a.strictEqual(p.smoothed,100);
 a.deepStrictEqual(P.annualTotals([],'2026-10').monthly,0);
+a.strictEqual(P.annualSinceOnCreate(3,'2026-11',false),'2026-11');
+a.strictEqual(P.annualSinceOnCreate(3,'2026-11',true),'2026-03');
+a.strictEqual(P.annualSinceOnCreate(11,'2026-11',true),'2026-11');
+a.strictEqual(P.annualSinceOnCreate(12,'2026-11',true),'2026-11');
+a.ok(P.annualPlan({amount:480,month:3,saved:0,since:P.annualSinceOnCreate(3,'2026-11',true)},'2026-11').late);
+a.ok(!P.annualPlan({amount:480,month:3,saved:0,since:P.annualSinceOnCreate(3,'2026-11',false)},'2026-11').late);
 // 2) précaution
 a.strictEqual(P.precaution(0,0).level,'none');a.strictEqual(P.precaution(500,1000).level,'critical');a.strictEqual(P.precaution(2500,1000).level,'low');
 a.strictEqual(P.precaution(4000,1000).level,'ok');a.strictEqual(P.precaution(9000,1000).level,'high');a.strictEqual(P.precaution(2500,1000).gap,500);

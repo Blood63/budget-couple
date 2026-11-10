@@ -7,6 +7,9 @@ const R2=x=>Math.round(x*100)/100;
 /* Dates locales (jamais UTC) pour les saisies et défauts : à 00h30 à Paris, on est déjà le nouveau jour/mois local. */
 const localIso=(d=new Date())=>ymd(d.getFullYear(),d.getMonth()+1,d.getDate());
 const localMonth=(d=new Date())=>localIso(d).slice(0,7);
+/* Jour de prélèvement calé sur le dernier jour du mois (31 en février → 28/29). */
+const clampDay=(d,last)=>Math.min(last,Math.max(1,parseInt(d)||1));
+function nextChargeInDays(day,today,last){const due=clampDay(day,last);return{day:due,inDays:due>=today?due-today:last-today+due}}
 
 /* ---------- Comptes courants ---------- */
 const accOfOwner=(D,o)=>{const L=(D.accounts||[]).filter(a=>a.owner===o);return(L.find(a=>a.id==='acc-'+o)||L[0]||{}).id||null};
@@ -321,4 +324,4 @@ function goalMonthlyNeeds(items,cm){
     if(st.includes('late'))late.push(g.id);if(st.includes('nodate'))nodate.push(g.id);
     return{id:g.id,months:d?Math.max(1,mo):null,overdue:!!d&&mo<0,per}});
   return{goals,total:{p1:tot.p1/100,p2:tot.p2/100},late,nodate}}
-if(typeof module!=='undefined')module.exports={goalMonthlyNeeds,localIso,localMonth,safeToSpend,categoryCaps,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};
+if(typeof module!=='undefined')module.exports={goalMonthlyNeeds,localIso,localMonth,clampDay,nextChargeInDays,safeToSpend,categoryCaps,savingsScenarios,fiveYearProjection,goalShares,goalPct,gradeOf,insQuality,contractQuality,feeCost10,frAmount,anyDate,parseCSV,parseOFX,parseQIF,parseStatementLines,parseStatementText,normLabel,merchantKey,labelSim,opHash,guessCategory,classifyOp,accountEvents,accountForecast,accOfOwner,miscAccount,livretInterest,rateOn,scheduled,insuranceExtract,frDateToIso,cancelInfo,nextDue,LIVRETS_I,HAMON_TYPES};

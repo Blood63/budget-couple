@@ -152,7 +152,7 @@ details{margin-top:10px}summary{cursor:pointer;color:var(--acc);font-weight:600;
 .who{display:grid;justify-items:center;gap:8px;padding:20px;cursor:pointer;border-top:3px solid var(--pc)}
 .avatar.big{width:56px;height:56px;border-radius:18px;font-size:24px;font-weight:780}
 .lbl-s{font-size:12px;color:var(--mut);font-weight:600}
-.toast{position:fixed;left:50%;bottom:calc(100px + var(--sab));transform:translate(-50%,20px);opacity:0;z-index:60;background:var(--toastbg,#f2f4f8);color:var(--toasttxt,#0b0e14);font-weight:650;font-size:14px;padding:10px 16px;border-radius:99px;box-shadow:0 10px 30px rgba(0,0,0,.5);transition:.3s var(--ease);pointer-events:none;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:calc(100px + var(--sab));transform:translate(-50%,20px);opacity:0;z-index:60;background:var(--toastbg,#f2f4f8);color:var(--toasttxt,#0b0e14);font-weight:650;font-size:14px;padding:10px 16px;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.5);transition:.3s var(--ease);pointer-events:none;white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.35;text-align:center}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 button:focus:not(:focus-visible){outline:none}
@@ -219,7 +219,7 @@ fieldset.feed{border:1px solid rgba(var(--tint),.1);border-radius:var(--r-sm);pa
 .plain{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;text-align:left;cursor:pointer;display:grid;gap:2px;min-width:0}
 .plain:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:6px}
 .sec-int{margin-top:18px;scroll-margin-top:70px}
-.toast:not(.show) .toast-undo{visibility:hidden;pointer-events:none}.toast{max-width:calc(100vw - 32px)}
+.toast:not(.show) .toast-undo{visibility:hidden;pointer-events:none}.toast{width:min(420px,calc(100vw - 32px));max-width:min(420px,calc(100vw - 32px));box-sizing:border-box;flex-wrap:wrap;justify-content:center}
 /* v9 : indicateur de qualité */
 .qcard{background:var(--card2);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:12px 0}
 .qhead{display:inline-flex;align-items:center;gap:8px}

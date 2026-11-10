@@ -116,3 +116,15 @@ console.log('OK finance');
  a.ok(r.goals[4].per.p1.monthly*3>=100);
  a.deepStrictEqual(F.goalMonthlyNeeds([],'2026-10').total,{p1:0,p2:0});
  console.log('effort mensuel objectifs OK')}
+
+{const F=require('../finance.js'),a=require('assert');
+ a.deepStrictEqual(F.nextChargeInDays(31,15,28),{day:28,inDays:13});
+ a.deepStrictEqual(F.nextChargeInDays(29,15,28),{day:28,inDays:13});
+ a.deepStrictEqual(F.nextChargeInDays(31,28,28),{day:28,inDays:0});
+ a.deepStrictEqual(F.nextChargeInDays(29,28,28),{day:28,inDays:0});
+ a.deepStrictEqual(F.nextChargeInDays(31,29,29),{day:29,inDays:0});
+ a.deepStrictEqual(F.nextChargeInDays(5,15,28),{day:5,inDays:18});
+ a.deepStrictEqual(F.nextChargeInDays(31,1,31),{day:31,inDays:30});
+ a.deepStrictEqual(F.nextChargeInDays(5,5,31),{day:5,inDays:0});
+ a.equal(F.clampDay(31,28),28);a.equal(F.clampDay(0,28),1);
+ console.log('prélèvements mois courts OK')}

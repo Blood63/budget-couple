@@ -24,12 +24,16 @@ function annualSheet(id){const a=D.annuals.find(x=>x.id===id)||{month:+curMonth(
    <div class="f2"><label>Part de ${esc(N('p1'))} (%)<input name="split" type="number" min="0" max="100" step="5" value="${splitOf(a)}"></label>
    <label>Déjà provisionné (€)<input name="saved" inputmode="decimal" value="${a.saved||''}" placeholder="0"></label></div>
    <label>Catégorie<select name="category">${catOpts('fixed',a.category||'autre')}</select></label>
-   ${id?`<label>Dernière année payée (facultatif)<input name="paidYear" type="number" inputmode="numeric" min="2000" max="${yr+1}" value="${a.paidYear||''}" placeholder="ex. ${yr}"></label>`:''}
+   ${id?`<label>Dernière année payée (facultatif)<input name="paidYear" type="number" inputmode="numeric" min="2000" max="${yr+1}" value="${a.paidYear||''}" placeholder="ex. ${yr}"></label>`:`<label class="chk" id="annUnpaidWrap" hidden><input type="checkbox" name="unpaidThisYear"> L’échéance de cette année reste à payer</label>`}
    <p class="mut">Le montant à mettre de côté chaque mois = reste à provisionner ÷ mois restants avant l’échéance. ${esc(N('p2'))} prend en charge le reste du pourcentage.</p>
    <button class="btn">Enregistrer</button>${id?`<button type="button" class="btn danger" data-del="annuals|${id}">${ic('trash',16)} Supprimer</button>`:''}</form>`,()=>{
-   $('#fAnnual').addEventListener('submit',e=>{e.preventDefault();const v=fd(e.target),amt=r2(num(v.amount));if(!v.label.trim()||!(amt>0))return toast('Indiquez un libellé et un montant');
+   const F=$('#fAnnual'),syncUnpaid=()=>{const w=$('#annUnpaidWrap');if(!w)return;const mo=+F.elements.month.value,cmn=+curMonth().slice(5,7);w.hidden=!(mo<cmn)};
+   F.elements.month.addEventListener('change',syncUnpaid);syncUnpaid();
+   F.addEventListener('submit',e=>{e.preventDefault();const v=fd(e.target),amt=r2(num(v.amount));if(!v.label.trim()||!(amt>0))return toast('Indiquez un libellé et un montant');
     const o={label:v.label.trim(),amount:amt,month:Math.min(12,Math.max(1,parseInt(v.month)||1)),split:Math.max(0,Math.min(100,parseInt(v.split)||0)),saved:r2(Math.max(0,num(v.saved))),category:v.category};
-    if(id){const ex=D.annuals.find(x=>x.id===id),py=parseInt(v.paidYear);if(py>=2000&&py<=yr+1)o.paidYear=py;else if(!String(v.paidYear||'').trim())delete ex.paidYear;Object.assign(ex,o);if(!ex.since)ex.since=curMonth()}else D.annuals.push({id:uid(),since:curMonth(),...o});closeSheet();save();toast('Charge annuelle enregistrée')})})}
+    if(id){const ex=D.annuals.find(x=>x.id===id),py=parseInt(v.paidYear);if(py>=2000&&py<=yr+1)o.paidYear=py;else if(!String(v.paidYear||'').trim())delete ex.paidYear;Object.assign(ex,o);if(!ex.since)ex.since=curMonth()}
+    else{const unpaid=!!v.unpaidThisYear&&o.month<+curMonth().slice(5,7);D.annuals.push({id:uid(),since:annualSinceOnCreate(o.month,curMonth(),unpaid),...o})}
+    closeSheet();save();toast('Charge annuelle enregistrée')})})}
 /* ---------- 2) Épargne de précaution (Épargne) ---------- */
 function precauData(){const fixed=D.fixed.reduce((s,f)=>s+(+f.amount||0),0),am=avgMisc(3),liv=D.placements.filter(p=>LIVRETS.includes(p.type));
   return{...precaution(liv.reduce((s,p)=>s+placValue(p),0),fixed+am.avg),fixed,misc:am.avg,miscMonths:am.months,count:liv.length}}
@@ -47,15 +51,14 @@ function nwNow(){const cm=curMonth(),assets=[...D.accounts.filter(a=>a.balance!=
   ...D.placements.map(p=>({owner:OWN(p.owner),value:placValue(p),label:p.name||(PTYPES.find(t=>t[0]===p.type)||[,'Placement'])[1],kind:'Placement'}))];
   const debts=D.loans.map(l=>({owner:OWN(l.owner),value:loanStatus(l,cm).remaining,label:l.label||'Crédit',kind:'Crédit'}));return{assets,debts,W:netWorth(assets,debts)}}
 let nwPending=false;
-function nwSnapshot(W){const m=curMonth(),id='nw-'+m,v={month:m,p1:W.net.p1,p2:W.net.p2,common:W.net.common,total:W.net.total,assets:W.assets.total,debts:W.debts.total},x=D.networth.find(n=>n.id===id);
-  if(!W.assets.total&&!W.debts.total&&!x)return;if(x&&['p1','p2','common','total','assets','debts'].every(k=>x[k]===v[k]))return;
-  if(nwPending)return;nwPending=true;setTimeout(()=>{nwPending=false;const y=D.networth.find(n=>n.id===id);if(y)Object.assign(y,v);else D.networth.push({id,...v});save()},0)}
+function nwSnapshot(){if(nwPending)return;if(D.networth.some(n=>n.id==='nw-'+curMonth()))return;const {W}=nwNow();if(!W.assets.total&&!W.debts.total)return;
+  nwPending=true;setTimeout(()=>{nwPending=false;if(nwAuto())save()},0)}
 /* Snapshot mensuel automatique : crée le point du mois s'il n'existe pas (id nw-AAAA-MM → jamais de doublon entre appareils ; ne réécrit jamais un point existant, donc pas de ping-pong de synchro) */
 function nwAuto(){const m=curMonth(),id='nw-'+m;if(D.networth.some(n=>n.id===id))return false;const {W}=nwNow();if(!W.assets.total&&!W.debts.total)return false;
   D.networth.push({id,month:m,p1:W.net.p1,p2:W.net.p2,common:W.net.common,total:W.net.total,assets:W.assets.total,debts:W.debts.total});return true}
 function nwLinkCard(){const {W}=nwNow();if(!D.loans.length&&!W.assets.total)return'';
   return `<button class="card item v15 nwlink" data-goto="patrimoine"><span class="grow"><small class="mut">Patrimoine net (actifs − crédits)</small><b class="num">${eur(W.net.total)}</b><small class="mut">${D.loans.length?`${D.loans.length} crédit${D.loans.length>1?'s':''} · `:''}détail et évolution</small></span>${ic('chev',16)}</button>`}
-function vPatrimoine(){const {assets,debts,W}=nwNow(),cm=curMonth();nwSnapshot(W);
+function vPatrimoine(){const {assets,debts,W}=nwNow(),cm=curMonth();nwSnapshot();
   const H=D.networth.filter(n=>/^\d{4}-\d{2}$/.test(n.month||'')).sort((a,b)=>a.month.localeCompare(b.month));
   const col=k=>`<td class="num">${eur(W.assets[k])}</td>`,row=(lab,o,cls='')=>`<tr class="${cls}"><th scope="row">${lab}</th>${['p1','p2','common','total'].map(k=>`<td class="num ${cls&&o[k]<0?'neg':''}">${eur(cls==='debt'?-o[k]:o[k])}</td>`).join('')}</tr>`;
   return `<div class="card hero"><small>Patrimoine net du couple</small><div class="hero-n">${money(W.net.total,W.net.total<0?'neg':'')}</div>
@@ -184,7 +187,7 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-ann-edit],
   if(d.subOff){if(!D.subsoff.some(x=>x.key===d.subOff))D.subsoff.push({id:'so-'+d.subOff.replace(/[^a-z0-9]+/gi,'-').slice(0,40)+'-'+uid().slice(0,4),key:d.subOff});save();return toast('Abonnement ignoré')}
   if(d.subOn){D.subsoff=D.subsoff.filter(x=>x.key!==d.subOn);save();return toast('Abonnement réaffiché')}
   if(d.subFix){const s=detectSubs(D.misc,D.fixed,D.subsoff,todayIso()).list.find(x=>x.key===d.subFix);if(!s)return;
-    const cat=catList('fixed').some(c=>c[0]==='abonnements')?'abonnements':catList('fixed').some(c=>c[0]==='loisirs')?'loisirs':'autre';
+    const cat=catList('fixed').some(c=>c[0]==='abonnement')?'abonnement':'autre';
     if(!confirm(`Ajouter « ${s.label} » (${eur(s.monthly)}/mois) aux charges fixes ?`))return;D.fixed.push({id:uid(),label:s.label,amount:s.monthly,day:+s.last.slice(8,10)||1,category:cat,split:D.ratio,paidBy:'joint'});save();return toast('Ajouté aux charges fixes')}
 });
 document.addEventListener('toggle',e=>{if(e.target.id==='subsCard')subsOpen=e.target.open},true);
